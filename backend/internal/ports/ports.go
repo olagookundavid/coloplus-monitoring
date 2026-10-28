@@ -147,3 +147,44 @@ type ReportRepository interface {
 	// report date, with intervals.
 	LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error)
 }
+
+// IncidentFilter narrows an incident listing. Scope works as in SiteFilter.
+type IncidentFilter struct {
+	AllSites bool
+	SiteIDs  []string
+	SiteID   string
+	OwnerID  string
+	Statuses []domain.IncidentStatus
+	Severity domain.Severity
+	// OpenOnly leaves out closed incidents. PublishedOnly leaves out anything
+	// not yet shared with the customer.
+	OpenOnly      bool
+	PublishedOnly bool
+	// OverdueAt, when set, keeps only open incidents whose next update was
+	// due before that time.
+	OverdueAt *time.Time
+	Limit     int
+	Offset    int
+}
+
+// IncidentCounts is the headline numbers for a scope.
+type IncidentCounts struct {
+	Open, Active, Critical, Overdue int
+}
+
+type IncidentRepository interface {
+	Create(ctx context.Context, i domain.Incident) (domain.Incident, error)
+	// GetByID loads an incident without its history. forUpdate locks the row
+	// for the surrounding transaction.
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.Incident, error)
+	// Save writes the mutable fields: status and its stamps, owner, plan,
+	// root cause and publication.
+	Save(ctx context.Context, i domain.Incident) error
+	AddUpdate(ctx context.Context, u domain.IncidentUpdate) (domain.IncidentUpdate, error)
+	// Updates returns the history oldest first; customerOnly keeps just the
+	// updates marked for the customer.
+	Updates(ctx context.Context, incidentID string, customerOnly bool) ([]domain.IncidentUpdate, error)
+	// List returns incidents, newest first.
+	List(ctx context.Context, f IncidentFilter) (incidents []domain.Incident, total int, err error)
+	Counts(ctx context.Context, f IncidentFilter, now time.Time) (IncidentCounts, error)
+}

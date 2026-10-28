@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"fmt"
 	"time"
 
 	"coloplus-backend/internal/domain"
@@ -159,5 +160,42 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
 		Portfolio: toSummaryDTO(o.Portfolio), Sites: rows,
+	}
+}
+
+func incidentRef(number int64) string { return fmt.Sprintf("INC-%06d", number) }
+
+func toIncidentDTO(i domain.Incident, now time.Time) dto.IncidentDTO {
+	return dto.IncidentDTO{
+		ID: i.ID, Ref: incidentRef(i.Number), SiteID: i.SiteID, Category: string(i.Category),
+		Severity: string(i.Severity), Impact: string(i.Impact), Title: i.Title, Description: i.Description,
+		Status: string(i.Status), StartedAt: i.StartedAt, DetectedAt: i.DetectedAt, ReporterID: i.ReporterID,
+		OwnerID: i.OwnerID, NextAction: i.NextAction, NextUpdateDue: i.NextUpdateDue, Overdue: i.Overdue(now),
+		RestorationTarget: i.RestorationTarget, RestoredAt: i.RestoredAt, RestoredBy: i.RestoredBy,
+		VerifiedAt: i.VerifiedAt, VerifiedBy: i.VerifiedBy, ClosedAt: i.ClosedAt, RootCause: i.RootCause,
+		PublishedAt: i.PublishedAt, CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
+	}
+}
+
+func toPublishedIncidentDTO(i domain.Incident, updates []domain.IncidentUpdate) dto.PublishedIncidentDTO {
+	out := dto.PublishedIncidentDTO{
+		ID: i.ID, Ref: incidentRef(i.Number), SiteID: i.SiteID, Category: string(i.Category),
+		Severity: string(i.Severity), Impact: string(i.Impact), Title: i.Title, Status: string(i.Status),
+		StartedAt: i.StartedAt, RestorationTarget: i.RestorationTarget, RestoredAt: i.RestoredAt,
+		Verified: i.VerifiedAt != nil, ClosedAt: i.ClosedAt,
+	}
+	for _, u := range updates {
+		if u.CustomerVisible {
+			out.Updates = append(out.Updates, dto.PublishedUpdateDTO{At: u.CreatedAt, Body: u.Body})
+		}
+	}
+	return out
+}
+
+func toIncidentUpdateDTO(u domain.IncidentUpdate) dto.IncidentUpdateDTO {
+	return dto.IncidentUpdateDTO{
+		ID: u.ID, AuthorID: u.AuthorID, Kind: string(u.Kind), FromStatus: string(u.FromStatus),
+		ToStatus: string(u.ToStatus), Body: u.Body, CustomerVisible: u.CustomerVisible,
+		ObservedAt: u.ObservedAt, CreatedAt: u.CreatedAt,
 	}
 }

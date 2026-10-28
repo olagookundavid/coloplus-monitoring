@@ -41,6 +41,10 @@ const (
 	PermReportsReview Permission = "reports.review"
 	PermPublishedRead Permission = "published.read"
 	PermAuditRead     Permission = "audit.read"
+
+	PermIncidentsCreate Permission = "incidents.create"
+	PermIncidentsRead   Permission = "incidents.read"
+	PermIncidentsManage Permission = "incidents.manage"
 )
 
 const (

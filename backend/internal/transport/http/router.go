@@ -41,6 +41,7 @@ type Deps struct {
 	Users     *services.UserService
 	Sites     *services.SiteService
 	Reports   *services.ReportService
+	Incidents *services.IncidentService
 	Dashboard *services.DashboardService
 }
 
@@ -54,6 +55,7 @@ type api struct {
 	users     *services.UserService
 	sites     *services.SiteService
 	reports   *services.ReportService
+	incidents *services.IncidentService
 	dashboard *services.DashboardService
 }
 
@@ -93,7 +95,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, users: d.Users, sites: d.Sites, reports: d.Reports, dashboard: d.Dashboard,
+		auth: d.Auth, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -131,6 +133,15 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/daily-reports/:id/approve", h.approveReport)
 	authed.POST("/daily-reports/:id/reject", h.rejectReport)
 	authed.POST("/daily-reports/:id/corrections", h.startCorrection)
+
+	authed.POST("/sites/:id/incidents", h.reportIncident)
+	authed.GET("/incidents", h.listIncidents)
+	authed.GET("/incidents/summary", h.incidentSummary)
+	authed.GET("/incidents/:id", h.getIncident)
+	authed.POST("/incidents/:id/assign", h.assignIncident)
+	authed.POST("/incidents/:id/transition", h.transitionIncident)
+	authed.POST("/incidents/:id/updates", h.addIncidentUpdate)
+	authed.POST("/incidents/:id/publish", h.publishIncident)
 
 	authed.GET("/dashboard/overview", h.overview)
 

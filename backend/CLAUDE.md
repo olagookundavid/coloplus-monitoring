@@ -17,20 +17,21 @@ migration -> `domain` type + pure rules + tests -> `ports` interface -> `adapter
 
 ## What exists
 - `config/`: typed config, read once, validated at boot, reports every problem at once. Only place that reads env vars.
-- `internal/domain`: users, roles, permissions, `Actor` (permissions + site scope), sites, daily reports, interval validation, the PRD's daily metrics, `Condition` (available / outage reported / awaiting update).
+- `internal/domain`: users, roles, permissions, `Actor` (permissions + site scope), sites, daily reports, incidents and their workflow rules, interval validation, the PRD's daily metrics, `Condition` (available / outage reported / awaiting update).
 - `internal/platform`: `Batcher[T]`, `WorkerPool`, `SystemClock`.
-- `internal/adapters/postgres`: pool, `DB.q(ctx)` (joins the tx in ctx), `TxManager`, repositories (users, sites, reports, audit), goose `Migrate`. `adapters/security`: bcrypt, PASETO issuer, TOTP, AES-GCM secret box.
-- `internal/services`: Auth (login, MFA, `Authenticate`), User, Site, Report (workflow), Dashboard, Audit, Health.
+- `internal/adapters/postgres`: pool, `DB.q(ctx)` (joins the tx in ctx), `TxManager`, repositories (users, sites, reports, incidents, audit), goose `Migrate`. `adapters/security`: bcrypt, PASETO issuer, TOTP, AES-GCM secret box.
+- `internal/services`: Auth (login, MFA, `Authenticate`), User, Site, Report (workflow), Incident (fault register), Dashboard, Audit, Health.
 - `internal/transport/http`: router, middleware chain, one error mapper (`errors.go`), handlers with swag annotations, mappers. Routes under `/api/v1`; `/healthcheck` (GET+HEAD).
 - `internal/transport/jobs`: cron scheduler on 5-field specs.
 - `cmd/api`: composition root and shutdown order. Subcommands: `migrate`, `create-admin`.
 
 ## API in one screen
-Auth: `POST /auth/login|logout|mfa/setup|mfa/enable`, `GET /auth/me`. Users (admin): `POST/GET /users`, `GET/PATCH /users/:id`. Sites: `POST/GET /sites`, `GET/PUT /sites/:id`. Reports: `POST /sites/:id/daily-reports`, `GET /daily-reports`, `GET/PUT /daily-reports/:id`, `POST /daily-reports/:id/submit|approve|reject|corrections`. Dashboard: `GET /dashboard/overview?date=`. Full detail in Swagger (`SWAGGER_ENABLED=true`, `/swagger/index.html`).
+Auth: `POST /auth/login|logout|mfa/setup|mfa/enable`, `GET /auth/me`. Users (admin): `POST/GET /users`, `GET/PATCH /users/:id`. Sites: `POST/GET /sites`, `GET/PUT /sites/:id`. Reports: `POST /sites/:id/daily-reports`, `GET /daily-reports`, `GET/PUT /daily-reports/:id`, `POST /daily-reports/:id/submit|approve|reject|corrections`. Incidents: `POST /sites/:id/incidents`, `GET /incidents[?open&overdue&status&severity&site_id&owner_id]`, `GET /incidents/summary`, `GET /incidents/:id`, `POST /incidents/:id/assign|transition|updates|publish`. Dashboard: `GET /dashboard/overview?date=`. Full detail in Swagger (`SWAGGER_ENABLED=true`, `/swagger/index.html`).
 
 ## Domain rules to keep
 - Missing or overdue data is **unknown / awaiting update**, never zero, never available. Percentages are `nil` when not applicable.
 - Only `observed` intervals count; `declared` ones are kept and ignored. Served and outage intervals may not overlap. Intervals stay inside one reporting day (decision 027).
+- Incidents: restoration is an observed time, never a target; verification needs a new observation from someone other than the person who recorded restoration; closing needs a root cause; closed is frozen; Airtel sees only published incidents and customer updates (DECISIONS 032).
 - Approved reports are immutable (DB triggers). A change is a linked correction revision. The approver is never the author.
 - Airtel users get `PublishedReportDTO`, never the internal DTO. Out-of-scope ids return 404.
 - Add a new permission as a migration row plus a constant in `domain/user.go`; map it to roles in `role_permissions`.

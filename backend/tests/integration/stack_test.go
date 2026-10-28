@@ -85,6 +85,7 @@ func newStack(t *testing.T) *stack {
 	userRepo := postgres.NewUserRepository(db)
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
+	incidentRepo := postgres.NewIncidentRepository(db)
 	auditStore := postgres.NewAuditRepository(db)
 
 	batcher, err := platform.NewBatcher(platform.BatcherConfig{
@@ -115,6 +116,7 @@ func newStack(t *testing.T) *stack {
 		Users:     services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock),
 		Sites:     services.NewSiteService(siteRepo, tx, audit),
 		Reports:   services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
+		Incidents: services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock),
 		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher}

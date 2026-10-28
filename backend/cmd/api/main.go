@@ -117,6 +117,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	userRepo := postgres.NewUserRepository(db)
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
+	incidentRepo := postgres.NewIncidentRepository(db)
 
 	// Audit: batched by default, transactional where a feature asks for it.
 	auditStore := postgres.NewAuditRepository(db)
@@ -174,6 +175,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Users:     services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock),
 		Sites:     services.NewSiteService(siteRepo, txManager, audit),
 		Reports:   services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
+		Incidents: services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock),
 		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
