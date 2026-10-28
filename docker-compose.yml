@@ -1,0 +1,21 @@
+# Local development database only. Production runs on the shared Contabo
+# stack (see docs/DECISIONS.md and the Fusewall standard, section 6).
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: coloplus
+      POSTGRES_PASSWORD: coloplus
+      POSTGRES_DB: coloplus
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coloplus -d coloplus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

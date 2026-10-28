@@ -1,0 +1,64 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - depguard
+    - errcheck
+    - govet
+    - staticcheck
+  settings:
+    depguard:
+      rules:
+        # domain: stdlib only.
+        domain:
+          files:
+            - "**/internal/domain/**"
+          list-mode: strict
+          allow:
+            - $gostd
+        # ports: stdlib and domain.
+        ports:
+          files:
+            - "**/internal/ports/**"
+          list-mode: strict
+          allow:
+            - $gostd
+            - coloplus-backend/internal/domain
+        # services: no gin, pgx, net/http or SQL, no adapters or transport.
+        services:
+          files:
+            - "**/internal/services/**"
+          list-mode: strict
+          allow:
+            - $gostd
+            - coloplus-backend/internal/domain
+            - coloplus-backend/internal/ports
+            - coloplus-backend/internal/platform
+            - coloplus-backend/internal/errors
+          deny:
+            - pkg: net/http
+              desc: services must not know about HTTP
+            - pkg: database/sql
+              desc: SQL belongs in adapters/postgres
+        adapters:
+          files:
+            - "**/internal/adapters/**"
+          deny:
+            - pkg: coloplus-backend/internal/services
+              desc: adapters implement ports; they do not call services
+            - pkg: coloplus-backend/internal/transport
+              desc: adapters must not depend on transport
+        transport:
+          files:
+            - "**/internal/transport/**"
+          deny:
+            - pkg: coloplus-backend/internal/adapters
+              desc: transport talks to services, never to adapters
+            - pkg: github.com/jackc/pgx
+              desc: transport must not touch the database driver
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - depguard

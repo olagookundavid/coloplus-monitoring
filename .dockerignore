@@ -1,0 +1,7 @@
+.git
+.github
+docs
+frontend
+**/.env
+backend/docs
+backend/bin

@@ -1,0 +1,84 @@
+package unit
+
+import (
+	"strings"
+	"testing"
+
+	"coloplus-backend/config"
+)
+
+func lookupFrom(env map[string]string) func(string) (string, bool) {
+	return func(k string) (string, bool) { v, ok := env[k]; return v, ok }
+}
+
+func validEnv() map[string]string {
+	return map[string]string{
+		"DATABASE_URL":        "postgres://u:p@localhost:5432/db",
+		"TOKEN_SYMMETRIC_KEY": "12345678901234567890123456789012",
+		"AUTH_COOKIE_NAME":    "coloplus_access",
+	}
+}
+
+func TestConfig_DefaultsAreSane(t *testing.T) {
+	cfg, err := config.Load(lookupFrom(validEnv()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.DB.Timezone != "Africa/Lagos" || cfg.DB.MaxConns != 8 || cfg.Audit.BatchSize != 20 {
+		t.Fatalf("unexpected defaults: %+v", cfg)
+	}
+}
+
+func TestConfig_ReportsEveryProblemAtOnce(t *testing.T) {
+	_, err := config.Load(lookupFrom(map[string]string{
+		"TOKEN_SYMMETRIC_KEY": "short",
+		"DB_MAX_CONNS":        "lots",
+	}))
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	for _, want := range []string{"DATABASE_URL", "TOKEN_SYMMETRIC_KEY", "AUTH_COOKIE_NAME", "DB_MAX_CONNS"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %s: %v", want, err)
+		}
+	}
+}
+
+func TestConfig_ProductionGuards(t *testing.T) {
+	env := validEnv()
+	env["APP_ENV"] = "production"
+	env["SWAGGER_ENABLED"] = "true"
+	env["RATE_LIMIT_ENABLED"] = "false"
+	_, err := config.Load(lookupFrom(env))
+	if err == nil {
+		t.Fatal("expected production guards to fail")
+	}
+	for _, want := range []string{"CORS_ALLOW_ORIGINS", "RATE_LIMIT_ENABLED", "SWAGGER_ENABLED"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %s: %v", want, err)
+		}
+	}
+
+	env["SWAGGER_ENABLED"] = "false"
+	env["RATE_LIMIT_ENABLED"] = "true"
+	env["CORS_ALLOW_ORIGINS"] = "https://app.example.com"
+	if _, err := config.Load(lookupFrom(env)); err != nil {
+		t.Fatalf("valid production config rejected: %v", err)
+	}
+}
+
+func TestConfig_RejectsWildcardCORS(t *testing.T) {
+	env := validEnv()
+	env["CORS_ALLOW_ORIGINS"] = "https://a.example.com, *"
+	if _, err := config.Load(lookupFrom(env)); err == nil {
+		t.Fatal("a wildcard origin must be rejected")
+	}
+}
+
+func TestConfig_RejectsUnknownTimezone(t *testing.T) {
+	env := validEnv()
+	env["DB_TIMEZONE"] = "Mars/Olympus"
+	if _, err := config.Load(lookupFrom(env)); err == nil {
+		t.Fatal("an unknown time zone must be rejected")
+	}
+}

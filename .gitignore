@@ -1,0 +1,19 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+
+# generated
+backend/docs/
+backend/bin/
+*.out
+coverage.*
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# frontend (to be added by the front-end engineer)
+frontend/node_modules/
+frontend/dist/
