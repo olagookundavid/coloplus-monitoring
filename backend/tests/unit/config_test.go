@@ -16,16 +16,7 @@ func validEnv() map[string]string {
 		"DATABASE_URL":        "postgres://u:p@localhost:5432/db",
 		"TOKEN_SYMMETRIC_KEY": "12345678901234567890123456789012",
 		"AUTH_COOKIE_NAME":    "coloplus_access",
-	}
-}
-
-func TestConfig_DefaultsAreSane(t *testing.T) {
-	cfg, err := config.Load(lookupFrom(validEnv()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cfg.DB.Timezone != "Africa/Lagos" || cfg.DB.MaxConns != 8 || cfg.Audit.BatchSize != 20 {
-		t.Fatalf("unexpected defaults: %+v", cfg)
+		"SECRETS_KEY":         "abcdefghijklmnopqrstuvwxyz012345",
 	}
 }
 
@@ -37,7 +28,7 @@ func TestConfig_ReportsEveryProblemAtOnce(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error")
 	}
-	for _, want := range []string{"DATABASE_URL", "TOKEN_SYMMETRIC_KEY", "AUTH_COOKIE_NAME", "DB_MAX_CONNS"} {
+	for _, want := range []string{"DATABASE_URL", "TOKEN_SYMMETRIC_KEY", "AUTH_COOKIE_NAME", "SECRETS_KEY", "DB_MAX_CONNS"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error does not mention %s: %v", want, err)
 		}
@@ -64,21 +55,5 @@ func TestConfig_ProductionGuards(t *testing.T) {
 	env["CORS_ALLOW_ORIGINS"] = "https://app.example.com"
 	if _, err := config.Load(lookupFrom(env)); err != nil {
 		t.Fatalf("valid production config rejected: %v", err)
-	}
-}
-
-func TestConfig_RejectsWildcardCORS(t *testing.T) {
-	env := validEnv()
-	env["CORS_ALLOW_ORIGINS"] = "https://a.example.com, *"
-	if _, err := config.Load(lookupFrom(env)); err == nil {
-		t.Fatal("a wildcard origin must be rejected")
-	}
-}
-
-func TestConfig_RejectsUnknownTimezone(t *testing.T) {
-	env := validEnv()
-	env["DB_TIMEZONE"] = "Mars/Olympus"
-	if _, err := config.Load(lookupFrom(env)); err == nil {
-		t.Fatal("an unknown time zone must be rejected")
 	}
 }

@@ -36,6 +36,9 @@ type App struct {
 	HTTPAddr        string
 	ShutdownTimeout time.Duration
 	LogLevel        string
+	// ReportingTimezone defines the reporting day (Africa/Lagos). It is
+	// separate from the DB session zone and used by the domain's day maths.
+	ReportingTimezone string
 }
 
 type DB struct {
@@ -52,6 +55,16 @@ type Auth struct {
 	TokenKey       string
 	CookieName     string
 	AccessTokenTTL time.Duration
+	// SecretsKey is the 32-character key that encrypts TOTP seeds at rest.
+	SecretsKey string
+	// CookieSameSite is lax, strict or none. none is for a front end served
+	// from a different site than the API and requires a secure cookie.
+	CookieSameSite string
+	CookieSecure   bool
+	CookieDomain   string
+	BcryptCost     int
+	// MFAIssuer is the name shown in authenticator apps.
+	MFAIssuer string
 }
 
 type CORS struct {
@@ -62,6 +75,9 @@ type RateLimit struct {
 	Enabled bool
 	Rps     float64
 	Burst   int
+	// AuthPerMinute and AuthBurst bound sign-in attempts per client IP.
+	AuthPerMinute int
+	AuthBurst     int
 }
 
 type Workers struct {
@@ -92,14 +108,16 @@ func FromEnv() (Config, error) {
 // problem at once rather than the first one.
 func Load(lookup func(string) (string, bool)) (Config, error) {
 	r := &reader{lookup: lookup}
+	env := r.str("APP_ENV", EnvDevelopment)
 
 	cfg := Config{
 		App: App{
-			Name:            r.str("APP_NAME", "coloplus"),
-			Env:             r.str("APP_ENV", EnvDevelopment),
-			HTTPAddr:        r.str("HTTP_ADDR", ":8080"),
-			ShutdownTimeout: r.duration("SHUTDOWN_TIMEOUT", 20*time.Second),
-			LogLevel:        r.str("LOG_LEVEL", "info"),
+			Name:              r.str("APP_NAME", "coloplus"),
+			Env:               env,
+			HTTPAddr:          r.str("HTTP_ADDR", ":8080"),
+			ShutdownTimeout:   r.duration("SHUTDOWN_TIMEOUT", 20*time.Second),
+			LogLevel:          r.str("LOG_LEVEL", "info"),
+			ReportingTimezone: r.str("REPORTING_TIMEZONE", "Africa/Lagos"),
 		},
 		DB: DB{
 			URL:      r.str("DATABASE_URL", ""),
@@ -111,12 +129,20 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			TokenKey:       r.str("TOKEN_SYMMETRIC_KEY", ""),
 			CookieName:     r.str("AUTH_COOKIE_NAME", ""),
 			AccessTokenTTL: r.duration("ACCESS_TOKEN_TTL", 12*time.Hour),
+			SecretsKey:     r.str("SECRETS_KEY", ""),
+			CookieSameSite: strings.ToLower(r.str("AUTH_COOKIE_SAMESITE", "lax")),
+			CookieSecure:   r.boolean("AUTH_COOKIE_SECURE", env == EnvProduction),
+			CookieDomain:   r.str("AUTH_COOKIE_DOMAIN", ""),
+			BcryptCost:     r.integer("BCRYPT_COST", 12),
+			MFAIssuer:      r.str("MFA_ISSUER", "Coloplus"),
 		},
 		CORS: CORS{AllowOrigins: r.list("CORS_ALLOW_ORIGINS")},
 		RateLimit: RateLimit{
-			Enabled: r.boolean("RATE_LIMIT_ENABLED", true),
-			Rps:     float64(r.integer("RATE_LIMIT_RPS", 10)),
-			Burst:   r.integer("RATE_LIMIT_BURST", 30),
+			Enabled:       r.boolean("RATE_LIMIT_ENABLED", true),
+			Rps:           float64(r.integer("RATE_LIMIT_RPS", 10)),
+			Burst:         r.integer("RATE_LIMIT_BURST", 30),
+			AuthPerMinute: r.integer("AUTH_RATE_LIMIT_PER_MINUTE", 10),
+			AuthBurst:     r.integer("AUTH_RATE_LIMIT_BURST", 5),
 		},
 		Workers: Workers{
 			Size:      r.integer("WORKER_POOL_SIZE", 8),
@@ -161,6 +187,30 @@ func (c Config) validate() []error {
 	if c.Auth.CookieName == "" {
 		bad("AUTH_COOKIE_NAME is required")
 	}
+	if len(c.Auth.SecretsKey) != 32 {
+		bad("SECRETS_KEY must be exactly 32 characters")
+	}
+	if c.Auth.SecretsKey != "" && c.Auth.SecretsKey == c.Auth.TokenKey {
+		bad("SECRETS_KEY must differ from TOKEN_SYMMETRIC_KEY")
+	}
+	switch c.Auth.CookieSameSite {
+	case "lax", "strict":
+	case "none":
+		if !c.Auth.CookieSecure {
+			bad("AUTH_COOKIE_SAMESITE=none requires AUTH_COOKIE_SECURE=true")
+		}
+	default:
+		bad("AUTH_COOKIE_SAMESITE must be lax, strict or none, got %q", c.Auth.CookieSameSite)
+	}
+	if c.Auth.BcryptCost < 4 || c.Auth.BcryptCost > 14 {
+		bad("BCRYPT_COST must be between 4 and 14")
+	}
+	if _, err := time.LoadLocation(c.App.ReportingTimezone); err != nil {
+		bad("REPORTING_TIMEZONE %q is not a known time zone", c.App.ReportingTimezone)
+	}
+	if c.RateLimit.AuthPerMinute < 1 || c.RateLimit.AuthBurst < 1 {
+		bad("AUTH_RATE_LIMIT_PER_MINUTE and AUTH_RATE_LIMIT_BURST must be at least 1")
+	}
 	if c.Workers.Size < 1 || c.Workers.QueueSize < 0 {
 		bad("WORKER_POOL_SIZE must be at least 1 and WORKER_POOL_QUEUE must not be negative")
 	}
@@ -181,6 +231,12 @@ func (c Config) validate() []error {
 		}
 		if !c.RateLimit.Enabled {
 			bad("RATE_LIMIT_ENABLED must be true in production")
+		}
+		if !c.Auth.CookieSecure {
+			bad("AUTH_COOKIE_SECURE must be true in production")
+		}
+		if c.Auth.BcryptCost < 10 {
+			bad("BCRYPT_COST must be at least 10 in production")
 		}
 		if c.Swagger.Enabled {
 			bad("SWAGGER_ENABLED must be false in production")

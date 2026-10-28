@@ -16,11 +16,13 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"coloplus-backend/config"
 	"coloplus-backend/internal/adapters/postgres"
+	"coloplus-backend/internal/adapters/security"
 	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/platform"
 	"coloplus-backend/internal/services"
@@ -60,8 +62,14 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "migrate" {
 		return postgres.Migrate(ctx, cfg.DB.URL, migrations.FS, log)
 	}
+	// `api create-admin <email> <full name>` creates the first administrator.
+	// The password is read from ADMIN_PASSWORD so it never lands in shell
+	// history or the process list.
+	if len(args) > 0 && args[0] == "create-admin" {
+		return createAdmin(ctx, cfg, log, args[1:])
+	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }
@@ -89,10 +97,26 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	// Reserved for provider fan-out (email sends, exports) as features land.
 	_ = workers
 
+	loc, err := time.LoadLocation(cfg.App.ReportingTimezone)
+	if err != nil {
+		return fmt.Errorf("loading reporting time zone: %w", err)
+	}
 	tokenMaker, err := token.NewPasetoMaker(cfg.Auth.TokenKey)
 	if err != nil {
 		return fmt.Errorf("creating token maker: %w", err)
 	}
+	secretBox, err := security.NewSecretBox(cfg.Auth.SecretsKey)
+	if err != nil {
+		return err
+	}
+	clock := platform.SystemClock{}
+	hasher := security.NewBcryptHasher(cfg.Auth.BcryptCost)
+
+	// Persistence.
+	txManager := postgres.NewTxManager(db)
+	userRepo := postgres.NewUserRepository(db)
+	siteRepo := postgres.NewSiteRepository(db)
+	reportRepo := postgres.NewReportRepository(db)
 
 	// Audit: batched by default, transactional where a feature asks for it.
 	auditStore := postgres.NewAuditRepository(db)
@@ -107,7 +131,14 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	audit := services.NewAuditService(auditStore, auditBatcher, platform.SystemClock{}, log)
+	audit := services.NewAuditService(auditStore, auditBatcher, clock, log)
+
+	// Use cases.
+	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
+		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, audit, clock, cfg.Auth.AccessTokenTTL, log)
+	if err != nil {
+		return err
+	}
 
 	// Scheduled jobs register here; a bad cron spec fails the boot.
 	scheduler := jobs.NewScheduler(log)
@@ -124,11 +155,26 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			Rps:     cfg.RateLimit.Rps,
 			Burst:   cfg.RateLimit.Burst,
 		},
+		AuthRateLimit: middleware.RateLimitConfig{
+			Enabled: cfg.RateLimit.Enabled,
+			Rps:     float64(cfg.RateLimit.AuthPerMinute) / 60,
+			Burst:   cfg.RateLimit.AuthBurst,
+		},
 		RateLimitCtx:   rateLimitCtx,
 		SwaggerEnabled: cfg.Swagger.Enabled,
 		TokenMaker:     tokenMaker,
-		CookieName:     cfg.Auth.CookieName,
-		Health:         services.NewHealthService(db),
+		Cookie: httpapi.CookieConfig{
+			Name: cfg.Auth.CookieName, Domain: cfg.Auth.CookieDomain,
+			Secure: cfg.Auth.CookieSecure, SameSite: sameSite(cfg.Auth.CookieSameSite),
+		},
+		Loc:       loc,
+		Now:       clock.Now,
+		Health:    services.NewHealthService(db),
+		Auth:      authService,
+		Users:     services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock),
+		Sites:     services.NewSiteService(siteRepo, txManager, audit),
+		Reports:   services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
+		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,
@@ -204,3 +250,48 @@ func parseLevel(s string) slog.Level {
 	}
 	return l
 }
+
+func sameSite(v string) http.SameSite {
+	switch strings.ToLower(v) {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "none":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
+}
+
+func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args []string) error {
+	password := os.Getenv("ADMIN_PASSWORD")
+	if len(args) < 2 || password == "" {
+		return errors.New("usage: ADMIN_PASSWORD=... api create-admin <email> <full name>")
+	}
+	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{
+		URL: cfg.DB.URL, MaxConns: 2, MinConns: 0, Timezone: cfg.DB.Timezone,
+	})
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	db := postgres.NewDB(pool)
+	auditStore := postgres.NewAuditRepository(db)
+	// Audit rows are written inside the transaction, so no batcher is needed.
+	audit := services.NewAuditService(auditStore, discardQueue{}, platform.SystemClock{}, log)
+	users := services.NewUserService(postgres.NewUserRepository(db), postgres.NewSiteRepository(db),
+		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{})
+
+	admin, err := users.CreateInitialAdmin(ctx, args[0], strings.Join(args[1:], " "), password)
+	if err != nil {
+		return err
+	}
+	log.Info("administrator created", "email", admin.Email, "id", admin.ID)
+	return nil
+}
+
+// discardQueue satisfies ports.AuditQueue for commands that only write
+// transactional audit rows.
+type discardQueue struct{}
+
+func (discardQueue) Add(domain.AuditEvent) bool { return false }

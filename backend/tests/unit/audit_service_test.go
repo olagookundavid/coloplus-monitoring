@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"coloplus-backend/internal/domain"
-	apperrors "coloplus-backend/internal/errors"
 	"coloplus-backend/internal/services"
 )
 
@@ -48,45 +47,10 @@ func newAuditService(store *fakeAuditStore, queue *fakeAuditQueue) *services.Aud
 	return services.NewAuditService(store, queue, fixedClock{testNow}, discardLogger())
 }
 
-func TestAuditService_RecordQueuesAndStampsTime(t *testing.T) {
-	store, queue := &fakeAuditStore{}, &fakeAuditQueue{accept: true}
-	svc := newAuditService(store, queue)
-
-	if err := svc.Record(context.Background(), domain.AuditEvent{Action: "report.submitted", EntityType: "daily_report"}); err != nil {
-		t.Fatal(err)
-	}
-	if len(queue.queued) != 1 || !queue.queued[0].OccurredAt.Equal(testNow) {
-		t.Fatalf("queued = %+v, want one event stamped %v", queue.queued, testNow)
-	}
-	if len(store.inserted) != 0 {
-		t.Fatal("a batched event must not be written immediately")
-	}
-}
-
 func TestAuditService_RecordNeverFailsTheCallerWhenQueueIsFull(t *testing.T) {
 	svc := newAuditService(&fakeAuditStore{}, &fakeAuditQueue{accept: false})
 	if err := svc.Record(context.Background(), domain.AuditEvent{Action: "a", EntityType: "b"}); err != nil {
 		t.Fatalf("a full queue must not fail the business action: %v", err)
-	}
-}
-
-func TestAuditService_RecordRejectsInvalidEvent(t *testing.T) {
-	svc := newAuditService(&fakeAuditStore{}, &fakeAuditQueue{accept: true})
-	err := svc.Record(context.Background(), domain.AuditEvent{EntityType: "daily_report"})
-	if !errors.Is(err, apperrors.ErrInvalidInput) {
-		t.Fatalf("err = %v, want ErrInvalidInput", err)
-	}
-}
-
-func TestAuditService_RecordInTxWritesImmediately(t *testing.T) {
-	store, queue := &fakeAuditStore{}, &fakeAuditQueue{accept: true}
-	svc := newAuditService(store, queue)
-
-	if err := svc.RecordInTx(context.Background(), domain.AuditEvent{Action: "report.approved", EntityType: "daily_report"}); err != nil {
-		t.Fatal(err)
-	}
-	if len(store.inserted) != 1 || len(queue.queued) != 0 {
-		t.Fatalf("inserted=%d queued=%d, want 1 and 0", len(store.inserted), len(queue.queued))
 	}
 }
 

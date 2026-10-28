@@ -12,4 +12,8 @@ var (
 	ErrUnauthorized = errors.New("please sign in to continue")
 	ErrForbidden    = errors.New("you do not have permission to do this")
 	ErrUnavailable  = errors.New("the service is temporarily unavailable, please try again shortly")
+
+	ErrInvalidCredentials = errors.New("the email or password is not correct")
+	ErrInvalidCode        = errors.New("the verification code is not correct")
+	ErrAccountLocked      = errors.New("too many failed sign-in attempts, please try again in a few minutes")
 )

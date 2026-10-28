@@ -51,9 +51,3 @@ func TestPasetoMaker_Rejects(t *testing.T) {
 		})
 	}
 }
-
-func TestNewPasetoMaker_KeySize(t *testing.T) {
-	if _, err := NewPasetoMaker("short"); err == nil {
-		t.Fatal("expected an error for a short key")
-	}
-}

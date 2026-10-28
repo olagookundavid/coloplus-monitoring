@@ -30,6 +30,14 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 | 021 | Swagger docs generated at build, not committed | Product decision | Accepted |
 | 022 | Frontend folder reserved and empty | Product decision | Accepted |
 | 023 | Migrations are a separate step: `api migrate` | Fusewall standard | Accepted |
+| 024 | Sign-in: password + optional authenticator code, PASETO in an HttpOnly cookie | Product decision | Accepted |
+| 025 | Roles map to permissions in the database; site scope is a separate check | Fusewall standard | Accepted |
+| 026 | Daily report workflow, immutability and corrections | Product decision | Accepted |
+| 027 | An interval must stay within one reporting day | Product decision | Accepted |
+| 028 | Calculation provenance is returned on read, not yet stored | Product decision | Accepted (revisit) |
+| 029 | First administrator is created from the command line | Product decision | Accepted |
+| 030 | No invitation email yet: administrators set initial passwords | Product decision | Accepted (revisit) |
+| 031 | Tests are minimal and aimed at critical risk | Product decision | Accepted |
 
 ## Template
 ### NNN: Title
@@ -108,3 +116,48 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 ## 023: Migrations are a separate step
 - **Type:** Fusewall standard · **Status:** Accepted
 - **Decision:** `api migrate` applies pending goose migrations and exits. The deploy script runs it before starting the new image. The server never migrates itself on start.
+
+## 024: Sign-in
+- **Type:** Product decision · **Status:** Accepted
+- **Context:** the PRD requires two-step verification for privileged and Airtel users, revocation, session expiry and an audit of sign-ins. The standard names PASETO and bcrypt but no TOTP library.
+- **Decision:** email + password (bcrypt, cost 12, 12 to 72 characters, one letter and one number). Optional authenticator-app step using RFC 6238 TOTP written with the standard library in `pkg-common/totp` (tested against the RFC vectors), so no new dependency. TOTP seeds are stored encrypted (AES-256-GCM, `SECRETS_KEY`). The PASETO access token (12h) is set as an HttpOnly cookie named by `AUTH_COOKIE_NAME` and also returned for API clients. Every authenticated request reloads the user, so deactivation takes effect immediately. Five failed attempts lock the account for 15 minutes; sign-in also has its own per-IP limit. State-changing requests must be `application/json`, which doubles as a CSRF guard.
+- **Consequences:** two-step is available but **not yet enforced**: a policy that requires it for Airtel and privileged roles, and recovery codes for lost phones, are still to build. Losing `SECRETS_KEY` disables everyone's two-step login.
+- **Revisit when:** before the pilot (enforce two-step), or when Airtel SSO is agreed.
+
+## 025: Roles, permissions and site scope
+- **Type:** Fusewall standard · **Status:** Accepted
+- **Decision:** code checks permissions (`reports.review`, `sites.manage` and so on), never role names. `role_permissions` in the database maps the four MVP roles (administrator, field reporter, supervisor, Airtel viewer). Site scope is separate: administrators hold `sites.all`; everyone else sees only assigned sites. An out-of-scope id answers "not found", not "forbidden", so ids cannot be probed. Administrators hold no `reports.review`, so they cannot approve.
+- **Consequences:** the read-only management/auditor role and the model administrator role are later phases and arrive as new rows, not code changes.
+
+## 026: Daily report workflow
+- **Type:** Product decision · **Status:** Accepted
+- **Decision:** draft, submitted, approved, rejected (returned), superseded. The approver must differ from the author (also a database CHECK). Approving a correction supersedes the report it corrects in the same transaction. An approved or superseded report, and its intervals, cannot be changed or deleted: database triggers enforce it, not only application code. Edits quote a `row_version`; a stale one is a conflict. Submitting twice is a no-op. Airtel users get a separate published view (no notes, author or review comments) of approved reports only. Approvals, returns, submissions and corrections write their audit row in the same transaction (decision 019), with before and after minutes for corrections.
+- **Consequences:** Airtel keeps seeing the original until a correction is approved.
+
+## 027: An interval stays within one reporting day
+- **Type:** Product decision · **Status:** Accepted
+- **Context:** the PRD says to split cross-midnight events across reporting periods without changing the original incident.
+- **Decision:** for now an interval must lie inside the reporting day (Africa/Lagos), in whole minutes, and may not end in the future. The reporter enters the part after midnight in the next day's report, and the error says so. Incidents (which will hold the unsplit event) do not exist yet.
+- **Revisit when:** the incident register is built; automatic splitting belongs there.
+
+## 028: Provenance is returned, not yet stored
+- **Type:** Product decision · **Status:** Accepted (revisit)
+- **Decision:** the daily metrics (S, U, D, X, coverage, reported availability, confirmed served share) are pure functions in `domain`, computed on read from the approved report revision, and returned with a `calculation` block (formula `daily-availability` v1, input report id and revision, window, time zone, warnings). Only observed intervals count; declared ones are shown but ignored. Nothing is persisted as a calculation run yet.
+- **Consequences:** results are reproducible because inputs are immutable, but the PRD's stored calculation runs, report snapshots and period reopening are still to build.
+- **Revisit when:** monthly reports (Advanced 2) need frozen, versioned results.
+
+## 029: First administrator from the command line
+- **Type:** Product decision · **Status:** Accepted
+- **Decision:** `ADMIN_PASSWORD=... api create-admin <email> <name>` creates the first administrator, reading the password from the environment so it never reaches shell history. It refuses once any administrator exists. Everyone else is created from the portal.
+
+## 030: No invitation email yet
+- **Type:** Product decision · **Status:** Accepted (revisit)
+- **Decision:** administrators set an initial password when creating a user and tell them out of band. The Resend adapter, invitation and password-reset emails come next, with the Mailer port.
+- **Revisit when:** the Resend adapter is built; then replace initial passwords with invitation links.
+
+## 031: Tests are minimal and aimed at critical risk
+- **Type:** Product decision (owner) · **Status:** Accepted
+- **Context:** the owner wants feature delivery first and expects testers to catch obvious defects. The Fusewall standard's testing section is a ceiling, not a target.
+- **Decision:** write tests only for what is critical or has already gone wrong: trust and security rules, the PRD metrics, concurrency and atomicity, shutdown behaviour. Skip mappers, simple validation, defaults and happy-path CRUD. The suite was cut from about 70 to 44 tests on 2026-10-28.
+- **Consequences:** more bugs will reach manual testing; that is accepted. Anything not tested is said so in the hand-over note rather than covered later by bulk tests.
+- **Revisit when:** a release goes to Airtel at scale, or defects found in testing show a pattern that a test would have stopped.

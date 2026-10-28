@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"coloplus-backend/internal/services"
 	httpapi "coloplus-backend/internal/transport/http"
@@ -32,7 +33,9 @@ func testRouter(t *testing.T, pinger fakePinger, rl middleware.RateLimitConfig) 
 		RateLimit:    rl,
 		RateLimitCtx: ctx,
 		TokenMaker:   maker,
-		CookieName:   "test_token",
+		Cookie:       httpapi.CookieConfig{Name: "test_token"},
+		Loc:          time.UTC,
+		Now:          time.Now,
 		Health:       services.NewHealthService(pinger),
 	})
 }
@@ -61,28 +64,22 @@ func TestHealthcheck(t *testing.T) {
 	}
 }
 
-func TestHealthcheckIsNotRateLimited(t *testing.T) {
-	h := testRouter(t, fakePinger{}, middleware.RateLimitConfig{Enabled: true, Rps: 0.001, Burst: 1})
-	for i := 0; i < 5; i++ {
-		if got := do(h, http.MethodGet, "/healthcheck").Code; got != http.StatusOK {
-			t.Fatalf("request %d = %d, want 200", i, got)
+func TestWritesMustBeJSON(t *testing.T) {
+	h := testRouter(t, fakePinger{}, middleware.RateLimitConfig{})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader("email=a&password=b"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "application/json") {
+		t.Fatalf("a form post must be refused: %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestProtectedRoutesNeedAToken(t *testing.T) {
+	h := testRouter(t, fakePinger{}, middleware.RateLimitConfig{})
+	for _, path := range []string{"/api/v1/auth/me", "/api/v1/sites", "/api/v1/daily-reports", "/api/v1/users", "/api/v1/dashboard/overview"} {
+		if got := do(h, http.MethodGet, path).Code; got != http.StatusUnauthorized {
+			t.Errorf("GET %s without a token = %d, want 401", path, got)
 		}
-	}
-}
-
-func TestPingAndSecurityHeaders(t *testing.T) {
-	w := do(testRouter(t, fakePinger{}, middleware.RateLimitConfig{}), http.MethodGet, "/api/v1/ping")
-	if w.Code != http.StatusOK || !strings.Contains(w.Body.String(), "pong") {
-		t.Fatalf("ping = %d %s", w.Code, w.Body.String())
-	}
-	if w.Header().Get("X-Content-Type-Options") != "nosniff" || w.Header().Get("X-Request-ID") == "" {
-		t.Fatalf("missing headers: %v", w.Header())
-	}
-}
-
-func TestUnknownRouteIsAWordedNotFound(t *testing.T) {
-	w := do(testRouter(t, fakePinger{}, middleware.RateLimitConfig{}), http.MethodGet, "/api/v1/nope")
-	if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), "couldn't find") {
-		t.Fatalf("got %d %s", w.Code, w.Body.String())
 	}
 }

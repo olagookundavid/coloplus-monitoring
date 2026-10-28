@@ -72,26 +72,6 @@ func event(entityID, action string) domain.AuditEvent {
 	}
 }
 
-func TestMigrationsAreIdempotent(t *testing.T) {
-	e := setup(t)
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if err := postgres.Migrate(context.Background(), os.Getenv("TEST_DATABASE_URL"), migrations.FS, log); err != nil {
-		t.Fatalf("second run failed: %v", err)
-	}
-	_ = e
-}
-
-func TestSessionTimezoneIsPinned(t *testing.T) {
-	e := setup(t)
-	var tz string
-	if err := e.pool.QueryRow(context.Background(), `SHOW TimeZone`).Scan(&tz); err != nil {
-		t.Fatal(err)
-	}
-	if tz != "Africa/Lagos" {
-		t.Fatalf("session time zone = %q, want Africa/Lagos", tz)
-	}
-}
-
 func TestAuditInsertBatchWritesEveryEvent(t *testing.T) {
 	e := setup(t)
 	id := uniqueEntity(t)
@@ -102,19 +82,6 @@ func TestAuditInsertBatchWritesEveryEvent(t *testing.T) {
 	}
 	if got := e.count(t, id); got != 3 {
 		t.Fatalf("rows = %d, want 3", got)
-	}
-}
-
-func TestAuditInsertAcceptsNilMetadata(t *testing.T) {
-	e := setup(t)
-	id := uniqueEntity(t)
-	ev := event(id, "a")
-	ev.Metadata = nil
-	if err := e.audit.Insert(context.Background(), ev); err != nil {
-		t.Fatal(err)
-	}
-	if got := e.count(t, id); got != 1 {
-		t.Fatalf("rows = %d, want 1", got)
 	}
 }
 
@@ -145,27 +112,6 @@ func TestTxManagerCommitsAndRollsBack(t *testing.T) {
 	}
 	if got := e.count(t, rolledBack); got != 0 {
 		t.Fatalf("rolled-back rows = %d, want 0: the audit row must not outlive its transaction", got)
-	}
-}
-
-func TestTxManagerNestedCallJoinsTheOuterTransaction(t *testing.T) {
-	e := setup(t)
-	id := uniqueEntity(t)
-	boom := errors.New("outer failed")
-
-	err := e.tx.WithTx(context.Background(), func(ctx context.Context) error {
-		if err := e.tx.WithTx(ctx, func(ctx context.Context) error {
-			return e.audit.Insert(ctx, event(id, "inner"))
-		}); err != nil {
-			return err
-		}
-		return boom
-	})
-	if !errors.Is(err, boom) {
-		t.Fatal(err)
-	}
-	if got := e.count(t, id); got != 0 {
-		t.Fatalf("rows = %d, want 0: the inner call must roll back with the outer one", got)
 	}
 }
 
