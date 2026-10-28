@@ -79,6 +79,11 @@ type UserRepository interface {
 	RecordLoginSuccess(ctx context.Context, id string, at time.Time) error
 	RecordLoginFailure(ctx context.Context, id string, failed int, lockedUntil *time.Time) error
 	SetTOTP(ctx context.Context, id, sealedSecret string, enabled bool) error
+	// SetPassword stores a new hash, clears lockout, and ends older sessions.
+	SetPassword(ctx context.Context, id, hash string, at time.Time) error
+	// UsersWithPermission returns active users whose role holds the
+	// permission and who can see the site (all sites, or assigned to it).
+	UsersWithPermission(ctx context.Context, perm domain.Permission, siteID string) ([]domain.User, error)
 
 	PermissionsForRole(ctx context.Context, role domain.Role) ([]domain.Permission, error)
 	SiteIDsForUser(ctx context.Context, userID string) ([]string, error)
@@ -187,4 +192,49 @@ type IncidentRepository interface {
 	// List returns incidents, newest first.
 	List(ctx context.Context, f IncidentFilter) (incidents []domain.Incident, total int, err error)
 	Counts(ctx context.Context, f IncidentFilter, now time.Time) (IncidentCounts, error)
+}
+
+// Mailer sends one email. A transient failure wraps apperrors.ErrUnavailable;
+// a refusal that retrying cannot fix wraps apperrors.ErrMailRejected. The
+// idempotency key lets the provider drop a repeat of the same send.
+type Mailer interface {
+	Send(ctx context.Context, mail domain.Email, idempotencyKey string) (providerID string, err error)
+}
+
+type NotificationFilter struct {
+	Status domain.NotificationStatus
+	Limit  int
+	Offset int
+}
+
+// NotificationStore is the email outbox.
+type NotificationStore interface {
+	// Enqueue stores the notification unless one with the same dedupe key
+	// exists. It reports whether this call queued it.
+	Enqueue(ctx context.Context, n domain.Notification) (bool, error)
+	// ClaimDue takes up to limit pending notifications that are due, counts an
+	// attempt and pushes their next attempt out by lease, so a crash or a
+	// second instance never sends the same one twice at once.
+	ClaimDue(ctx context.Context, now time.Time, limit int, lease time.Duration) ([]domain.Notification, error)
+	MarkSent(ctx context.Context, id, providerID string, at time.Time) error
+	// MarkRetry schedules another attempt. MarkFailed gives up.
+	MarkRetry(ctx context.Context, id, reason string, next time.Time) error
+	MarkFailed(ctx context.Context, id, reason string) error
+	// Requeue puts a failed notification back with a fresh set of attempts.
+	// ErrNotFound when it is not failed.
+	Requeue(ctx context.Context, id string, at time.Time) error
+	GetByID(ctx context.Context, id string) (domain.Notification, error)
+	List(ctx context.Context, f NotificationFilter) (items []domain.Notification, total int, err error)
+}
+
+// UserTokenRepository stores one-time link tokens by hash.
+type UserTokenRepository interface {
+	Create(ctx context.Context, t domain.UserToken, hash string) (domain.UserToken, error)
+	// GetByHash locks the row for the surrounding transaction.
+	GetByHash(ctx context.Context, hash string) (domain.UserToken, error)
+	MarkUsed(ctx context.Context, id string, at time.Time) error
+	// RevokeOutstanding uses up every unused token of a purpose for a user.
+	RevokeOutstanding(ctx context.Context, userID string, purpose domain.TokenPurpose, at time.Time) error
+	// CountSince counts tokens of a purpose made for a user since a time.
+	CountSince(ctx context.Context, userID string, purpose domain.TokenPurpose, since time.Time) (int, error)
 }

@@ -17,13 +17,13 @@ type UserRepository struct{ db *DB }
 func NewUserRepository(db *DB) *UserRepository { return &UserRepository{db: db} }
 
 const userColumns = `id::text, email, full_name, password_hash, role_id, is_active, totp_secret, totp_enabled,
-	failed_logins, locked_until, last_login_at, created_at, updated_at`
+	failed_logins, locked_until, last_login_at, password_changed_at, created_at, updated_at`
 
 func scanUser(row pgx.Row) (domain.User, error) {
 	var u domain.User
 	var role string
 	err := row.Scan(&u.ID, &u.Email, &u.FullName, &u.PasswordHash, &role, &u.Active, &u.TOTPSecret, &u.TOTPEnabled,
-		&u.FailedLogins, &u.LockedUntil, &u.LastLoginAt, &u.CreatedAt, &u.UpdatedAt)
+		&u.FailedLogins, &u.LockedUntil, &u.LastLoginAt, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt)
 	u.Role = domain.Role(role)
 	return u, err
 }
@@ -70,7 +70,8 @@ func (r *UserRepository) List(ctx context.Context) ([]domain.User, error) {
 
 func (r *UserRepository) Update(ctx context.Context, u domain.User) error {
 	tag, err := r.db.q(ctx).Exec(ctx,
-		`UPDATE users SET full_name = $2, role_id = $3, is_active = $4, password_hash = $5, updated_at = now()
+		`UPDATE users SET full_name = $2, role_id = $3, is_active = $4, password_hash = $5, updated_at = now(),
+		        password_changed_at = CASE WHEN password_hash <> $5 THEN now() ELSE password_changed_at END
 		 WHERE id = $1`,
 		u.ID, u.FullName, string(u.Role), u.Active, u.PasswordHash)
 	if err != nil {
@@ -149,4 +150,42 @@ func (r *UserRepository) SetUserSites(ctx context.Context, userID string, siteID
 	_, err := q.Exec(ctx,
 		`INSERT INTO user_sites (user_id, site_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING`, userID, siteIDs)
 	return mapErr(err, "")
+}
+
+func (r *UserRepository) SetPassword(ctx context.Context, id, hash string, at time.Time) error {
+	tag, err := r.db.q(ctx).Exec(ctx,
+		`UPDATE users SET password_hash = $2, password_changed_at = $3, failed_logins = 0, locked_until = NULL,
+		        updated_at = $3
+		 WHERE id = $1`, id, hash, at)
+	if err != nil {
+		return mapErr(err, "")
+	}
+	if tag.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) UsersWithPermission(ctx context.Context, perm domain.Permission, siteID string) ([]domain.User, error) {
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT `+userColumns+` FROM users
+		 WHERE is_active
+		   AND EXISTS (SELECT 1 FROM role_permissions rp WHERE rp.role_id = users.role_id AND rp.permission_id = $1)
+		   AND (EXISTS (SELECT 1 FROM role_permissions rs WHERE rs.role_id = users.role_id AND rs.permission_id = 'sites.all')
+		        OR EXISTS (SELECT 1 FROM user_sites us WHERE us.user_id = users.id AND us.site_id = $2::uuid))
+		 ORDER BY email`, string(perm), siteID)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+
+	users := []domain.User{}
+	for rows.Next() {
+		u, err := scanUser(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning user: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, rows.Err()
 }

@@ -20,7 +20,8 @@ func toUserDetail(v services.UserView) dto.UserDetailDTO {
 
 // createUser godoc
 //
-//	@Summary	Create a user (administrators)
+//	@Summary		Create a user (administrators)
+//	@Description	Leave the password out and the person is emailed a link to choose their own.
 //	@Tags		users
 //	@Accept		json
 //	@Produce	json

@@ -44,7 +44,7 @@ func TestConfig_ProductionGuards(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected production guards to fail")
 	}
-	for _, want := range []string{"CORS_ALLOW_ORIGINS", "RATE_LIMIT_ENABLED", "SWAGGER_ENABLED"} {
+	for _, want := range []string{"CORS_ALLOW_ORIGINS", "RATE_LIMIT_ENABLED", "SWAGGER_ENABLED", "MAIL_PROVIDER"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error does not mention %s: %v", want, err)
 		}
@@ -53,6 +53,10 @@ func TestConfig_ProductionGuards(t *testing.T) {
 	env["SWAGGER_ENABLED"] = "false"
 	env["RATE_LIMIT_ENABLED"] = "true"
 	env["CORS_ALLOW_ORIGINS"] = "https://app.example.com"
+	env["MAIL_PROVIDER"] = "resend"
+	env["RESEND_API_KEY"] = "re_test"
+	env["MAIL_FROM"] = "Coloplus <alerts@example.com>"
+	env["APP_BASE_URL"] = "https://app.example.com"
 	if _, err := config.Load(lookupFrom(env)); err != nil {
 		t.Fatalf("valid production config rejected: %v", err)
 	}

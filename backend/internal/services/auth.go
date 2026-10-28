@@ -114,15 +114,23 @@ func (s *AuthService) failLogin(ctx context.Context, user domain.User, now time.
 	return apperrors.ErrInvalidCredentials
 }
 
+// sessionSkew tolerates a small clock difference between this process and the
+// database, which stamps password changes made by an administrator.
+const sessionSkew = 2 * time.Second
+
 // Authenticate builds the Actor for a verified token's user. A deactivated
-// user is refused here, so revoking access takes effect on the next request.
-func (s *AuthService) Authenticate(ctx context.Context, userID string) (domain.Actor, error) {
+// user is refused here, so revoking access takes effect on the next request,
+// and so is a token issued before the person's password last changed.
+func (s *AuthService) Authenticate(ctx context.Context, userID string, issuedAt time.Time) (domain.Actor, error) {
 	user, err := s.users.GetByID(ctx, userID)
 	if errors.Is(err, apperrors.ErrNotFound) || (err == nil && !user.Active) {
 		return domain.Actor{}, apperrors.ErrUnauthorized
 	}
 	if err != nil {
 		return domain.Actor{}, fmt.Errorf("loading user: %w", err)
+	}
+	if issuedAt.Add(sessionSkew).Before(user.PasswordChangedAt) {
+		return domain.Actor{}, apperrors.ErrUnauthorized
 	}
 
 	perms, err := s.users.PermissionsForRole(ctx, user.Role)

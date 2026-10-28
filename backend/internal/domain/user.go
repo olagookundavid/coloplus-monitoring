@@ -42,6 +42,8 @@ const (
 	PermPublishedRead Permission = "published.read"
 	PermAuditRead     Permission = "audit.read"
 
+	PermNotificationsRead Permission = "notifications.read"
+
 	PermIncidentsCreate Permission = "incidents.create"
 	PermIncidentsRead   Permission = "incidents.read"
 	PermIncidentsManage Permission = "incidents.manage"
@@ -71,8 +73,10 @@ type User struct {
 	FailedLogins int
 	LockedUntil  *time.Time
 	LastLoginAt  *time.Time
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// PasswordChangedAt ends every session issued before it.
+	PasswordChangedAt time.Time
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 // IsLocked reports whether sign-in is blocked after repeated failures.
@@ -156,3 +160,6 @@ func ValidatePassword(pw string) error {
 	}
 	return nil
 }
+
+// Invited reports whether the person has yet to choose a password.
+func (u User) Invited() bool { return u.PasswordHash == "" }

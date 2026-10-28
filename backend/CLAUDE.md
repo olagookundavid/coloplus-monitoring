@@ -19,14 +19,14 @@ migration -> `domain` type + pure rules + tests -> `ports` interface -> `adapter
 - `config/`: typed config, read once, validated at boot, reports every problem at once. Only place that reads env vars.
 - `internal/domain`: users, roles, permissions, `Actor` (permissions + site scope), sites, daily reports, incidents and their workflow rules, interval validation, the PRD's daily metrics, `Condition` (available / outage reported / awaiting update).
 - `internal/platform`: `Batcher[T]`, `WorkerPool`, `SystemClock`.
-- `internal/adapters/postgres`: pool, `DB.q(ctx)` (joins the tx in ctx), `TxManager`, repositories (users, sites, reports, incidents, audit), goose `Migrate`. `adapters/security`: bcrypt, PASETO issuer, TOTP, AES-GCM secret box.
-- `internal/services`: Auth (login, MFA, `Authenticate`), User, Site, Report (workflow), Incident (fault register), Dashboard, Audit, Health.
+- `internal/adapters/postgres`: pool, `DB.q(ctx)` (joins the tx in ctx), `TxManager`, repositories (users, sites, reports, incidents, notifications, user tokens, audit), goose `Migrate`. `adapters/security`: bcrypt, PASETO issuer, TOTP, AES-GCM secret box. `adapters/mail`: Resend (plain HTTP) and a log-only mailer for development.
+- `internal/services`: Auth (login, MFA, `Authenticate`), User, Site, Report (workflow), Incident (fault register), Notification (email outbox and dispatcher), Account (invitation and reset links), Dashboard, Audit, Health.
 - `internal/transport/http`: router, middleware chain, one error mapper (`errors.go`), handlers with swag annotations, mappers. Routes under `/api/v1`; `/healthcheck` (GET+HEAD).
-- `internal/transport/jobs`: cron scheduler on 5-field specs.
+- `internal/transport/jobs`: cron scheduler on 5-field specs. Jobs today: `dispatch-emails` (every minute), `incident-alerts` (every 10 minutes); specs come from `JOB_*_CRON`.
 - `cmd/api`: composition root and shutdown order. Subcommands: `migrate`, `create-admin`.
 
 ## API in one screen
-Auth: `POST /auth/login|logout|mfa/setup|mfa/enable`, `GET /auth/me`. Users (admin): `POST/GET /users`, `GET/PATCH /users/:id`. Sites: `POST/GET /sites`, `GET/PUT /sites/:id`. Reports: `POST /sites/:id/daily-reports`, `GET /daily-reports`, `GET/PUT /daily-reports/:id`, `POST /daily-reports/:id/submit|approve|reject|corrections`. Incidents: `POST /sites/:id/incidents`, `GET /incidents[?open&overdue&status&severity&site_id&owner_id]`, `GET /incidents/summary`, `GET /incidents/:id`, `POST /incidents/:id/assign|transition|updates|publish`. Dashboard: `GET /dashboard/overview?date=`. Full detail in Swagger (`SWAGGER_ENABLED=true`, `/swagger/index.html`).
+Auth: `POST /auth/login|logout|forgot-password|set-password|mfa/setup|mfa/enable`, `GET /auth/me`. Users (admin): `POST/GET /users`, `GET/PATCH /users/:id`, `POST /users/:id/invite`. Notifications (admin): `GET /notifications`, `POST /notifications/:id/retry`. Sites: `POST/GET /sites`, `GET/PUT /sites/:id`. Reports: `POST /sites/:id/daily-reports`, `GET /daily-reports`, `GET/PUT /daily-reports/:id`, `POST /daily-reports/:id/submit|approve|reject|corrections`. Incidents: `POST /sites/:id/incidents`, `GET /incidents[?open&overdue&status&severity&site_id&owner_id]`, `GET /incidents/summary`, `GET /incidents/:id`, `POST /incidents/:id/assign|transition|updates|publish`. Dashboard: `GET /dashboard/overview?date=`. Full detail in Swagger (`SWAGGER_ENABLED=true`, `/swagger/index.html`).
 
 ## Domain rules to keep
 - Missing or overdue data is **unknown / awaiting update**, never zero, never available. Percentages are `nil` when not applicable.
@@ -51,7 +51,7 @@ Auth: `POST /auth/login|logout|mfa/setup|mfa/enable`, `GET /auth/me`. Users (adm
 - `audit_log` is append-only at the database level (trigger). Do not add UPDATE/DELETE paths.
 
 ## Providers (each behind a port, added with the first feature that needs it)
-- **Resend** (`Mailer`): addresses from config only; paced at 8/s; retry on rate-limit; sent from the worker pool; a failed email never fails the business transaction; sender domain = link domain.
+- **Resend** (`Mailer`, built): plain `net/http`, no SDK; one client with a timeout; paced at `MAIL_RATE_PER_SECOND`; a single attempt per call, because retries belong to the outbox. Business code never sends: it calls `NotificationService.Enqueue` inside its transaction (DECISIONS 033). Transient failures wrap `ErrUnavailable`, refusals `ErrMailRejected`. Sender domain = link domain where possible.
 - **R2** (`ObjectStore`): **private bucket**, presigned upload, permission-checked short-lived presigned download (DECISIONS 016); record a SHA-256 checksum; GC behind an env flag, dry-run by default.
 
 ## Time
@@ -64,6 +64,7 @@ Stored UTC. The DB session zone is pinned from `DB_TIMEZONE` (Africa/Lagos). Day
 
 ## Security
 - Authorise by permission, not role name. Rate-limit globally (`RATE_LIMIT_*`), tighter on auth. CORS allow-list, never `*`. Swagger off in production (config refuses to boot otherwise). No customer data in logs: Dozzle has no login (DECISIONS 017).
+- Invitation and reset links: random 32-byte token, only its SHA-256 stored, single use, expiring; the forgot-password answer never depends on whether the address exists. A password change ends older sessions.
 - Token cookie name comes from `AUTH_COOKIE_NAME`; `pkg-common` has no product names.
 
 ## Migrations

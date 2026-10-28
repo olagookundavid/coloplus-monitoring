@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -20,14 +21,23 @@ type IncidentService struct {
 	tx        ports.TxManager
 	audit     *AuditService
 	clock     ports.Clock
+	notifier  *NotificationService
+	loc       *time.Location
+	baseURL   string
 }
 
 func NewIncidentService(
 	incidents ports.IncidentRepository, sites ports.SiteRepository, users ports.UserRepository,
 	tx ports.TxManager, audit *AuditService, clock ports.Clock,
+	notifier *NotificationService, loc *time.Location, baseURL string,
 ) *IncidentService {
-	return &IncidentService{incidents: incidents, sites: sites, users: users, tx: tx, audit: audit, clock: clock}
+	return &IncidentService{
+		incidents: incidents, sites: sites, users: users, tx: tx, audit: audit, clock: clock,
+		notifier: notifier, loc: loc, baseURL: strings.TrimRight(baseURL, "/"),
+	}
 }
+
+func (s *IncidentService) link(i domain.Incident) string { return s.baseURL + "/incidents/" + i.ID }
 
 // IncidentView is an incident with the history the caller may see.
 type IncidentView struct {
@@ -435,7 +445,82 @@ func (s *IncidentService) Publish(ctx context.Context, actor domain.Actor, id st
 			return err
 		}
 		out = i
+		if err := s.notifyCritical(ctx, i); err != nil {
+			return err
+		}
 		return s.audit.RecordInTx(ctx, s.event(actor, "incident.published", i, nil))
 	})
 	return out, err
+}
+
+// notifyCritical emails the customer's people on the site as soon as a
+// critical incident is published, without waiting for the daily report. It
+// only queues the email, inside the publishing transaction.
+func (s *IncidentService) notifyCritical(ctx context.Context, i domain.Incident) error {
+	if i.Severity != domain.SeverityCritical {
+		return nil
+	}
+	site, err := s.sites.GetByID(ctx, i.SiteID)
+	if err != nil {
+		return err
+	}
+	recipients, err := s.users.UsersWithPermission(ctx, domain.PermPublishedRead, i.SiteID)
+	if err != nil {
+		return err
+	}
+	subject, body := criticalIncidentEmail(i, site, s.loc, s.link(i))
+	_, err = s.notifier.EnqueueFor(ctx, recipients, "incident.critical", "incident-critical:"+i.ID, subject, body)
+	return err
+}
+
+const overdueAlertLimit = 500
+
+// AlertOverdue emails the owner and the supervisors of the site about every
+// incident whose promised update has not come. Each overdue promise is
+// alerted once: the dedupe key carries the due time, so it repeats only when
+// a new promise is made and missed. It returns how many emails it queued.
+func (s *IncidentService) AlertOverdue(ctx context.Context) (int, error) {
+	now := s.clock.Now()
+	overdue, _, err := s.incidents.List(ctx, ports.IncidentFilter{
+		AllSites: true, OpenOnly: true, OverdueAt: &now, Limit: overdueAlertLimit,
+	})
+	if err != nil {
+		return 0, err
+	}
+	queued := 0
+	for _, i := range overdue {
+		if i.NextUpdateDue == nil {
+			continue
+		}
+		site, err := s.sites.GetByID(ctx, i.SiteID)
+		if err != nil {
+			return queued, err
+		}
+		recipients, err := s.users.UsersWithPermission(ctx, domain.PermIncidentsManage, i.SiteID)
+		if err != nil {
+			return queued, err
+		}
+		if i.OwnerID != "" {
+			if owner, err := s.users.GetByID(ctx, i.OwnerID); err == nil && owner.Active {
+				recipients = appendUnique(recipients, owner)
+			}
+		}
+		subject, body := overdueIncidentEmail(i, site, *i.NextUpdateDue, s.loc, s.link(i))
+		key := fmt.Sprintf("incident-overdue:%s:%d", i.ID, i.NextUpdateDue.Unix())
+		n, err := s.notifier.EnqueueFor(ctx, recipients, "incident.overdue", key, subject, body)
+		queued += n
+		if err != nil {
+			return queued, err
+		}
+	}
+	return queued, nil
+}
+
+func appendUnique(users []domain.User, u domain.User) []domain.User {
+	for _, existing := range users {
+		if existing.ID == u.ID {
+			return users
+		}
+	}
+	return append(users, u)
 }

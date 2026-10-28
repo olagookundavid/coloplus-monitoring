@@ -21,10 +21,12 @@ import (
 	"time"
 
 	"coloplus-backend/config"
+	"coloplus-backend/internal/adapters/mail"
 	"coloplus-backend/internal/adapters/postgres"
 	"coloplus-backend/internal/adapters/security"
 	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/platform"
+	"coloplus-backend/internal/ports"
 	"coloplus-backend/internal/services"
 	"coloplus-backend/internal/sql/migrations"
 	httpapi "coloplus-backend/internal/transport/http"
@@ -94,8 +96,6 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// Reserved for provider fan-out (email sends, exports) as features land.
-	_ = workers
 
 	loc, err := time.LoadLocation(cfg.App.ReportingTimezone)
 	if err != nil {
@@ -118,6 +118,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
+	notificationRepo := postgres.NewNotificationRepository(db)
+	userTokenRepo := postgres.NewUserTokenRepository(db)
 
 	// Audit: batched by default, transactional where a feature asks for it.
 	auditStore := postgres.NewAuditRepository(db)
@@ -134,7 +136,16 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	audit := services.NewAuditService(auditStore, auditBatcher, clock, log)
 
+	mailer, err := newMailer(cfg, log)
+	if err != nil {
+		return err
+	}
+
 	// Use cases.
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
+	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, txManager, notifications, audit, clock, cfg.Mail.BaseURL)
+	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL)
 	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
 		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, audit, clock, cfg.Auth.AccessTokenTTL, log)
 	if err != nil {
@@ -143,6 +154,24 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	// Scheduled jobs register here; a bad cron spec fails the boot.
 	scheduler := jobs.NewScheduler(log)
+	if err := scheduler.Add("dispatch-emails", cfg.Jobs.DispatchEmailsCron, func(ctx context.Context) error {
+		res, err := notifications.Dispatch(ctx)
+		if res.Sent+res.Retrying+res.Failed > 0 {
+			log.Info("emails dispatched", "sent", res.Sent, "retrying", res.Retrying, "failed", res.Failed)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("incident-alerts", cfg.Jobs.IncidentAlertsCron, func(ctx context.Context) error {
+		n, err := incidents.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue incident alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
 	scheduler.Start()
 
 	// Transport.
@@ -168,15 +197,17 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			Name: cfg.Auth.CookieName, Domain: cfg.Auth.CookieDomain,
 			Secure: cfg.Auth.CookieSecure, SameSite: sameSite(cfg.Auth.CookieSameSite),
 		},
-		Loc:       loc,
-		Now:       clock.Now,
-		Health:    services.NewHealthService(db),
-		Auth:      authService,
-		Users:     services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock),
-		Sites:     services.NewSiteService(siteRepo, txManager, audit),
-		Reports:   services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
-		Incidents: services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock),
-		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
+		Loc:           loc,
+		Now:           clock.Now,
+		Health:        services.NewHealthService(db),
+		Auth:          authService,
+		Accounts:      accounts,
+		Notifications: notifications,
+		Users:         services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock, accounts),
+		Sites:         services.NewSiteService(siteRepo, txManager, audit),
+		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
+		Incidents:     incidents,
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,
@@ -282,7 +313,7 @@ func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args 
 	// Audit rows are written inside the transaction, so no batcher is needed.
 	audit := services.NewAuditService(auditStore, discardQueue{}, platform.SystemClock{}, log)
 	users := services.NewUserService(postgres.NewUserRepository(db), postgres.NewSiteRepository(db),
-		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{})
+		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{}, nil)
 
 	admin, err := users.CreateInitialAdmin(ctx, args[0], strings.Join(args[1:], " "), password)
 	if err != nil {
@@ -297,3 +328,15 @@ func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args 
 type discardQueue struct{}
 
 func (discardQueue) Add(domain.AuditEvent) bool { return false }
+
+// newMailer picks the email provider named in the config.
+func newMailer(cfg config.Config, log *slog.Logger) (ports.Mailer, error) {
+	if cfg.Mail.Provider == "resend" {
+		return mail.NewResend(mail.ResendConfig{
+			APIKey: cfg.Mail.ResendAPIKey, From: cfg.Mail.From,
+			RatePerSecond: cfg.Mail.RatePerSecond, Timeout: cfg.Mail.Timeout,
+		})
+	}
+	log.Warn("emails are only written to the log (MAIL_PROVIDER=log)")
+	return mail.NewLog(log), nil
+}

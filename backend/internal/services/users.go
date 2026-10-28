@@ -18,13 +18,16 @@ type UserService struct {
 	tx     ports.TxManager
 	audit  *AuditService
 	clock  ports.Clock
+	// accounts sends invitations; nil in the create-admin command, which
+	// always sets a password.
+	accounts *AccountService
 }
 
 func NewUserService(
 	users ports.UserRepository, sites ports.SiteRepository, hasher ports.PasswordHasher,
-	tx ports.TxManager, audit *AuditService, clock ports.Clock,
+	tx ports.TxManager, audit *AuditService, clock ports.Clock, accounts *AccountService,
 ) *UserService {
-	return &UserService{users: users, sites: sites, hasher: hasher, tx: tx, audit: audit, clock: clock}
+	return &UserService{users: users, sites: sites, hasher: hasher, tx: tx, audit: audit, clock: clock, accounts: accounts}
 }
 
 type CreateUserInput struct {
@@ -45,6 +48,11 @@ func (s *UserService) Create(ctx context.Context, actor domain.Actor, in CreateU
 	if !actor.Can(domain.PermUsersManage) {
 		return UserView{}, apperrors.ErrForbidden
 	}
+	// Without a password the person is invited by email to choose their own.
+	invite := in.Password == ""
+	if invite && s.accounts == nil {
+		return UserView{}, invalid("a password is required")
+	}
 	user, problems := s.buildUser(in)
 	if len(problems) > 0 {
 		return UserView{}, invalidProblems(problems)
@@ -52,11 +60,12 @@ func (s *UserService) Create(ctx context.Context, actor domain.Actor, in CreateU
 	if err := s.checkSites(ctx, user.Role, in.SiteIDs); err != nil {
 		return UserView{}, err
 	}
-	hash, err := s.hasher.Hash(in.Password)
-	if err != nil {
-		return UserView{}, fmt.Errorf("hashing password: %w", err)
+	var err error
+	if !invite {
+		if user.PasswordHash, err = s.hasher.Hash(in.Password); err != nil {
+			return UserView{}, fmt.Errorf("hashing password: %w", err)
+		}
 	}
-	user.PasswordHash = hash
 
 	var created domain.User
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -67,9 +76,14 @@ func (s *UserService) Create(ctx context.Context, actor domain.Actor, in CreateU
 		if err := s.users.SetUserSites(ctx, created.ID, in.SiteIDs); err != nil {
 			return err
 		}
+		if invite {
+			if err := s.accounts.Invite(ctx, created); err != nil {
+				return err
+			}
+		}
 		return s.audit.RecordInTx(ctx, domain.AuditEvent{
 			ActorID: actor.UserID, Action: "user.created", EntityType: "user", EntityID: created.ID,
-			Metadata: map[string]any{"role": string(created.Role), "site_count": len(in.SiteIDs)},
+			Metadata: map[string]any{"role": string(created.Role), "site_count": len(in.SiteIDs), "invited": invite},
 		})
 	})
 	if err != nil {
@@ -90,8 +104,10 @@ func (s *UserService) buildUser(in CreateUserInput) (domain.User, []string) {
 	if !domain.ValidRole(in.Role) {
 		problems = append(problems, fmt.Sprintf("%q is not a known role", in.Role))
 	}
-	if err := domain.ValidatePassword(in.Password); err != nil {
-		problems = append(problems, err.Error())
+	if in.Password != "" {
+		if err := domain.ValidatePassword(in.Password); err != nil {
+			problems = append(problems, err.Error())
+		}
 	}
 	return domain.User{Email: email, FullName: in.FullName, Role: in.Role, Active: true}, problems
 }
@@ -236,6 +252,9 @@ func unique(in []string) []string {
 // accounts later or to bypass the audit of who creates users.
 func (s *UserService) CreateInitialAdmin(ctx context.Context, email, fullName, password string) (domain.User, error) {
 	in := CreateUserInput{Email: email, FullName: fullName, Role: domain.RoleAdmin, Password: password}
+	if password == "" {
+		return domain.User{}, invalid("a password is required")
+	}
 	user, problems := s.buildUser(in)
 	if len(problems) > 0 {
 		return domain.User{}, invalidProblems(problems)
@@ -265,4 +284,33 @@ func (s *UserService) CreateInitialAdmin(ctx context.Context, email, fullName, p
 		})
 	})
 	return created, err
+}
+
+// ResendInvite sends a fresh invitation to someone who has not yet chosen a
+// password. The earlier link stops working.
+func (s *UserService) ResendInvite(ctx context.Context, actor domain.Actor, id string) error {
+	if !actor.Can(domain.PermUsersManage) {
+		return apperrors.ErrForbidden
+	}
+	if s.accounts == nil {
+		return invalid("invitations are not available")
+	}
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		user, err := s.users.GetByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !user.Invited() {
+			return conflict("this person has already chosen a password; they can use \"forgot password\" if they are locked out")
+		}
+		if !user.Active {
+			return conflict("this account is deactivated")
+		}
+		if err := s.accounts.Invite(ctx, user); err != nil {
+			return err
+		}
+		return s.audit.RecordInTx(ctx, domain.AuditEvent{
+			ActorID: actor.UserID, Action: "user.invite_resent", EntityType: "user", EntityID: id,
+		})
+	})
 }

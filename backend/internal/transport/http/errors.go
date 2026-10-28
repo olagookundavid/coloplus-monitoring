@@ -20,6 +20,7 @@ var sentinelStatus = []struct {
 	{apperrors.ErrInvalidInput, http.StatusBadRequest},
 	{apperrors.ErrInvalidCredentials, http.StatusUnauthorized},
 	{apperrors.ErrInvalidCode, http.StatusUnauthorized},
+	{apperrors.ErrInvalidLink, http.StatusBadRequest},
 	{apperrors.ErrAccountLocked, http.StatusTooManyRequests},
 	{apperrors.ErrUnauthorized, http.StatusUnauthorized},
 	{apperrors.ErrForbidden, http.StatusForbidden},

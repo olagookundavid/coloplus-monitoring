@@ -12,7 +12,7 @@ import (
 func toUserDTO(u domain.User) dto.UserDTO {
 	return dto.UserDTO{
 		ID: u.ID, Email: u.Email, FullName: u.FullName, Role: string(u.Role),
-		Active: u.Active, MFAEnabled: u.TOTPEnabled, LastLoginAt: u.LastLoginAt,
+		Active: u.Active, MFAEnabled: u.TOTPEnabled, Invited: u.Invited(), LastLoginAt: u.LastLoginAt,
 	}
 }
 

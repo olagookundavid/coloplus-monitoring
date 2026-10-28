@@ -36,27 +36,31 @@ type Deps struct {
 	Loc *time.Location
 	Now func() time.Time
 
-	Health    *services.HealthService
-	Auth      *services.AuthService
-	Users     *services.UserService
-	Sites     *services.SiteService
-	Reports   *services.ReportService
-	Incidents *services.IncidentService
-	Dashboard *services.DashboardService
+	Health        *services.HealthService
+	Auth          *services.AuthService
+	Accounts      *services.AccountService
+	Notifications *services.NotificationService
+	Users         *services.UserService
+	Sites         *services.SiteService
+	Reports       *services.ReportService
+	Incidents     *services.IncidentService
+	Dashboard     *services.DashboardService
 }
 
 // api carries what every handler shares.
 type api struct {
-	log       *slog.Logger
-	cookie    CookieConfig
-	loc       *time.Location
-	clock     clock
-	auth      *services.AuthService
-	users     *services.UserService
-	sites     *services.SiteService
-	reports   *services.ReportService
-	incidents *services.IncidentService
-	dashboard *services.DashboardService
+	log           *slog.Logger
+	cookie        CookieConfig
+	loc           *time.Location
+	clock         clock
+	auth          *services.AuthService
+	accounts      *services.AccountService
+	notifications *services.NotificationService
+	users         *services.UserService
+	sites         *services.SiteService
+	reports       *services.ReportService
+	incidents     *services.IncidentService
+	dashboard     *services.DashboardService
 }
 
 type clock struct{ now func() time.Time }
@@ -95,7 +99,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -104,6 +108,10 @@ func NewRouter(d Deps) *gin.Engine {
 	// Sign-in has its own, tighter limit per client IP.
 	v1.POST("/auth/login", middleware.RateLimit(d.RateLimitCtx, d.AuthRateLimit), h.login)
 	v1.POST("/auth/logout", h.logout)
+	// Recovery and invitation links are reached without a session, so they get
+	// the same tight per-IP limit as sign-in.
+	v1.POST("/auth/forgot-password", middleware.RateLimit(d.RateLimitCtx, d.AuthRateLimit), h.forgotPassword)
+	v1.POST("/auth/set-password", middleware.RateLimit(d.RateLimitCtx, d.AuthRateLimit), h.setPassword)
 
 	// Everything below requires a valid token for an active user. Services
 	// decide what each person may do, by permission and by site scope.
@@ -119,6 +127,10 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/users", h.listUsers)
 	authed.GET("/users/:id", h.getUser)
 	authed.PATCH("/users/:id", h.updateUser)
+	authed.POST("/users/:id/invite", h.resendInvite)
+
+	authed.GET("/notifications", h.listNotifications)
+	authed.POST("/notifications/:id/retry", h.retryNotification)
 
 	authed.POST("/sites", h.createSite)
 	authed.GET("/sites", h.listSites)

@@ -23,7 +23,7 @@ func loadActor(auth *services.AuthService, log *slog.Logger) gin.HandlerFunc {
 			respondError(c, log, apperrors.ErrUnauthorized)
 			return
 		}
-		actor, err := auth.Authenticate(c.Request.Context(), payload.UserID)
+		actor, err := auth.Authenticate(c.Request.Context(), payload.UserID, payload.IssuedAt)
 		if err != nil {
 			respondError(c, log, err)
 			return

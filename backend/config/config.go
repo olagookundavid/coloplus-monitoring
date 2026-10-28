@@ -27,6 +27,8 @@ type Config struct {
 	RateLimit RateLimit
 	Workers   Workers
 	Audit     Audit
+	Mail      Mail
+	Jobs      Jobs
 	Swagger   Swagger
 }
 
@@ -91,6 +93,25 @@ type Audit struct {
 	QueueSize     int
 }
 
+// Mail configures outgoing email. Resend is the provider; log only prints
+// emails and is for local development.
+type Mail struct {
+	Provider      string
+	ResendAPIKey  string
+	From          string
+	RatePerSecond int
+	Timeout       time.Duration
+	// BaseURL is where the front end lives. Invitation and reset links, and
+	// links to incidents in alerts, are built from it.
+	BaseURL string
+}
+
+// Jobs holds the cron specs (five fields) of the scheduled work.
+type Jobs struct {
+	DispatchEmailsCron string
+	IncidentAlertsCron string
+}
+
 type Swagger struct {
 	Enabled bool
 }
@@ -152,6 +173,18 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			BatchSize:     r.integer("AUDIT_BATCH_SIZE", 20),
 			BatchInterval: r.duration("AUDIT_BATCH_INTERVAL", 5*time.Second),
 			QueueSize:     r.integer("AUDIT_QUEUE_SIZE", 1000),
+		},
+		Mail: Mail{
+			Provider:      strings.ToLower(r.str("MAIL_PROVIDER", "log")),
+			ResendAPIKey:  r.str("RESEND_API_KEY", ""),
+			From:          r.str("MAIL_FROM", ""),
+			RatePerSecond: r.integer("MAIL_RATE_PER_SECOND", 8),
+			Timeout:       r.duration("MAIL_TIMEOUT", 10*time.Second),
+			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
+		},
+		Jobs: Jobs{
+			DispatchEmailsCron: r.str("JOB_DISPATCH_EMAILS_CRON", "* * * * *"),
+			IncidentAlertsCron: r.str("JOB_INCIDENT_ALERTS_CRON", "*/10 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}
@@ -220,6 +253,21 @@ func (c Config) validate() []error {
 	if c.RateLimit.Enabled && (c.RateLimit.Rps <= 0 || c.RateLimit.Burst < 1) {
 		bad("RATE_LIMIT_RPS and RATE_LIMIT_BURST must be positive when the rate limit is enabled")
 	}
+	switch c.Mail.Provider {
+	case "log":
+	case "resend":
+		if c.Mail.ResendAPIKey == "" || c.Mail.From == "" {
+			bad("MAIL_PROVIDER=resend needs RESEND_API_KEY and MAIL_FROM")
+		}
+	default:
+		bad("MAIL_PROVIDER must be log or resend, got %q", c.Mail.Provider)
+	}
+	if c.Mail.RatePerSecond < 1 || c.Mail.Timeout <= 0 {
+		bad("MAIL_RATE_PER_SECOND must be at least 1 and MAIL_TIMEOUT positive")
+	}
+	if !strings.HasPrefix(c.Mail.BaseURL, "http://") && !strings.HasPrefix(c.Mail.BaseURL, "https://") {
+		bad("APP_BASE_URL must start with http:// or https://")
+	}
 	for _, origin := range c.CORS.AllowOrigins {
 		if origin == "*" {
 			bad("CORS_ALLOW_ORIGINS must list explicit origins, never *")
@@ -240,6 +288,12 @@ func (c Config) validate() []error {
 		}
 		if c.Swagger.Enabled {
 			bad("SWAGGER_ENABLED must be false in production")
+		}
+		if c.Mail.Provider != "resend" {
+			bad("MAIL_PROVIDER must be resend in production")
+		}
+		if !strings.HasPrefix(c.Mail.BaseURL, "https://") {
+			bad("APP_BASE_URL must be https in production")
 		}
 	}
 	return errs

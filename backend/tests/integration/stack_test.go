@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -51,6 +52,43 @@ type stack struct {
 	hasher  *security.BcryptHasher
 	loc     *time.Location
 	batcher *platform.Batcher[domain.AuditEvent]
+
+	mailer        *fakeMailer
+	notifications *services.NotificationService
+	incidents     *services.IncidentService
+}
+
+// fakeMailer records what would have been sent, and fails on demand.
+type fakeMailer struct {
+	mu   sync.Mutex
+	sent []domain.Email
+	// fail, when set, decides the result of a send.
+	fail func(domain.Email) error
+}
+
+func (m *fakeMailer) Send(_ context.Context, mail domain.Email, _ string) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.fail != nil {
+		if err := m.fail(mail); err != nil {
+			return "", err
+		}
+	}
+	m.sent = append(m.sent, mail)
+	return "fake-id", nil
+}
+
+// to returns the emails sent to an address.
+func (m *fakeMailer) to(addr string) []domain.Email {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []domain.Email
+	for _, e := range m.sent {
+		if e.To == addr {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func newStack(t *testing.T) *stack {
@@ -86,6 +124,8 @@ func newStack(t *testing.T) *stack {
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
+	notificationRepo := postgres.NewNotificationRepository(db)
+	userTokenRepo := postgres.NewUserTokenRepository(db)
 	auditStore := postgres.NewAuditRepository(db)
 
 	batcher, err := platform.NewBatcher(platform.BatcherConfig{
@@ -102,6 +142,10 @@ func newStack(t *testing.T) *stack {
 	if err != nil {
 		t.Fatal(err)
 	}
+	mailer := &fakeMailer{}
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
+	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
+	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
@@ -111,15 +155,17 @@ func newStack(t *testing.T) *stack {
 		AuthRateLimit: middleware.RateLimitConfig{Enabled: false},
 		Cookie:        httpapi.CookieConfig{Name: cookieName, SameSite: http.SameSiteLaxMode},
 		Loc:           loc, Now: clock.Now,
-		Health:    services.NewHealthService(db),
-		Auth:      auth,
-		Users:     services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock),
+		Health:   services.NewHealthService(db),
+		Auth:     auth,
+		Accounts: accounts, Notifications: notifications,
+		Users:     services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock, accounts),
 		Sites:     services.NewSiteService(siteRepo, tx, audit),
 		Reports:   services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
-		Incidents: services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock),
+		Incidents: incidents,
 		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
-	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher}
+	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
+		mailer: mailer, notifications: notifications, incidents: incidents}
 }
 
 // reply is a decoded response.
