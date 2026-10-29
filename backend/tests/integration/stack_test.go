@@ -56,6 +56,8 @@ type stack struct {
 	mailer        *fakeMailer
 	notifications *services.NotificationService
 	incidents     *services.IncidentService
+	reportAlerts  *services.ReportAlertService
+	audit         *services.AuditService
 }
 
 // fakeMailer records what would have been sent, and fails on demand.
@@ -124,6 +126,7 @@ func newStack(t *testing.T) *stack {
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
+	disputeRepo := postgres.NewDisputeRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
 	auditStore := postgres.NewAuditRepository(db)
@@ -146,6 +149,8 @@ func newStack(t *testing.T) *stack {
 	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
+	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, "https://app.test")
+	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
@@ -162,10 +167,12 @@ func newStack(t *testing.T) *stack {
 		Sites:     services.NewSiteService(siteRepo, tx, audit),
 		Reports:   services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
 		Incidents: incidents,
+		Disputes:  disputes,
+		Audit:     audit,
 		Dashboard: services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
-		mailer: mailer, notifications: notifications, incidents: incidents}
+		mailer: mailer, notifications: notifications, incidents: incidents, reportAlerts: reportAlerts, audit: audit}
 }
 
 // reply is a decoded response.

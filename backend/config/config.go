@@ -110,6 +110,7 @@ type Mail struct {
 type Jobs struct {
 	DispatchEmailsCron string
 	IncidentAlertsCron string
+	ReportAlertsCron   string
 }
 
 type Swagger struct {
@@ -185,6 +186,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		Jobs: Jobs{
 			DispatchEmailsCron: r.str("JOB_DISPATCH_EMAILS_CRON", "* * * * *"),
 			IncidentAlertsCron: r.str("JOB_INCIDENT_ALERTS_CRON", "*/10 * * * *"),
+			ReportAlertsCron:   r.str("JOB_REPORT_ALERTS_CRON", "*/30 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}

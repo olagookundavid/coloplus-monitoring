@@ -106,14 +106,20 @@ type ReportDetailResponse struct {
 	Published   *PublishedReportDTO `json:"published,omitempty"`
 	Summary     SummaryDTO          `json:"summary"`
 	Calculation CalculationDTO      `json:"calculation"`
+	// OpenDisputes counts the disputes about this report that have not closed.
+	// A disputed figure keeps showing it.
+	OpenDisputes int `json:"open_disputes"`
 }
 
 type ReportListResponse struct {
 	Reports   []ReportDTO          `json:"reports,omitempty"`
 	Published []PublishedReportDTO `json:"published,omitempty"`
-	Total     int                  `json:"total"`
-	Limit     int                  `json:"limit"`
-	Offset    int                  `json:"offset"`
+	// OpenDisputes maps a report id to its number of unclosed disputes;
+	// reports with none are left out.
+	OpenDisputes map[string]int `json:"open_disputes,omitempty"`
+	Total        int            `json:"total"`
+	Limit        int            `json:"limit"`
+	Offset       int            `json:"offset"`
 }
 
 type OverviewResponse struct {

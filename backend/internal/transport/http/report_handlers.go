@@ -202,10 +202,17 @@ func (a *api) getReport(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	internal, published := a.reportBody(actorFrom(c), view.Report)
+	actor := actorFrom(c)
+	internal, published := a.reportBody(actor, view.Report)
+	open, err := a.disputes.OpenByReport(c.Request.Context(), actor, []string{view.Report.ID})
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, dto.ReportDetailResponse{
 		Report: internal, Published: published,
 		Summary: toSummaryDTO(view.Summary), Calculation: toCalculationDTO(view.Calculation, a.loc),
+		OpenDisputes: open[view.Report.ID],
 	})
 }
 
@@ -243,6 +250,14 @@ func (a *api) listReports(c *gin.Context) {
 	}
 	limit, offset := services.Page(in.Limit, in.Offset)
 	resp := dto.ReportListResponse{Total: total, Limit: limit, Offset: offset}
+	ids := make([]string, len(reports))
+	for i, r := range reports {
+		ids[i] = r.ID
+	}
+	if resp.OpenDisputes, err = a.disputes.OpenByReport(c.Request.Context(), actorFrom(c), ids); err != nil {
+		a.fail(c, err)
+		return
+	}
 	for _, r := range reports {
 		internal, published := a.reportBody(actorFrom(c), r)
 		if internal != nil {

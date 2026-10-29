@@ -6,7 +6,7 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 - `backend/`: Go API (hexagonal). The current focus.
 - `frontend/`: reserved, empty. The front-end engineer adds the React app and its `CLAUDE.md` (Fusewall conventions, section 9.3 of the standard).
 - `pkg-common/`: shared Go module (PASETO tokens, logger, auth/recover/rate-limit middleware) that the backend builds against through `go.work`. Any other app added to this repo uses it too. **No product names in it** (cookie names etc. come from config), **only add to it, never change what an existing function does**.
-- `docs/`: PRD, architecture standard, `DECISIONS.md`.
+- `docs/`: PRD, architecture standard, `DECISIONS.md`, `MVP_CHECKLIST.md` (what is built against the PRD; update it when an item is finished).
 
 ## Fusewall defaults: bias toward these
 - Backend Go + Gin + pgx/pgxpool + goose + swag. Postgres 18 self-hosted on the shared Contabo VPS (one DB + least-privilege user per product).

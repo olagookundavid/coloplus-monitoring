@@ -199,3 +199,40 @@ func toIncidentUpdateDTO(u domain.IncidentUpdate) dto.IncidentUpdateDTO {
 		ObservedAt: u.ObservedAt, CreatedAt: u.CreatedAt,
 	}
 }
+
+func disputeRef(number int64) string { return fmt.Sprintf("DSP-%06d", number) }
+
+func dateString(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("2006-01-02")
+}
+
+// toDisputeDTO builds the view for the caller's side. Airtel never gets
+// Coloplus staff ids: who owns or resolved a dispute is Coloplus's own detail.
+func toDisputeDTO(d domain.Dispute, staff bool) dto.DisputeDTO {
+	out := dto.DisputeDTO{
+		ID: d.ID, Ref: disputeRef(d.Number), SiteID: d.SiteID, ReportID: d.ReportID, IntervalID: d.IntervalID,
+		Metric: string(d.Metric), PeriodFrom: dateString(d.PeriodFrom), PeriodTo: dateString(d.PeriodTo),
+		Category: string(d.Category), Title: d.Title, Description: d.Description, Status: string(d.Status),
+		WaitingOn: string(d.WaitingOn()), Outcome: string(d.Outcome), Resolution: d.Resolution,
+		ResolutionReportID: d.ResolutionReportID, ResolvedAt: d.ResolvedAt, AcknowledgedAt: d.AcknowledgedAt,
+		ReopenCount: d.ReopenCount, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+	}
+	if staff {
+		out.RaisedBy, out.OwnerID, out.ResolvedBy = d.RaisedBy, d.OwnerID, d.ResolvedBy
+	}
+	return out
+}
+
+func toDisputeEventDTO(e domain.DisputeEvent, staff bool) dto.DisputeEventDTO {
+	out := dto.DisputeEventDTO{
+		ID: e.ID, Party: string(e.Party), Kind: string(e.Kind), FromStatus: string(e.FromStatus),
+		ToStatus: string(e.ToStatus), Body: e.Body, CreatedAt: e.CreatedAt,
+	}
+	if staff {
+		out.Internal, out.AuthorID = e.Internal, e.AuthorID
+	}
+	return out
+}

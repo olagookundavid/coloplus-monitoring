@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"coloplus-backend/internal/domain"
 	apperrors "coloplus-backend/internal/errors"
@@ -60,4 +61,29 @@ func (s *AuditService) prepare(event domain.AuditEvent) (domain.AuditEvent, erro
 		return event, fmt.Errorf("%w: %v", apperrors.ErrInvalidInput, err)
 	}
 	return event, nil
+}
+
+// SearchInput narrows an audit search.
+type SearchAuditInput struct {
+	ActorID    string
+	Action     string
+	EntityType string
+	EntityID   string
+	From, To   *time.Time
+	Limit      int
+	Offset     int
+}
+
+// Search reads the audit log for people with audit access, within their site
+// scope. Reading the log is separate from editing anything.
+func (s *AuditService) Search(ctx context.Context, actor domain.Actor, in SearchAuditInput) ([]domain.AuditEvent, int, error) {
+	if !actor.Can(domain.PermAuditRead) {
+		return nil, 0, apperrors.ErrForbidden
+	}
+	f := ports.AuditFilter{
+		AllSites: actor.AllSites, SiteIDs: actor.SiteIDList(), ActorID: in.ActorID, Action: in.Action,
+		EntityType: in.EntityType, EntityID: in.EntityID, From: in.From, To: in.To,
+	}
+	f.Limit, f.Offset = Page(in.Limit, in.Offset)
+	return s.store.Search(ctx, f)
 }

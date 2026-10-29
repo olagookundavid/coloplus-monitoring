@@ -38,6 +38,10 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 | 029 | First administrator is created from the command line | Product decision | Accepted |
 | 030 | No invitation email yet: administrators set initial passwords | Product decision | Accepted (revisit) |
 | 031 | Tests are minimal and aimed at critical risk | Product decision | Accepted |
+| 032 | Incident register rules | Product decision | Accepted (confirm with Operations) |
+| 033 | Email through an outbox; Resend over plain HTTP; invitations and reset links | Architecture | Accepted |
+| 034 | Disputes: two parties, two acts, a real correction | Product decision | Accepted (confirm with Airtel) |
+| 035 | Audit search and the overdue-report alert | Product decision | Accepted |
 
 ## Template
 ### NNN: Title
@@ -176,3 +180,21 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 - **Alerts built on it:** an overdue promised incident update emails the owner and the site's supervisors once per missed promise (every 10 minutes check); publishing a critical incident emails the customer's users on that site at once, with only published facts.
 - **Not built yet:** repeat reminders on a schedule, daily digests, overdue-report alerts, per-user alert preferences, an alert centre in the app, bounce handling from Resend webhooks.
 - **Needs from outside:** a verified Resend sending domain, and the front end's base URL and routes (`/accept-invite`, `/reset-password`, `/incidents/:id`).
+
+## 034: Disputes: two parties, two acts, a real correction
+- **Type:** Product decision · **Status:** Accepted (confirm with Airtel's operational reviewer)
+- **Decision:** a new role, **Airtel reviewer** (`airtel_reviewer`), is an Airtel viewer who can also raise disputes, comment, withdraw, reopen and acknowledge. Three permissions: `disputes.read` (both sides and administrators), `disputes.raise` (Airtel reviewer), `disputes.manage` (supervisor). Which side a person speaks for comes from those permissions, never from a role name.
+- **What can be disputed:** a site, a period, a published report, or one interval of it. Only an approved report can be disputed, since that is all Airtel sees. The same thing cannot be disputed twice while the first is open (unique index; 409), so a double-click or a retry lands on the existing one.
+- **States:** open, under review, awaiting evidence, agreed correction, resolved, closed. Coloplus takes it (open to under review), asks for evidence, agrees a correction, or resolves. Airtel withdraws (closed), supplies evidence or reopens a resolution (back to under review, with a reason), or acknowledges a resolution (closed). An Airtel comment on a dispute waiting for their evidence hands it back to Coloplus. Repeating a step changes nothing.
+- **Two acts, kept apart:** Coloplus's decision (`resolved`, with an outcome and who) and Airtel's agreement (`acknowledged_at`) are separate columns and separate steps. A resolved dispute is not closed until Airtel acknowledges it; a withdrawn one is closed with no agreement at all.
+- **Upheld means a real correction:** an upheld dispute must pass through "agreed correction" and, if it was about a report, name a later approved revision of the same site and day. The report workflow does the correcting (decision 026); the dispute only points at it. A dispute never changes the operational record.
+- **Visibility:** both parties' comments are kept and shown to both. Coloplus can mark a comment internal; Airtel never sees it, nor staff ids (owner, resolver, authors), and internal notes are never emailed. Reports show `open_disputes` so a disputed figure always says so. Each public event emails the other side, scoped to the site, through the outbox (decision 033).
+- **Frozen:** a closed dispute cannot change, and the history is append-only, both by trigger.
+- **Not built yet:** evidence attachments (needs the R2 adapter; until then evidence is described in comments), dispute state in exports (no exports yet), overdue-dispute alerts (needs an agreed response time), a read-only management/auditor role.
+
+## 035: Audit search and the overdue-report alert
+- **Type:** Product decision · **Status:** Accepted
+- **Audit search:** `GET /audit` filters by actor, exact action, entity type and id, and a time range, newest first, paged. It needs `audit.read`, which administrators hold and which is separate from any editing right. A reader without all-site access sees only events whose metadata carries one of their sites, so user and sign-in events (no site) stay with administrators. Reading the log is not itself logged yet.
+- **Overdue-report alert:** every 30 minutes a job emails each active site's reporters and supervisors when the site is "awaiting update" by the same rule the dashboard uses (`domain.Condition`), once per site per day while it stays late. A site younger than its freshness window with no report is not nagged. The email says the data is stale or missing and that it does not mean the power is out (PRD section 10). Airtel is not emailed.
+- **Not built yet:** repeat intervals other than daily, an in-app alert centre, digests, acknowledgement of alerts.
+

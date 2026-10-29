@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"coloplus-backend/internal/domain"
+	"coloplus-backend/internal/ports"
 	"coloplus-backend/internal/services"
 )
 
@@ -26,6 +27,10 @@ func (f *fakeAuditStore) Insert(_ context.Context, e domain.AuditEvent) error {
 func (f *fakeAuditStore) InsertBatch(_ context.Context, es []domain.AuditEvent) error {
 	f.inserted = append(f.inserted, es...)
 	return nil
+}
+
+func (f *fakeAuditStore) Search(context.Context, ports.AuditFilter) ([]domain.AuditEvent, int, error) {
+	return nil, 0, nil
 }
 
 type fakeAuditQueue struct {

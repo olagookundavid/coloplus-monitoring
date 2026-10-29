@@ -70,3 +70,34 @@ func humanDuration(d time.Duration) string {
 	}
 	return fmt.Sprintf("%d minutes", int(d.Minutes()))
 }
+
+func disputeRef(n int64) string { return fmt.Sprintf("DSP-%06d", n) }
+
+func disputeStatusWord(s domain.DisputeStatus) string { return strings.ReplaceAll(string(s), "_", " ") }
+
+// disputeEventEmail tells the other party that something happened on a
+// dispute. It only ever carries what was written for both sides: internal
+// notes are never emailed.
+func disputeEventEmail(d domain.Dispute, site domain.Site, e domain.DisputeEvent, link string) (subject, body string) {
+	what := "A comment was added"
+	if e.Kind == domain.EventStatus {
+		what = "The dispute is now " + disputeStatusWord(e.ToStatus)
+		if e.FromStatus == "" {
+			what = "A dispute was raised"
+		}
+	}
+	return fmt.Sprintf("%s %s: %s", disputeRef(d.Number), d.Title, strings.ToLower(what)),
+		fmt.Sprintf("%s on %s at %s.\n\n%s\n\nOpen it: %s\n",
+			what, disputeRef(d.Number), siteLabel(site), orDash(e.Body), link)
+}
+
+func reportOverdueEmail(site domain.Site, asOf *time.Time, loc *time.Location, link string) (subject, body string) {
+	last := "No approved report has been received for this site yet."
+	if asOf != nil {
+		last = "The last observation on record ended " + asOf.In(loc).Format(timeLayout) + "."
+	}
+	return "Daily report overdue: " + siteLabel(site),
+		fmt.Sprintf("The daily report for %s is overdue. %s\n\n"+
+			"The site now shows as \"Awaiting update\" to Airtel. That means the data is stale or missing; "+
+			"it does not mean the power is out.\n\nOpen the site: %s\n", siteLabel(site), last, link)
+}

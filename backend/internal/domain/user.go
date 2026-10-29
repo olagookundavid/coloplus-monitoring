@@ -16,12 +16,14 @@ const (
 	RoleReporter     Role = "reporter"
 	RoleSupervisor   Role = "supervisor"
 	RoleAirtelViewer Role = "airtel_viewer"
+	// RoleAirtelReviewer is a viewer who may also raise and acknowledge disputes.
+	RoleAirtelReviewer Role = "airtel_reviewer"
 )
 
 // ValidRole reports whether r is a role the system knows.
 func ValidRole(r Role) bool {
 	switch r {
-	case RoleAdmin, RoleReporter, RoleSupervisor, RoleAirtelViewer:
+	case RoleAdmin, RoleReporter, RoleSupervisor, RoleAirtelViewer, RoleAirtelReviewer:
 		return true
 	}
 	return false
@@ -47,6 +49,10 @@ const (
 	PermIncidentsCreate Permission = "incidents.create"
 	PermIncidentsRead   Permission = "incidents.read"
 	PermIncidentsManage Permission = "incidents.manage"
+
+	PermDisputesRead   Permission = "disputes.read"
+	PermDisputesRaise  Permission = "disputes.raise"
+	PermDisputesManage Permission = "disputes.manage"
 )
 
 const (

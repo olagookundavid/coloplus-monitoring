@@ -25,6 +25,23 @@ type TxManager interface {
 type AuditStore interface {
 	Insert(ctx context.Context, event domain.AuditEvent) error
 	InsertBatch(ctx context.Context, events []domain.AuditEvent) error
+	// Search returns events newest first, with the total that match.
+	Search(ctx context.Context, f AuditFilter) (events []domain.AuditEvent, total int, err error)
+}
+
+// AuditFilter narrows an audit search. When AllSites is false only events
+// that carry one of SiteIDs in their metadata are returned, so a reader
+// scoped to some sites never sees the rest.
+type AuditFilter struct {
+	AllSites   bool
+	SiteIDs    []string
+	ActorID    string
+	Action     string
+	EntityType string
+	EntityID   string
+	From, To   *time.Time
+	Limit      int
+	Offset     int
 }
 
 // AuditQueue buffers audit events for batched writes. Add reports false when
@@ -192,6 +209,47 @@ type IncidentRepository interface {
 	// List returns incidents, newest first.
 	List(ctx context.Context, f IncidentFilter) (incidents []domain.Incident, total int, err error)
 	Counts(ctx context.Context, f IncidentFilter, now time.Time) (IncidentCounts, error)
+}
+
+// DisputeFilter narrows a dispute listing.
+type DisputeFilter struct {
+	AllSites bool
+	SiteIDs  []string
+	SiteID   string
+	ReportID string
+	Statuses []domain.DisputeStatus
+	// OpenOnly leaves out closed disputes.
+	OpenOnly bool
+	Limit    int
+	Offset   int
+}
+
+// DisputeCounts is the headline numbers for a scope. WithColoplus are waiting
+// on Coloplus (open, under review, correction agreed); WithAirtel are waiting
+// on Airtel (evidence requested, or a resolution to acknowledge).
+type DisputeCounts struct {
+	Open, WithColoplus, WithAirtel int
+}
+
+type DisputeRepository interface {
+	// Create stores a new dispute. ErrConflict when the same thing is already
+	// being disputed and has not closed.
+	Create(ctx context.Context, d domain.Dispute) (domain.Dispute, error)
+	// GetByID loads a dispute without its history. forUpdate locks the row for
+	// the surrounding transaction.
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.Dispute, error)
+	// Save writes the mutable fields: status, owner, resolution and
+	// acknowledgement.
+	Save(ctx context.Context, d domain.Dispute) error
+	AddEvent(ctx context.Context, e domain.DisputeEvent) (domain.DisputeEvent, error)
+	// Events returns the history oldest first; publicOnly leaves out
+	// Coloplus's internal notes.
+	Events(ctx context.Context, disputeID string, publicOnly bool) ([]domain.DisputeEvent, error)
+	// List returns disputes, newest first.
+	List(ctx context.Context, f DisputeFilter) (disputes []domain.Dispute, total int, err error)
+	Counts(ctx context.Context, f DisputeFilter) (DisputeCounts, error)
+	// OpenByReport counts, per report, the disputes that have not closed.
+	OpenByReport(ctx context.Context, reportIDs []string) (map[string]int, error)
 }
 
 // Mailer sends one email. A transient failure wraps apperrors.ErrUnavailable;
