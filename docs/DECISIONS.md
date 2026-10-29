@@ -30,6 +30,9 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 | 021 | Swagger docs generated at build, not committed | Product decision | Accepted |
 | 022 | Frontend folder reserved and empty | Product decision | Accepted |
 | 023 | Migrations are a separate step: `api migrate` | Fusewall standard | Accepted |
+| 024 | Frontend conventions: Fusewall defaults + Coloplus trust/provenance rules, provisional brand tokens | Product decision | Accepted |
+| 025 | Custom toast component instead of react-hot-toast | Deviation from Fusewall standard | Accepted |
+| 026 | Joi for client-side auth-form validation | Product decision | Accepted |
 
 ## Template
 ### NNN: Title
@@ -108,3 +111,28 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 ## 023: Migrations are a separate step
 - **Type:** Fusewall standard · **Status:** Accepted
 - **Decision:** `api migrate` applies pending goose migrations and exits. The deploy script runs it before starting the new image. The server never migrates itself on start.
+
+## 024: Frontend conventions and provisional brand tokens
+- **Type:** Product decision · **Status:** Accepted
+- **Context:** `frontend/CLAUDE.md` written before any app code (022), adapting the sibling Fusewall product Showtime's frontend conventions for consistency across the owner's projects, plus PRD §5/§7/§10 trust, provenance and export requirements, plus a stakeholder HTML mockup (provisional, no official Coloplus brand kit yet).
+- **Decision:** Keep the Fusewall frontend defaults unchanged (Heroicons, DataTable on TanStack Table, no-card tables, round corners, TanStack Query, ConfirmDialog, barrel exports). Add Coloplus-specific rules with no Showtime equivalent: status/trust language (no fabricated availability, text+icon with color, visible gaps), basis + review-state badges with a "how calculated" drill-down, export disclosure panels, and a row-navigation-vs-`RowActions` split driven by `usePermissions()`. One React app, two permission-gated lazy route groups (`pages/customer/`, `pages/ops/`) rather than two deployments. Brand palette and corner radius taken provisionally from the mockup (teal/mint primary, amber warning, red danger, round ~8-12px corners, Airtel red reserved for their co-brand logo only), wired through a Tailwind v4 `@theme` token layer so only tokens, never components, change when a real kit lands.
+- **Alternatives considered:** two separate frontend apps/deployments for the two audiences (more isolation, but duplicates `DataTable`/`ConfirmDialog`/dashboard chrome/domain types and the Fusewall single-Vercel-project hosting default, for a split Showtime already proves unnecessary with its own admin/team-head/player-portal/seller areas in one app). Staying abstract on brand tokens until an official kit exists (rejected: leaves no concrete default to build against now).
+- **Consequences:** a brand-kit swap later touches only the `@theme` block, not components. A second telco customer, if ever onboarded, needs the customer name/co-brand logo parametrized rather than hardcoded to Airtel — not needed for the pilot, flagged here so it isn't forgotten.
+- **Revisit when:** an official Coloplus/Fusewall brand kit arrives, or a second Airtel-equivalent customer is onboarded.
+
+## 025: Custom toast component instead of react-hot-toast
+- **Type:** Deviation from Fusewall standard · **Status:** Accepted
+- **Context:** `react-hot-toast` is named in the Fusewall architecture standard's frontend default stack and was carried into `frontend/CLAUDE.md` §2 when that file was first written (024). Building the auth screens, the owner chose a custom in-house toast component instead.
+- **Decision:** toasts are implemented as `src/utils/toast.ts` (a small subscribable store, no external dependency) + `src/components/ui/Toast.tsx`/`ToastViewport.tsx`, mounted once in `main.tsx`. Call-site shape (`toast.success(message)` etc.) matches what `react-hot-toast` would have offered, so no page-level code reads differently because of this choice.
+- **Alternatives considered:** `react-hot-toast` (the Fusewall default; rejected by the owner for this product).
+- **Cost of deviating:** one more small UI primitive to maintain in this codebase instead of an external package; no loss of capability for what this product needs (tone-based toasts, auto-dismiss, dismissible).
+- **Consequences:** `frontend/CLAUDE.md` §2 updated in the same change to name the custom helper instead of `react-hot-toast`.
+- **Revisit when:** never expected to revert; if a future need (e.g. promise-based toast chaining, complex stacking) outgrows the in-house version, re-evaluate then.
+
+## 026: Joi for client-side auth-form validation
+- **Type:** Product decision · **Status:** Accepted
+- **Context:** the Fusewall architecture standard's frontend default stack names no validation library at all. Building the three auth forms (Login, Forgot password, Accept invite), the owner chose Joi over a zero-dependency hand-rolled alternative.
+- **Decision:** `src/utils/authValidation.ts` defines one Joi schema per form (`loginSchema`, `forgotPasswordSchema`, `acceptInviteSchema`) plus a `getFieldErrors()` adapter converting Joi's `ValidationError` into the `Record<string, string>` field-error map the shared `Field` component expects.
+- **Alternatives considered:** hand-rolled validator functions (zero dependencies, originally recommended for three small forms); `zod`/`yup` (lighter-weight schema libraries more common in browser bundles — not chosen).
+- **Consequences:** Joi is heavier than `zod`/`yup` in bundle size (built for server/Hapi use originally, not browser-first) — noted, not a blocker for a pilot-scale auth flow. Future larger forms (the ops portal's entry/approval/formula screens) can reuse the same Joi pattern rather than re-deciding a validation library from scratch.
+- **Revisit when:** bundle size becomes a measured problem, or a future form's needs (e.g. deeply dynamic field arrays) outgrow what's comfortable in Joi.

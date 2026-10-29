@@ -1,6 +1,6 @@
 # Coloplus: engineering guide (Fusewall standard)
 
-Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: Airtel). It is a Fusewall product and follows the Fusewall stack and hosting model by default. These are standing rules; follow them without being asked. Detail: `backend/CLAUDE.md`. Reasoning and deviations: `docs/DECISIONS.md` (read it before changing anything architectural). The product spec is `docs/Coloplus_Remote_Monitoring_PRD.docx`; the standard is `docs/architecture-kit/fusewall-architecture.md`.
+Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: Airtel). It is a Fusewall product and follows the Fusewall stack and hosting model by default. These are standing rules; follow them without being asked. Detail: `backend/CLAUDE.md`, `frontend/CLAUDE.md`. Reasoning and deviations: `docs/DECISIONS.md` (read it before changing anything architectural). The product spec is `docs/Coloplus_Remote_Monitoring_PRD.docx`; the standard is `docs/architecture-kit/fusewall-architecture.md`.
 
 ## Repo layout
 - `backend/`: Go API (hexagonal). The current focus.
