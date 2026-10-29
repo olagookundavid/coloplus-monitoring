@@ -123,3 +123,59 @@ func (a *api) updateSite(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, toSiteDTO(updated))
 }
+
+// siteOverview godoc
+//
+//	@Summary		The whole site screen in one call
+//	@Description	Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; Airtel gets published incidents only.
+//	@Tags			sites
+//	@Produce		json
+//	@Param			id		path		string	true	"Site id"
+//	@Param			days	query		int		false	"How many reporting days to show (default 14, max 90)"
+//	@Success		200		{object}	dto.SiteOverviewResponse
+//	@Failure		404		{object}	dto.ErrorResponse
+//	@Router			/api/v1/sites/{id}/overview [get]
+func (a *api) siteOverview(c *gin.Context) {
+	actor := actorFrom(c)
+	o, err := a.siteOverviews.Overview(c.Request.Context(), actor, c.Param("id"), intQuery(c, "days"))
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	now := a.clock.Now()
+	resp := dto.SiteOverviewResponse{
+		Site: toSiteDTO(o.Site), Timezone: a.loc.String(), Condition: string(o.Condition), AsOf: o.AsOf,
+		Days: make([]dto.SiteDayDTO, 0, len(o.Days)),
+	}
+	for _, d := range o.Days {
+		row := dto.SiteDayDTO{Date: d.Date.Format("2006-01-02"), ReportID: d.ReportID, Revision: d.Revision, OpenDisputes: d.OpenDisputes}
+		if d.Summary != nil {
+			sum := toSummaryDTO(*d.Summary)
+			row.Summary = &sum
+		}
+		resp.Days = append(resp.Days, row)
+	}
+	if o.ShowIncidents {
+		resp.OpenIncidents = &o.IncidentsTotal
+		for _, i := range o.Incidents {
+			internal, published := a.incidentBody(actor, i, nil)
+			if internal != nil {
+				resp.Incidents = append(resp.Incidents, *internal)
+			} else {
+				resp.PublishedIncidents = append(resp.PublishedIncidents, *published)
+			}
+		}
+	}
+	if o.ShowDisputes {
+		resp.OpenDisputes = &o.DisputesTotal
+		staff := a.disputes.IsStaff(actor)
+		for _, d := range o.Disputes {
+			resp.Disputes = append(resp.Disputes, toDisputeDTO(d, staff))
+		}
+	}
+	if o.Acceptance != nil {
+		acc := toAcceptanceDTO(*o.Acceptance, now)
+		resp.Acceptance = &acc
+	}
+	c.JSON(http.StatusOK, resp)
+}

@@ -236,3 +236,20 @@ func toDisputeEventDTO(e domain.DisputeEvent, staff bool) dto.DisputeEventDTO {
 	}
 	return out
 }
+
+func toAcceptanceDTO(a domain.Acceptance, now time.Time) dto.AcceptanceDTO {
+	return dto.AcceptanceDTO{
+		ID: a.ID, SiteID: a.SiteID, Stage: string(a.Stage), HeldFrom: string(a.HeldFrom),
+		WaitingOn: string(a.Responsible), NextAction: a.NextAction, DueAt: a.DueAt, Overdue: a.Overdue(now),
+		Dossier: a.Dossier, Reason: a.Reason, HoldReason: a.HoldReason, ReadyAgeHours: int(a.ReadyAge(now).Hours()),
+		RequestedAt: a.RequestedAt, BuiltAt: a.BuiltAt, ReadyAt: a.ReadyAt, InspectedAt: a.InspectedAt,
+		DecidedAt: a.DecidedAt, UpdatedAt: a.UpdatedAt,
+	}
+}
+
+func toAcceptanceEventDTO(e domain.AcceptanceEvent) dto.AcceptanceEventDTO {
+	return dto.AcceptanceEventDTO{
+		ID: e.ID, Party: string(e.Party), FromStage: string(e.FromStage), ToStage: string(e.ToStage),
+		Body: e.Body, CreatedAt: e.CreatedAt,
+	}
+}

@@ -83,3 +83,45 @@ func TestAudit_SearchNeedsAccessAndRespectsSiteScope(t *testing.T) {
 func servicesAuditInput(entityID string) services.SearchAuditInput {
 	return services.SearchAuditInput{EntityID: entityID}
 }
+
+// The site screen in one call must not weaken any rule: a day with no
+// approved report is a gap rather than zero, Airtel sees only published
+// incidents, and an outsider cannot probe a site.
+func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
+	w := newWorkflow(t)
+	orig := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/approve", nil, w.supervisor), 200)
+
+	open := func(title string) string {
+		return w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
+			"category": "grid_loss", "severity": "major", "impact": "outage", "title": title,
+			"description": "internal: transformer", "started_at": ago(time.Hour),
+		}, w.supervisor), 201).str("id")
+	}
+	open("Internal only")
+	shared := open("Shared with Airtel")
+	w.expect(w.call("POST", "/api/v1/incidents/"+shared+"/publish", nil, w.supervisor), 200)
+
+	url := "/api/v1/sites/" + w.site + "/overview?days=3"
+	staff := w.expect(w.call("GET", url, nil, w.supervisor), 200)
+	days := staff.list("days")
+	if len(days) != 3 {
+		t.Fatalf("days = %d, want 3: %s", len(days), staff.Raw)
+	}
+	if _, has := days[0].(map[string]any)["summary"]; has {
+		t.Fatalf("today has no approved report and must be a gap, not zero: %v", days[0])
+	}
+	if _, has := days[1].(map[string]any)["summary"]; !has {
+		t.Fatalf("yesterday's approved report is missing: %v", days[1])
+	}
+	if staff.str("open_incidents") != "2" || len(staff.list("incidents")) != 2 {
+		t.Fatalf("staff should see both incidents: %s", staff.Raw)
+	}
+
+	air := w.expect(w.call("GET", url, nil, w.airtel), 200)
+	if len(air.list("published_incidents")) != 1 || air.Body["incidents"] != nil || strings.Contains(air.Raw, "transformer") || strings.Contains(air.Raw, "Internal only") {
+		t.Fatalf("Airtel sees more than the published incident: %s", air.Raw)
+	}
+	w.expect(w.call("GET", url, nil, w.ot), 404)
+}

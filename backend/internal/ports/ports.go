@@ -165,6 +165,9 @@ type ReportRepository interface {
 	List(ctx context.Context, f ReportFilter) (reports []domain.DailyReport, total int, err error)
 	// ApprovedOnDate returns approved reports with intervals for the sites.
 	ApprovedOnDate(ctx context.Context, siteIDs []string, date time.Time) ([]domain.DailyReport, error)
+	// ApprovedBetween returns one site's approved reports, with intervals,
+	// for report dates from..to inclusive, newest first.
+	ApprovedBetween(ctx context.Context, siteID string, from, to time.Time) ([]domain.DailyReport, error)
 	// LatestApproved returns, per site, the approved report with the latest
 	// report date, with intervals.
 	LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error)
@@ -250,6 +253,32 @@ type DisputeRepository interface {
 	Counts(ctx context.Context, f DisputeFilter) (DisputeCounts, error)
 	// OpenByReport counts, per report, the disputes that have not closed.
 	OpenByReport(ctx context.Context, reportIDs []string) (map[string]int, error)
+}
+
+// AcceptanceFilter narrows the commissioning backlog. Scope works as in SiteFilter.
+type AcceptanceFilter struct {
+	AllSites bool
+	SiteIDs  []string
+	Stages   []domain.AcceptanceStage
+	// OpenOnly leaves out accepted sites.
+	OpenOnly bool
+	// OverdueAt, when set, keeps only those whose due time passed before it
+	// and that are neither on hold nor accepted.
+	OverdueAt *time.Time
+	Limit     int
+	Offset    int
+}
+
+type AcceptanceRepository interface {
+	// Create starts the process for a site. ErrConflict when it already has one.
+	Create(ctx context.Context, a domain.Acceptance) (domain.Acceptance, error)
+	// GetBySite loads a site's acceptance; forUpdate locks it for the transaction.
+	GetBySite(ctx context.Context, siteID string, forUpdate bool) (domain.Acceptance, error)
+	Save(ctx context.Context, a domain.Acceptance) error
+	AddEvent(ctx context.Context, e domain.AcceptanceEvent) (domain.AcceptanceEvent, error)
+	Events(ctx context.Context, acceptanceID string) ([]domain.AcceptanceEvent, error)
+	// List returns the backlog, longest-waiting first.
+	List(ctx context.Context, f AcceptanceFilter) (items []domain.Acceptance, total int, err error)
 }
 
 // Mailer sends one email. A transient failure wraps apperrors.ErrUnavailable;

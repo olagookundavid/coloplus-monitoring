@@ -49,3 +49,32 @@ type SiteListResponse struct {
 	Limit  int       `json:"limit"`
 	Offset int       `json:"offset"`
 }
+
+// SiteDayDTO is one reporting day on the site screen. A day without an
+// approved report has no summary: a gap, never zero and never available.
+type SiteDayDTO struct {
+	Date         string      `json:"date" example:"2026-12-01"`
+	ReportID     string      `json:"report_id,omitempty"`
+	Revision     int         `json:"revision,omitempty"`
+	Summary      *SummaryDTO `json:"summary,omitempty"`
+	OpenDisputes int         `json:"open_disputes,omitempty"`
+}
+
+// SiteOverviewResponse is the whole site screen in one call. Sections the
+// caller may not see are left out. Airtel gets published incidents only.
+type SiteOverviewResponse struct {
+	Site     SiteDTO `json:"site"`
+	Timezone string  `json:"timezone"`
+	// Condition is available, outage_reported or awaiting_update.
+	Condition string     `json:"condition"`
+	AsOf      *time.Time `json:"as_of,omitempty"`
+	// Days runs newest first and includes days with no approved report.
+	Days []SiteDayDTO `json:"days"`
+
+	Incidents          []IncidentDTO          `json:"incidents,omitempty"`
+	PublishedIncidents []PublishedIncidentDTO `json:"published_incidents,omitempty"`
+	OpenIncidents      *int                   `json:"open_incidents,omitempty"`
+	Disputes           []DisputeDTO           `json:"disputes,omitempty"`
+	OpenDisputes       *int                   `json:"open_disputes,omitempty"`
+	Acceptance         *AcceptanceDTO         `json:"acceptance,omitempty"`
+}

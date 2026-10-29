@@ -1,6 +1,6 @@
 # Coloplus MVP checklist
 
-Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and the acceptance tests AT01 to AT11. Updated 29 Oct 2026, after disputes, audit search and overdue-report alerts. Update this file in the same change that finishes an item.
+Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and the acceptance tests AT01 to AT11. Updated 29 Oct 2026, after disputes, audit search, overdue-report alerts, acceptance and the site overview. Update this file in the same change that finishes an item.
 
 - `[x]` built, lint clean, and the risky parts have tests
 - `[ ]` not done. A tag says why: **partial** (some of it exists), **needs input** (waiting on a decision, credential or domain from outside), **new dependency** (needs your yes before I start)
@@ -12,7 +12,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Config read once, validated at boot, production guards (Swagger off, CORS list, rate limit, real mailer, https base URL)
 - [x] One pgxpool, one HTTP client per provider, bounded worker pool, graceful shutdown order
 - [x] Forward-only goose migrations (7), `api migrate` as a separate step
-- [x] Cron scheduler with three jobs (email dispatch, incident alerts, report alerts)
+- [x] Cron scheduler with four jobs (email dispatch, incident alerts, report alerts, acceptance alerts)
 - [x] Append-only audit log (database trigger), batched for low-risk events, written in the same transaction for approvals, corrections, publications, disputes
 - [x] Rate limiting (tighter on sign-in and recovery), CORS allow-list, security headers, JSON-only writes (CSRF guard)
 - [x] Swagger generated at build (`make swag`)
@@ -74,7 +74,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [x] Portfolio overview for a day: active, pending and suspended counts, sites reported, not reported, awaiting update, outage reported, pooled availability with coverage, per-site condition (available, outage reported, awaiting update) **FR**
 - [x] An overdue or missing entry never shows as current or available (AT03)
-- [ ] Site detail in one call (profile, last observation, daily history, timeline, open incidents, disputes). **partial**: the pieces exist as separate endpoints
+- [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
 - [ ] Period dashboards (week, month, custom range), data-quality indicator, stale-submission count
 - [ ] Click-through from a card to its supporting sites and intervals
 
@@ -104,11 +104,15 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 9. Commissioning and acceptance (PRD 9)
 
-- [ ] Milestones: requested, built, ready for inspection, inspected, accepted, rejected, on hold
-- [ ] Dossier from Coloplus, Airtel's own review, reasons, responsible party, due date, escalation
-- [ ] Age since ready for inspection, reported apart from operational performance (AT10)
-- [ ] KPI inclusion rule for pending sites. **needs input** (the acceptance rule)
-- [ ] Acceptance-overdue alerts
+- [x] Stages: requested, built, ready for inspection, inspected, accepted, rejected, on hold (with a reason, resuming to where it was)
+- [x] Coloplus submits the dossier; Airtel records its own review; nothing else counts as acceptance, and inspection comes before acceptance (AT10)
+- [x] Reasons, responsible party (whose move), next action, due date; each side emailed when the other acts
+- [x] Age since ready for inspection, reported apart from operational performance
+- [x] Commissioning backlog (`GET /acceptances`), longest-waiting first
+- [x] Acceptance-overdue alert, once per missed due time; a hold stops the clock
+- [ ] KPI inclusion rule. **needs input**: built as a proposed default (Airtel's acceptance activates a pending site; pending sites stay out of the KPIs). Confirm with Airtel
+- [ ] Documents attached to the dossier. **new dependency** (R2)
+- [ ] Escalation beyond the second email; per-milestone due dates
 
 ## 10. Alerts and email (PRD 10)
 
@@ -161,7 +165,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 | AT07 | Formula activation needs approval; old results reproduce exactly | Not started |
 | AT08 | Fuel movements reconcile; missing values block a false variance | Not started |
 | AT09 | Airtel can raise and track a dispute; exports keep provenance and dispute state | Disputes: done, tested. Exports: not built |
-| AT10 | Acceptance states stay separate from operational status | Not started (a site status only) |
+| AT10 | Acceptance states stay separate from operational status | Done, tested. KPI rule is a default awaiting Airtel's confirmation |
 | AT11 | Load, access control, notification failure and backup restore meet the pilot targets | Not started |
 
 ## 16. Waiting on people, not code (PRD 13)
@@ -180,4 +184,4 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 17. Front end (separate engineer)
 
 - [ ] React app and its `CLAUDE.md` in `frontend/`
-- Routes the emailed links assume: `/accept-invite`, `/reset-password`, `/incidents/:id`, `/disputes/:id`, `/sites/:id`
+- Routes the emailed links assume: `/accept-invite`, `/reset-password`, `/incidents/:id`, `/disputes/:id`, `/sites/:id`, `/sites/:id/acceptance`

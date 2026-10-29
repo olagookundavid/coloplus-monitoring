@@ -42,6 +42,7 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 | 033 | Email through an outbox; Resend over plain HTTP; invitations and reset links | Architecture | Accepted |
 | 034 | Disputes: two parties, two acts, a real correction | Product decision | Accepted (confirm with Airtel) |
 | 035 | Audit search and the overdue-report alert | Product decision | Accepted |
+| 036 | Commissioning and acceptance; the site overview | Product decision | Accepted (confirm the KPI rule with Airtel) |
 
 ## Template
 ### NNN: Title
@@ -197,4 +198,12 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 - **Audit search:** `GET /audit` filters by actor, exact action, entity type and id, and a time range, newest first, paged. It needs `audit.read`, which administrators hold and which is separate from any editing right. A reader without all-site access sees only events whose metadata carries one of their sites, so user and sign-in events (no site) stay with administrators. Reading the log is not itself logged yet.
 - **Overdue-report alert:** every 30 minutes a job emails each active site's reporters and supervisors when the site is "awaiting update" by the same rule the dashboard uses (`domain.Condition`), once per site per day while it stays late. A site younger than its freshness window with no report is not nagged. The email says the data is stale or missing and that it does not mean the power is out (PRD section 10). Airtel is not emailed.
 - **Not built yet:** repeat intervals other than daily, an in-app alert centre, digests, acknowledgement of alerts.
+
+## 036: Commissioning and acceptance; the site overview
+- **Type:** Product decision · **Status:** Accepted (confirm the KPI inclusion rule with Airtel)
+- **Decision:** one acceptance process per site, with stages requested, built, ready for inspection, inspected, accepted, rejected, on hold. Coloplus (`acceptance.manage`, supervisors) requests, builds, and declares the site ready by submitting a dossier. Airtel (`acceptance.review`, the reviewer) inspects, then accepts or rejects with a reason. Either side can put it on hold with a reason and resume it to the stage it left. Nothing Coloplus does counts as Airtel's acceptance, and a site cannot be accepted without being inspected first. Accepted is final (trigger). History is append-only. Age since "ready for inspection" is reported on its own (`ready_age_hours`), apart from operational performance.
+- **The KPI rule (a proposed default, not an agreed one):** when Airtel accepts, a site still *pending acceptance* becomes *active* in the same transaction, which is what brings it into the service KPIs; a suspended site is left alone. Until that site is accepted it stays out of the KPIs and shows separately, as the dashboard already did. Past reports are not re-counted. This is the PRD's open decision "acceptance inclusion" and must be confirmed.
+- **Alerts:** each stage change emails the other party (not internal rework). A missed due time emails whoever the step waits on, and Coloplus's supervisors, once per missed due time (`acceptance-alerts`, every 30 minutes). A hold stops the clock.
+- **Site overview:** `GET /sites/:id/overview?days=` returns the profile, condition and as-of time, the last days (a day with no approved report is a visible gap, never zero or available), open incidents, open disputes and the acceptance process in one call. Each section follows the same permission and scope rules as its own endpoint: Airtel sees published incidents only, and an out-of-scope site is a 404.
+- **Not built yet:** documents on the dossier (needs R2), an escalation path beyond the second email, per-milestone due dates.
 

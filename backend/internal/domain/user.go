@@ -53,6 +53,10 @@ const (
 	PermDisputesRead   Permission = "disputes.read"
 	PermDisputesRaise  Permission = "disputes.raise"
 	PermDisputesManage Permission = "disputes.manage"
+
+	PermAcceptanceRead   Permission = "acceptance.read"
+	PermAcceptanceManage Permission = "acceptance.manage"
+	PermAcceptanceReview Permission = "acceptance.review"
 )
 
 const (

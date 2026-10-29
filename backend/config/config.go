@@ -108,9 +108,10 @@ type Mail struct {
 
 // Jobs holds the cron specs (five fields) of the scheduled work.
 type Jobs struct {
-	DispatchEmailsCron string
-	IncidentAlertsCron string
-	ReportAlertsCron   string
+	DispatchEmailsCron   string
+	IncidentAlertsCron   string
+	ReportAlertsCron     string
+	AcceptanceAlertsCron string
 }
 
 type Swagger struct {
@@ -184,9 +185,10 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
 		Jobs: Jobs{
-			DispatchEmailsCron: r.str("JOB_DISPATCH_EMAILS_CRON", "* * * * *"),
-			IncidentAlertsCron: r.str("JOB_INCIDENT_ALERTS_CRON", "*/10 * * * *"),
-			ReportAlertsCron:   r.str("JOB_REPORT_ALERTS_CRON", "*/30 * * * *"),
+			DispatchEmailsCron:   r.str("JOB_DISPATCH_EMAILS_CRON", "* * * * *"),
+			IncidentAlertsCron:   r.str("JOB_INCIDENT_ALERTS_CRON", "*/10 * * * *"),
+			ReportAlertsCron:     r.str("JOB_REPORT_ALERTS_CRON", "*/30 * * * *"),
+			AcceptanceAlertsCron: r.str("JOB_ACCEPTANCE_ALERTS_CRON", "*/30 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}

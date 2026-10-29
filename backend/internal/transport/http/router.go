@@ -46,6 +46,8 @@ type Deps struct {
 	Incidents     *services.IncidentService
 	Disputes      *services.DisputeService
 	Audit         *services.AuditService
+	Acceptance    *services.AcceptanceService
+	SiteOverviews *services.SiteOverviewService
 	Dashboard     *services.DashboardService
 }
 
@@ -64,6 +66,8 @@ type api struct {
 	incidents     *services.IncidentService
 	disputes      *services.DisputeService
 	audit         *services.AuditService
+	acceptance    *services.AcceptanceService
+	siteOverviews *services.SiteOverviewService
 	dashboard     *services.DashboardService
 }
 
@@ -103,7 +107,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -139,6 +143,7 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/sites", h.createSite)
 	authed.GET("/sites", h.listSites)
 	authed.GET("/sites/:id", h.getSite)
+	authed.GET("/sites/:id/overview", h.siteOverview)
 	authed.PUT("/sites/:id", h.updateSite)
 	authed.POST("/sites/:id/daily-reports", h.createReport)
 
@@ -165,6 +170,11 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/disputes/:id", h.getDispute)
 	authed.POST("/disputes/:id/comments", h.commentDispute)
 	authed.POST("/disputes/:id/transition", h.transitionDispute)
+
+	authed.POST("/sites/:id/acceptance", h.requestAcceptance)
+	authed.GET("/sites/:id/acceptance", h.getAcceptance)
+	authed.POST("/sites/:id/acceptance/transition", h.transitionAcceptance)
+	authed.GET("/acceptances", h.listAcceptances)
 
 	authed.GET("/audit", h.searchAudit)
 

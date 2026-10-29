@@ -101,3 +101,19 @@ func reportOverdueEmail(site domain.Site, asOf *time.Time, loc *time.Location, l
 			"The site now shows as \"Awaiting update\" to Airtel. That means the data is stale or missing; "+
 			"it does not mean the power is out.\n\nOpen the site: %s\n", siteLabel(site), last, link)
 }
+
+func stageWord(s domain.AcceptanceStage) string { return strings.ReplaceAll(string(s), "_", " ") }
+
+// acceptanceEventEmail tells the other party that the site's acceptance moved.
+func acceptanceEventEmail(site domain.Site, e domain.AcceptanceEvent, link string) (subject, body string) {
+	return fmt.Sprintf("Acceptance of %s: %s", siteLabel(site), stageWord(e.ToStage)),
+		fmt.Sprintf("The acceptance of %s is now %s.\n\n%s\n\nOpen it: %s\n",
+			siteLabel(site), stageWord(e.ToStage), orDash(e.Body), link)
+}
+
+func acceptanceOverdueEmail(site domain.Site, a domain.Acceptance, due time.Time, loc *time.Location, link string) (subject, body string) {
+	return "Acceptance action overdue: " + siteLabel(site),
+		fmt.Sprintf("The next step in the acceptance of %s was due %s and has not been taken.\n\n"+
+			"Stage: %s\nWith: %s\nNext action: %s\n\nOpen it: %s\n",
+			siteLabel(site), due.In(loc).Format(timeLayout), stageWord(a.Stage), a.Responsible, orDash(a.NextAction), link)
+}

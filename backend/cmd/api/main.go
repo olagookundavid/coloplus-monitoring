@@ -119,6 +119,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
+	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
 
@@ -148,6 +149,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL)
+	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
 	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
@@ -180,6 +183,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		n, err := reportAlerts.AlertOverdue(ctx)
 		if n > 0 {
 			log.Info("overdue report alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("acceptance-alerts", cfg.Jobs.AcceptanceAlertsCron, func(ctx context.Context) error {
+		n, err := acceptance.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue acceptance alerts queued", "emails", n)
 		}
 		return err
 	}); err != nil {
@@ -222,6 +234,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Incidents:     incidents,
 		Disputes:      disputes,
 		Audit:         audit,
+		Acceptance:    acceptance,
+		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
