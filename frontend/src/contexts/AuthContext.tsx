@@ -24,6 +24,14 @@ function readStoredSession(): AuthSession | null {
       localStorage.removeItem(AUTH_STORAGE_KEY)
       return null
     }
+    // A session stored before `User.name` existed won't have it — treat it
+    // the same as expired rather than handing components a half-shaped
+    // user, so a stale browser session bounces back to login instead of
+    // crashing the first component that reads `user.name`.
+    if (!parsed.user?.name) {
+      localStorage.removeItem(AUTH_STORAGE_KEY)
+      return null
+    }
     return parsed
   } catch {
     return null

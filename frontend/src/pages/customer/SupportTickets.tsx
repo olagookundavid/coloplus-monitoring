@@ -119,7 +119,7 @@ export function SupportTickets() {
             <Button variant="outline" icon={ArrowDownTrayIcon}>
               Export report
             </Button>
-            <Button icon={PlusIcon} onClick={openCreateTicket}>
+            <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
               Create ticket
             </Button>
           </>
@@ -208,9 +208,8 @@ export function SupportTickets() {
             </Select>
           }
         />
-        <div className="mt-3 flex flex-col gap-2 text-xs text-text-muted sm:flex-row sm:items-center sm:justify-between">
-          <span>Demo tickets are stored in this browser. They are not sent to Coloplus.</span>
-          <Button variant="link" size="sm" icon={PlusIcon} onClick={openCreateTicket}>
+        <div className="mt-3 flex justify-end">
+          <Button variant="link" size="sm" icon={PlusIcon} onClick={() => openCreateTicket()}>
             New request
           </Button>
         </div>

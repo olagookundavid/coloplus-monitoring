@@ -10,6 +10,7 @@ export interface Site {
   powerSource: PowerSource
   energyKwh: number
   dieselPercent: number
+  dieselTankCapacityLitres: number
   powerAvailabilityPercent: number
   /** null = not reported — never 0, never the last-known value repeated. */
   radioAvailabilityPercent: number | null

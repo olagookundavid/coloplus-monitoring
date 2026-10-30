@@ -17,7 +17,7 @@ export interface CustomerLayoutContextValue {
   setRegion: (region: string) => void
   period: string
   setPeriod: (period: string) => void
-  openCreateTicket: () => void
+  openCreateTicket: (siteCode?: string) => void
 }
 
 // Filter state AND "is the Create ticket modal open" both persist/apply
@@ -32,19 +32,27 @@ export function CustomerLayout() {
   const [region, setRegion] = useState<string>(REGION_OPTIONS[0] ?? 'All regions')
   const [period, setPeriod] = useState<string>(PERIOD_PRESETS[0] ?? '')
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false)
+  const [prefillSiteCode, setPrefillSiteCode] = useState<string | undefined>(undefined)
 
   const context: CustomerLayoutContextValue = {
     region,
     setRegion,
     period,
     setPeriod,
-    openCreateTicket: () => setIsCreateTicketOpen(true),
+    openCreateTicket: (siteCode) => {
+      setPrefillSiteCode(siteCode)
+      setIsCreateTicketOpen(true)
+    },
   }
 
   return (
     <DashboardShell nav={CUSTOMER_NAV}>
       <Outlet context={context} />
-      <CreateTicketModal open={isCreateTicketOpen} onClose={() => setIsCreateTicketOpen(false)} />
+      <CreateTicketModal
+        open={isCreateTicketOpen}
+        onClose={() => setIsCreateTicketOpen(false)}
+        initialSiteCode={prefillSiteCode}
+      />
     </DashboardShell>
   )
 }

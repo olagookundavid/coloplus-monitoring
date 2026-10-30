@@ -2,7 +2,9 @@ import { BellIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useLocation } from 'react-router-dom'
 
 import { IconButton } from '../ui'
+import { AccountMenu } from './AccountMenu'
 import { CUSTOMER_NAV } from './customerNav'
+import { TopbarClock } from './TopbarClock'
 
 export function Topbar() {
   const location = useLocation()
@@ -18,9 +20,8 @@ export function Topbar() {
       </div>
 
       <div className="flex shrink-0 items-center gap-3">
-        <span className="hidden rounded-full border border-border px-3 py-1 text-xs font-medium tracking-wide text-text-muted sm:inline-block">
-          PROTOTYPE · SAMPLE DATA
-        </span>
+        <TopbarClock />
+        <span className="hidden h-8 w-px bg-border md:block" aria-hidden="true" />
         <div className="relative">
           <IconButton icon={BellIcon} label="Notifications" variant="ghost" />
           <span
@@ -28,10 +29,7 @@ export function Topbar() {
             aria-hidden="true"
           />
         </div>
-        {/* Airtel's own co-brand mark — fixed here only, never reused as an
-            app color elsewhere (frontend/CLAUDE.md §7). No real logo asset
-            yet, same provisional caveat as the Coloplus wordmark. */}
-        <span className="text-lg font-bold italic text-red-600">airtel</span>
+        <AccountMenu />
       </div>
     </header>
   )

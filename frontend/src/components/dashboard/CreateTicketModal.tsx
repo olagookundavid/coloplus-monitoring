@@ -9,6 +9,8 @@ import { Button, Field, Input, Modal, Select, Textarea } from '../ui'
 export interface CreateTicketModalProps {
   open: boolean
   onClose: () => void
+  /** Pre-selects the site when opened from that site's own detail panel. */
+  initialSiteCode?: string
 }
 
 const TICKET_CATEGORIES: TicketCategory[] = [
@@ -31,7 +33,7 @@ const INITIAL_VALUES: CreateTicketFormValues = {
   description: '',
 }
 
-export function CreateTicketModal({ open, onClose }: CreateTicketModalProps) {
+export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTicketModalProps) {
   const [values, setValues] = useState<CreateTicketFormValues>(INITIAL_VALUES)
   const [touched, setTouched] = useState<Partial<Record<keyof CreateTicketFormValues, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
@@ -39,6 +41,18 @@ export function CreateTicketModal({ open, onClose }: CreateTicketModalProps) {
 
   const sitesQuery = useSitePerformance({})
   const mutation = useCreateTicketMutation()
+
+  // Re-prefill every time the modal opens, not just on mount — the same
+  // modal instance stays alive across opens (owned by CustomerLayout), and
+  // a site's own "Create ticket" action should always pre-select that site.
+  // Adjusted synchronously during render (React's "adjusting state when a
+  // prop changes" pattern) rather than in an effect, per this project's
+  // React Compiler lint rules (see SidePanel.tsx for the same pattern).
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setValues({ ...INITIAL_VALUES, siteCode: initialSiteCode ?? '' })
+  }
 
   const fieldErrors = getFieldErrors(createTicketSchema, values)
 
@@ -101,7 +115,7 @@ export function CreateTicketModal({ open, onClose }: CreateTicketModalProps) {
             icon={TicketIcon}
             loading={mutation.isPending}
           >
-            Create demo ticket
+            Create ticket
           </Button>
         </>
       }
@@ -196,13 +210,8 @@ export function CreateTicketModal({ open, onClose }: CreateTicketModalProps) {
         {/* Native, unstyled file input — the mockup itself shows the
             browser's default file chooser, not a custom one, and no
             primitive exists for file inputs (frontend/CLAUDE.md §7 doesn't
-            cover this control type). Filenames only, matching the hint
-            below: nothing is actually uploaded. */}
-        <Field
-          label="Supporting files"
-          htmlFor="ticket-files"
-          hint="Prototype stores filenames only. No file content is uploaded."
-        >
+            cover this control type). */}
+        <Field label="Supporting files" htmlFor="ticket-files">
           <input
             id="ticket-files"
             type="file"
@@ -213,11 +222,6 @@ export function CreateTicketModal({ open, onClose }: CreateTicketModalProps) {
             }
           />
         </Field>
-
-        <p className="rounded-lg bg-surface-subtle p-3 text-xs text-text-muted">
-          Interactive demo: submitting creates a local sample ticket. A production backend will
-          route it to the Coloplus support team.
-        </p>
       </form>
     </Modal>
   )

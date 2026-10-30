@@ -11,7 +11,6 @@ import { Spinner } from './components/ui'
 import { ROUTES } from './constants'
 import { NotFound } from './pages'
 import { AcceptInvite, ForgotPassword, Login } from './pages/auth'
-import type { ComingSoonProps } from './pages/customer/ComingSoon'
 import { lazyNamed } from './utils'
 
 // This codebase's pages use named exports; pages/customer/ is the lazy
@@ -22,10 +21,6 @@ const Overview = lazyNamed(() => import('./pages/customer/Overview'), 'Overview'
 const Sites = lazyNamed(() => import('./pages/customer/Sites'), 'Sites')
 const SupportTickets = lazyNamed(() => import('./pages/customer/SupportTickets'), 'SupportTickets')
 const Reports = lazyNamed(() => import('./pages/customer/Reports'), 'Reports')
-const ComingSoon = lazyNamed<ComingSoonProps>(
-  () => import('./pages/customer/ComingSoon'),
-  'ComingSoon'
-)
 
 export function App() {
   return (
@@ -60,7 +55,7 @@ export function App() {
         >
           <Route path={ROUTES.HOME} element={<Overview />} />
           <Route path={ROUTES.CUSTOMER_SITES} element={<Sites />} />
-          <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<ComingSoon title="Site detail" />} />
+          <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<Sites />} />
           <Route path={ROUTES.CUSTOMER_TICKETS} element={<SupportTickets />} />
           <Route path={ROUTES.TICKET_DETAIL_PATTERN} element={<SupportTickets />} />
           <Route path={ROUTES.CUSTOMER_REPORTS} element={<Reports />} />

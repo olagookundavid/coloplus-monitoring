@@ -13,9 +13,6 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
     <div className="min-h-dvh w-full bg-surface md:grid md:grid-cols-2">
       <div className="flex items-center justify-center gap-3 bg-gradient-to-br from-primary-700 to-primary-600 px-4 py-6 text-white md:min-h-dvh md:flex-col md:gap-4 md:px-10 md:py-0">
         <span className="text-2xl font-bold tracking-tight md:text-3xl">Coloplus</span>
-        <p className="hidden text-sm text-white/80 md:block">
-          Remote power monitoring for Airtel sites
-        </p>
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 lg:px-8 md:max-h-dvh md:overflow-y-auto">

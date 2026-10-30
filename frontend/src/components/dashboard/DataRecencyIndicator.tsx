@@ -8,7 +8,7 @@ export interface DataRecencyIndicatorProps {
 // Dot + text together, always (frontend/CLAUDE.md §11) — never a color
 // alone standing in for "this data is current."
 export function DataRecencyIndicator({
-  label = 'Sample snapshot',
+  label = 'As of',
   className = '',
 }: DataRecencyIndicatorProps) {
   const snapshot = useDataSnapshot()

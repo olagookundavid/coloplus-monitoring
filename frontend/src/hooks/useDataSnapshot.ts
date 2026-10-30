@@ -1,9 +1,8 @@
 /**
- * One source for "Sample snapshot · [time] WAT" everywhere it appears (the
- * prototype pill, the filter row, the footer) so they can never disagree.
- * A frozen mock instant, not Date.now() — "Sample snapshot" means *not
- * live*, so a ticking clock would misrepresent freshness that isn't real
- * (frontend/CLAUDE.md §11).
+ * One source for "As of [time] WAT" everywhere it appears (the filter row,
+ * the footer) so they can never disagree. A frozen mock instant, not
+ * Date.now() — this data isn't live yet, so a ticking clock would
+ * misrepresent freshness that isn't real (frontend/CLAUDE.md §11).
  */
 
 const MOCK_SNAPSHOT_ISO = '2026-10-24T10:42:00+01:00'

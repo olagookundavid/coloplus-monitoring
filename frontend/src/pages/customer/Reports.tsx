@@ -55,8 +55,7 @@ export function Reports() {
         icon={InformationCircleIcon}
         title={
           <>
-            Exports use <strong>{region}</strong> and <strong>{period}</strong>. All records are
-            illustrative sample data.
+            Exports use <strong>{region}</strong> and <strong>{period}</strong>.
           </>
         }
       />

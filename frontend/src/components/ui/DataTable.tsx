@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -11,9 +11,9 @@ import {
 } from '@tanstack/react-table'
 import { Link } from 'react-router-dom'
 import {
+  ArrowRightIcon,
   ChevronUpIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 
@@ -111,14 +111,6 @@ export function DataTable<T>({
   const rows = table.getRowModel().rows
   const isInteractive = Boolean(onRowClick || getRowHref)
 
-  function handleRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, row: T) {
-    if (getRowHref) return // the stretched <Link> already handles its own keyboard activation
-    if ((event.key === 'Enter' || event.key === ' ') && onRowClick) {
-      event.preventDefault()
-      onRowClick(row)
-    }
-  }
-
   return (
     <div className={`min-w-0 rounded-lg border border-border bg-surface ${className}`}>
       {(searchable || headerActions) && (
@@ -186,7 +178,7 @@ export function DataTable<T>({
                     </th>
                   )
                 })}
-                {isInteractive && <th scope="col" className="w-10" aria-hidden="true" />}
+                {isInteractive && <th scope="col" className="w-11" aria-hidden="true" />}
               </tr>
             ))}
           </thead>
@@ -212,17 +204,14 @@ export function DataTable<T>({
             ) : (
               rows.map((row) => {
                 const href = getRowHref?.(row.original)
+                const firstColumn = columns[0]
+                const rowName =
+                  firstColumn && typeof firstColumn.accessor(row.original) === 'string'
+                    ? String(firstColumn.accessor(row.original))
+                    : undefined
+                const detailLabel = rowName ? `View ${rowName}` : 'View details'
                 return (
-                  <tr
-                    key={row.id}
-                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                    onKeyDown={
-                      isInteractive ? (event) => handleRowKeyDown(event, row.original) : undefined
-                    }
-                    tabIndex={isInteractive && !href ? 0 : undefined}
-                    role={isInteractive && !href ? 'button' : undefined}
-                    className={`relative border-b border-border last:border-b-0 ${isInteractive ? 'cursor-pointer hover:bg-surface-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary' : ''}`}
-                  >
+                  <tr key={row.id} className="border-b border-border last:border-b-0">
                     {row.getVisibleCells().map((cell, columnIndex) => {
                       const column = columns[columnIndex]
                       const align = column?.align ?? 'left'
@@ -232,24 +221,30 @@ export function DataTable<T>({
                           key={cell.id}
                           className={`px-4 py-3 align-middle ${ALIGN_CLASS[align]} ${isFirst ? 'sticky left-0 z-10 bg-inherit font-medium text-text' : ''} ${column?.className ?? ''}`}
                         >
-                          {isFirst && href && (
-                            <Link
-                              to={href}
-                              className="absolute inset-0"
-                              aria-label={
-                                typeof column?.accessor(row.original) === 'string'
-                                  ? String(column.accessor(row.original))
-                                  : undefined
-                              }
-                            />
-                          )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       )
                     })}
                     {isInteractive && (
-                      <td className="px-2 py-3 text-right text-text-muted">
-                        <ChevronRightIcon className="ml-auto h-4 w-4" aria-hidden="true" />
+                      <td className="px-2 text-center align-middle">
+                        {href ? (
+                          <Link
+                            to={href}
+                            aria-label={detailLabel}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-subtle hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                          >
+                            <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                        ) : (
+                          <button
+                            type="button"
+                            aria-label={detailLabel}
+                            onClick={() => onRowClick?.(row.original)}
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-surface-subtle hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                          >
+                            <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
+                          </button>
+                        )}
                       </td>
                     )}
                   </tr>

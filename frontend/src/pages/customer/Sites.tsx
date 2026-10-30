@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import {
   DashboardFilterBar,
@@ -7,25 +8,39 @@ import {
   NO_SITES,
   SITE_COLUMNS,
   SiteAttentionBanner,
+  SiteDetailPanel,
   STATUS_FILTER_OPTIONS,
 } from '../../components/dashboard'
 import { Button, DataTable, Select } from '../../components/ui'
-import { siteDetailPath } from '../../constants'
+import { ROUTES, siteDetailPath } from '../../constants'
 import { useSitePerformance } from '../../hooks'
 import type { SiteStatus } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
 export function Sites() {
-  const { region, setRegion, period, setPeriod } = useDashboardFilters()
+  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
   const [statusFilter, setStatusFilter] = useState<SiteStatus | 'All statuses'>('All statuses')
+  const { id: selectedSiteId } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
 
   const sitesQuery = useSitePerformance({ region, period })
+  const sites = sitesQuery.data ?? NO_SITES
+  const selectedSite = selectedSiteId
+    ? (sites.find((site) => site.id === selectedSiteId) ?? null)
+    : null
 
   const filteredSites = useMemo(() => {
-    const sites = sitesQuery.data ?? NO_SITES
     if (statusFilter === 'All statuses') return sites
     return sites.filter((site) => site.status === statusFilter)
-  }, [sitesQuery.data, statusFilter])
+  }, [sites, statusFilter])
+
+  // A stale or mistyped site id in the URL — send the customer back to the
+  // list rather than leaving the panel open with nothing to show.
+  useEffect(() => {
+    if (selectedSiteId && !sitesQuery.isLoading && !selectedSite) {
+      navigate(ROUTES.CUSTOMER_SITES, { replace: true })
+    }
+  }, [selectedSiteId, sitesQuery.isLoading, selectedSite, navigate])
 
   return (
     <div className="flex flex-col gap-6">
@@ -82,6 +97,13 @@ export function Sites() {
           }
         />
       </div>
+
+      <SiteDetailPanel
+        site={selectedSite}
+        open={Boolean(selectedSite)}
+        onClose={() => navigate(ROUTES.CUSTOMER_SITES)}
+        onCreateTicket={() => openCreateTicket(selectedSite?.code)}
+      />
     </div>
   )
 }

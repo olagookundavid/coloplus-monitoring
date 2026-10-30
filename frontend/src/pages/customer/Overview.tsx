@@ -60,7 +60,7 @@ export function Overview() {
             <Button variant="outline" icon={ArrowDownTrayIcon}>
               Export report
             </Button>
-            <Button icon={PlusIcon} onClick={openCreateTicket}>
+            <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
               Create ticket
             </Button>
           </>

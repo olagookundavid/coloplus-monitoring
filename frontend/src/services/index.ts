@@ -1,5 +1,6 @@
-export { api } from './api'
+export { getApi } from './api'
 export { login, requestPasswordReset, acceptInvite, AuthApiError } from './auth'
 export { getPortfolioOverview, getSitePerformance } from './sites'
 export type { PortfolioQueryParams, PortfolioOverview } from './sites'
 export { getTickets, createTicket } from './tickets'
+export { getIncidents } from './incidents'

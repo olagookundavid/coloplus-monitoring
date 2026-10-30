@@ -31,10 +31,11 @@ interface MockUser {
   id: string
   email: string
   password: string
+  name: string
 }
 
 const MOCK_USERS: MockUser[] = [
-  { id: 'usr_demo', email: 'demo@coloplus.africa', password: 'coloplus123' },
+  { id: 'usr_demo', email: 'demo@coloplus.africa', password: 'coloplus123', name: 'Demo User' },
 ]
 
 function mockDelay(minMs = 500, maxMs = 1000): Promise<void> {
@@ -45,7 +46,7 @@ function mockDelay(minMs = 500, maxMs = 1000): Promise<void> {
 function createMockSession(user: MockUser): AuthSession {
   const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
   return {
-    user: { id: user.id, email: user.email },
+    user: { id: user.id, email: user.email, name: user.name },
     accessToken: `mock.${user.id}.${Date.now()}`,
     expiresAt,
   }
