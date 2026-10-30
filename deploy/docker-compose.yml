@@ -1,0 +1,23 @@
+# Production compose for the shared Contabo box. Copy to ~/apps/coloplus/ on the
+# server. No "ports:" on purpose: only Caddy publishes host ports, and it
+# reaches this container by name over the external "web" network.
+services:
+  coloplus-backend:
+    image: ghcr.io/olagookundavid/coloplus-monitoring:latest
+    container_name: coloplus-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - web
+      - database
+    # Per-product budget on the shared host (docs/DECISIONS.md 017). Starting
+    # values; tune after the pilot.
+    mem_limit: 384m
+    cpus: 0.75
+
+networks:
+  web:
+    external: true
+  database:
+    external: true

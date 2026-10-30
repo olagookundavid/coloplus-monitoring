@@ -1,6 +1,6 @@
 import Joi from 'joi'
 
-// docs/DECISIONS.md 026 — Joi, chosen by the owner over a hand-rolled
+// docs/DECISIONS.md 041 — Joi, chosen by the owner over a hand-rolled
 // zero-dependency alternative.
 
 export interface LoginFormValues {

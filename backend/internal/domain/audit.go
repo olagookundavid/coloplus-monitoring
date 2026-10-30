@@ -8,6 +8,8 @@ import (
 
 // AuditEvent is one entry in the append-only audit log.
 type AuditEvent struct {
+	// ID is set on events read back from the log; zero for a new one.
+	ID         int64
 	OccurredAt time.Time
 	// ActorID is the user who acted; empty for system events.
 	ActorID    string

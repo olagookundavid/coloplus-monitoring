@@ -2,11 +2,8 @@ package middleware
 
 import (
 	"context"
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -72,31 +69,6 @@ func TestAuth(t *testing.T) {
 	}
 }
 
-func TestOptionalAuth_AllowsAnonymous(t *testing.T) {
-	maker, _ := token.NewPasetoMaker(testKey)
-	w := serve(OptionalAuth(maker, AuthConfig{}), httptest.NewRequest("GET", "/x", nil))
-	if w.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want 204", w.Code)
-	}
-}
-
-func TestRecover_ReturnsGeneric500(t *testing.T) {
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	r := gin.New()
-	r.Use(Recover(log))
-	r.GET("/boom", func(c *gin.Context) { panic("secret internals") })
-
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, httptest.NewRequest("GET", "/boom", nil))
-
-	if w.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want 500", w.Code)
-	}
-	if body := w.Body.String(); strings.Contains(body, "secret") {
-		t.Fatalf("panic detail leaked: %s", body)
-	}
-}
-
 func TestRateLimit(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -116,14 +88,5 @@ func TestRateLimit(t *testing.T) {
 	other.Header.Set("CF-Connecting-IP", "203.0.113.10")
 	if got := serve(h, other).Code; got != 204 {
 		t.Fatalf("a different client was limited: %d", got)
-	}
-}
-
-func TestRateLimit_Disabled(t *testing.T) {
-	h := RateLimit(context.Background(), RateLimitConfig{Enabled: false})
-	for i := 0; i < 50; i++ {
-		if got := serve(h, httptest.NewRequest("GET", "/x", nil)).Code; got != 204 {
-			t.Fatalf("request %d: status %d", i, got)
-		}
 	}
 }

@@ -16,13 +16,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"coloplus-backend/config"
+	"coloplus-backend/internal/adapters/mail"
 	"coloplus-backend/internal/adapters/postgres"
+	"coloplus-backend/internal/adapters/security"
 	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/platform"
+	"coloplus-backend/internal/ports"
 	"coloplus-backend/internal/services"
 	"coloplus-backend/internal/sql/migrations"
 	httpapi "coloplus-backend/internal/transport/http"
@@ -60,8 +64,19 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "migrate" {
 		return postgres.Migrate(ctx, cfg.DB.URL, migrations.FS, log)
 	}
+	// `api create-admin <email> <full name>` creates the first administrator.
+	// The password is read from ADMIN_PASSWORD so it never lands in shell
+	// history or the process list.
+	if len(args) > 0 && args[0] == "create-admin" {
+		return createAdmin(ctx, cfg, log, args[1:])
+	}
+	// `api reset-mfa <email>` switches off a person's two-step verification
+	// when no administrator is left who can do it from the portal.
+	if len(args) > 0 && args[0] == "reset-mfa" {
+		return resetMFA(ctx, cfg, log, args[1:])
+	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }
@@ -86,13 +101,33 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	// Reserved for provider fan-out (email sends, exports) as features land.
-	_ = workers
 
+	loc, err := time.LoadLocation(cfg.App.ReportingTimezone)
+	if err != nil {
+		return fmt.Errorf("loading reporting time zone: %w", err)
+	}
 	tokenMaker, err := token.NewPasetoMaker(cfg.Auth.TokenKey)
 	if err != nil {
 		return fmt.Errorf("creating token maker: %w", err)
 	}
+	secretBox, err := security.NewSecretBox(cfg.Auth.SecretsKey)
+	if err != nil {
+		return err
+	}
+	clock := platform.SystemClock{}
+	hasher := security.NewBcryptHasher(cfg.Auth.BcryptCost)
+
+	// Persistence.
+	txManager := postgres.NewTxManager(db)
+	userRepo := postgres.NewUserRepository(db)
+	siteRepo := postgres.NewSiteRepository(db)
+	reportRepo := postgres.NewReportRepository(db)
+	incidentRepo := postgres.NewIncidentRepository(db)
+	disputeRepo := postgres.NewDisputeRepository(db)
+	acceptanceRepo := postgres.NewAcceptanceRepository(db)
+	notificationRepo := postgres.NewNotificationRepository(db)
+	userTokenRepo := postgres.NewUserTokenRepository(db)
+	recoveryRepo := postgres.NewRecoveryCodeRepository(db)
 
 	// Audit: batched by default, transactional where a feature asks for it.
 	auditStore := postgres.NewAuditRepository(db)
@@ -107,10 +142,67 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	audit := services.NewAuditService(auditStore, auditBatcher, platform.SystemClock{}, log)
+	audit := services.NewAuditService(auditStore, auditBatcher, clock, log)
+
+	mailer, err := newMailer(cfg, log)
+	if err != nil {
+		return err
+	}
+
+	// Use cases.
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
+	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, txManager, notifications, audit, clock, cfg.Mail.BaseURL)
+	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL)
+	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL)
+	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL)
+	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
+	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
+		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, recoveryRepo, txManager, notifications, audit, clock, cfg.Auth.AccessTokenTTL, log)
+	if err != nil {
+		return err
+	}
 
 	// Scheduled jobs register here; a bad cron spec fails the boot.
 	scheduler := jobs.NewScheduler(log)
+	if err := scheduler.Add("dispatch-emails", cfg.Jobs.DispatchEmailsCron, func(ctx context.Context) error {
+		res, err := notifications.Dispatch(ctx)
+		if res.Sent+res.Retrying+res.Failed > 0 {
+			log.Info("emails dispatched", "sent", res.Sent, "retrying", res.Retrying, "failed", res.Failed)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("incident-alerts", cfg.Jobs.IncidentAlertsCron, func(ctx context.Context) error {
+		n, err := incidents.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue incident alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("report-alerts", cfg.Jobs.ReportAlertsCron, func(ctx context.Context) error {
+		n, err := reportAlerts.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue report alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("acceptance-alerts", cfg.Jobs.AcceptanceAlertsCron, func(ctx context.Context) error {
+		n, err := acceptance.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue acceptance alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
 	scheduler.Start()
 
 	// Transport.
@@ -124,11 +216,34 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			Rps:     cfg.RateLimit.Rps,
 			Burst:   cfg.RateLimit.Burst,
 		},
+		AuthRateLimit: middleware.RateLimitConfig{
+			Enabled: cfg.RateLimit.Enabled,
+			Rps:     float64(cfg.RateLimit.AuthPerMinute) / 60,
+			Burst:   cfg.RateLimit.AuthBurst,
+		},
 		RateLimitCtx:   rateLimitCtx,
 		SwaggerEnabled: cfg.Swagger.Enabled,
 		TokenMaker:     tokenMaker,
-		CookieName:     cfg.Auth.CookieName,
-		Health:         services.NewHealthService(db),
+		Cookie: httpapi.CookieConfig{
+			Name: cfg.Auth.CookieName, Domain: cfg.Auth.CookieDomain,
+			Secure: cfg.Auth.CookieSecure, SameSite: sameSite(cfg.Auth.CookieSameSite),
+		},
+		Loc:           loc,
+		Now:           clock.Now,
+		Health:        services.NewHealthService(db),
+		Auth:          authService,
+		Accounts:      accounts,
+		Notifications: notifications,
+		Users:         services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock, accounts, recoveryRepo, notifications),
+		Sites:         services.NewSiteService(siteRepo, txManager, audit),
+		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
+		Incidents:     incidents,
+		Disputes:      disputes,
+		Audit:         audit,
+		Acceptance:    acceptance,
+		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, txManager, audit, clock, loc),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,
@@ -203,4 +318,88 @@ func parseLevel(s string) slog.Level {
 		return slog.LevelInfo
 	}
 	return l
+}
+
+func sameSite(v string) http.SameSite {
+	switch strings.ToLower(v) {
+	case "strict":
+		return http.SameSiteStrictMode
+	case "none":
+		return http.SameSiteNoneMode
+	default:
+		return http.SameSiteLaxMode
+	}
+}
+
+func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args []string) error {
+	password := os.Getenv("ADMIN_PASSWORD")
+	if len(args) < 2 || password == "" {
+		return errors.New("usage: ADMIN_PASSWORD=... api create-admin <email> <full name>")
+	}
+	users, closeDB, err := consoleUserService(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	admin, err := users.CreateInitialAdmin(ctx, args[0], strings.Join(args[1:], " "), password)
+	if err != nil {
+		return err
+	}
+	log.Info("administrator created", "email", admin.Email, "id", admin.ID)
+	return nil
+}
+
+func resetMFA(ctx context.Context, cfg config.Config, log *slog.Logger, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: api reset-mfa <email>")
+	}
+	users, closeDB, err := consoleUserService(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	user, err := users.ResetMFAByEmail(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	log.Info("two-step verification reset; they set it up again at their next sign-in", "email", user.Email, "id", user.ID)
+	return nil
+}
+
+// consoleUserService is the user service for the command-line tools: a small
+// pool, no mail, audit rows written inside the transaction.
+func consoleUserService(ctx context.Context, cfg config.Config, log *slog.Logger) (*services.UserService, func(), error) {
+	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{
+		URL: cfg.DB.URL, MaxConns: 2, MinConns: 0, Timezone: cfg.DB.Timezone,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	db := postgres.NewDB(pool)
+	// Audit rows are written inside the transaction, so no batcher is needed.
+	audit := services.NewAuditService(postgres.NewAuditRepository(db), discardQueue{}, platform.SystemClock{}, log)
+	users := services.NewUserService(postgres.NewUserRepository(db), postgres.NewSiteRepository(db),
+		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{}, nil,
+		postgres.NewRecoveryCodeRepository(db), nil)
+	return users, pool.Close, nil
+}
+
+// discardQueue satisfies ports.AuditQueue for commands that only write
+// transactional audit rows.
+type discardQueue struct{}
+
+func (discardQueue) Add(domain.AuditEvent) bool { return false }
+
+// newMailer picks the email provider named in the config.
+func newMailer(cfg config.Config, log *slog.Logger) (ports.Mailer, error) {
+	if cfg.Mail.Provider == "resend" {
+		return mail.NewResend(mail.ResendConfig{
+			APIKey: cfg.Mail.ResendAPIKey, From: cfg.Mail.From,
+			RatePerSecond: cfg.Mail.RatePerSecond, Timeout: cfg.Mail.Timeout,
+		})
+	}
+	log.Warn("emails are only written to the log (MAIL_PROVIDER=log)")
+	return mail.NewLog(log), nil
 }

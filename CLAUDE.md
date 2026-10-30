@@ -6,7 +6,7 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 - `backend/`: Go API (hexagonal). The current focus.
 - `frontend/`: reserved, empty. The front-end engineer adds the React app and its `CLAUDE.md` (Fusewall conventions, section 9.3 of the standard).
 - `pkg-common/`: shared Go module (PASETO tokens, logger, auth/recover/rate-limit middleware) that the backend builds against through `go.work`. Any other app added to this repo uses it too. **No product names in it** (cookie names etc. come from config), **only add to it, never change what an existing function does**.
-- `docs/`: PRD, architecture standard, `DECISIONS.md`.
+- `docs/`: PRD, architecture standard, `DECISIONS.md`, `MVP_CHECKLIST.md` (what is built against the PRD; update it when an item is finished).
 
 ## Fusewall defaults: bias toward these
 - Backend Go + Gin + pgx/pgxpool + goose + swag. Postgres 18 self-hosted on the shared Contabo VPS (one DB + least-privilege user per product).
@@ -24,7 +24,7 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 6. **Idempotent, locked writes** for anything that can be retried or raced.
 7. **A third party down must not block a page.** singleflight + stale-while-revalidate + back-off.
 8. **Errors:** sentinel (`internal/errors`) + wrapped, mapped to HTTP in one place (`transport/http/errors.go`), worded for the end user.
-9. **Tests:** pure domain tests; service tests with fake ports; adapter tests on real Postgres; a bug fix gets a regression test.
+9. **Tests are kept minimal (owner's priority is building features).** Write a test only for what is critical or risky: money-like and trust rules (approval, scope, immutability, the PRD metrics), security (auth, lockout, access control), concurrency and shutdown behaviour, and anything that has already broken once. Do not write tests for getters, mappers, simple validation, config defaults, happy-path CRUD or library behaviour; testers will catch the obvious. Prefer one integration test through the HTTP stack over many small ones. A bug that slipped through gets one regression test. Do not add tests "for coverage".
 10. **PRD trust rules:** a missing report is never shown as "power available"; every derived figure carries provenance; approval needs a second person; the audit log is append-only.
 11. **Docs stay true:** a new standing rule goes into the right CLAUDE.md in the same change; a questionable choice gets a `docs/DECISIONS.md` entry.
 
@@ -35,4 +35,4 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 - Plan briefly, walking skeleton before breadth, every step compiles and is tested.
 - Ask before: breaking migrations, new infrastructure or dependencies, deleting data, anything outward-facing (deploy, email, firewall).
 - Never commit or push unless asked. No AI/Claude attribution in commits or PRs.
-- Definition of done: builds, lints, tests pass, migration included, docs updated, and what you did not verify is stated.
+- Definition of done: builds, lints, the existing tests pass, migration included, docs updated, and what you did not verify is stated. State plainly what was left untested rather than adding tests to cover it.

@@ -7,7 +7,7 @@ import type {
 } from '../types'
 
 /**
- * Mock-backed auth service (docs/DECISIONS.md 024, plan "Full UI now, mocked
+ * Mock-backed auth service (docs/DECISIONS.md 039, plan "Full UI now, mocked
  * locally"). The backend has no auth feature yet — no User domain type, no
  * migration, no route (see the session's backend inventory). These functions
  * keep the exact call signatures the real axios calls will need, so the

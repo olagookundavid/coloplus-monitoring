@@ -1,5 +1,5 @@
 /**
- * Custom toast store (docs/DECISIONS.md 025 — a deliberate departure from
+ * Custom toast store (docs/DECISIONS.md 040 — a deliberate departure from
  * the Fusewall default, react-hot-toast). Callable from anywhere, not just
  * inside a component (e.g. a future axios interceptor), via a tiny
  * subscribable module-level store that ToastViewport reads with

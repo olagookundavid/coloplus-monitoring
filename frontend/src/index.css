@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Brand — provisional, from the stakeholder mockup (DECISIONS 024).
+  /* Brand — provisional, from the stakeholder mockup (DECISIONS 039).
      Components reference these names, never a raw hex; swap values here
      only, when an official Coloplus brand kit lands. */
   --color-primary-50: #f0fdfa;

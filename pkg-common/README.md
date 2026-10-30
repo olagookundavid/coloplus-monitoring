@@ -1,6 +1,6 @@
 # pkg-common
 
-Shared Go building blocks for Fusewall services in this repo: PASETO tokens, a structured logger, and gin middleware (auth, panic recovery, rate limiting).
+Shared Go building blocks for Fusewall services in this repo: PASETO tokens, RFC 6238 TOTP (standard library only), a structured logger, and gin middleware (auth, panic recovery, rate limiting).
 
 Rules:
 - **No product names.** Cookie names, issuers and limits are passed in as config.
