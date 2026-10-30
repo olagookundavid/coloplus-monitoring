@@ -43,6 +43,7 @@ const (
 	PermReportsReview Permission = "reports.review"
 	PermPublishedRead Permission = "published.read"
 	PermAuditRead     Permission = "audit.read"
+	PermExportsCreate Permission = "exports.create"
 
 	PermNotificationsRead Permission = "notifications.read"
 
@@ -113,6 +114,10 @@ type Actor struct {
 	Permissions map[Permission]struct{}
 	AllSites    bool
 	SiteIDs     map[string]struct{}
+	// MFASetupRequired is set when the person's role needs two-step sign-in
+	// and they have not turned it on yet. Such an actor holds no permissions:
+	// they can only finish setting it up.
+	MFASetupRequired bool
 }
 
 func (a Actor) Can(p Permission) bool {

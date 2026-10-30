@@ -60,7 +60,9 @@ func (a *api) login(c *gin.Context) {
 	}
 	a.setAuthCookie(c, res.Token, res.ExpiresAt)
 	u := toUserDTO(res.User)
-	c.JSON(http.StatusOK, dto.LoginResponse{Status: "ok", AccessToken: res.Token, ExpiresAt: &res.ExpiresAt, User: &u})
+	c.JSON(http.StatusOK, dto.LoginResponse{
+		Status: "ok", MFASetupRequired: res.MFASetupRequired, AccessToken: res.Token, ExpiresAt: &res.ExpiresAt, User: &u,
+	})
 }
 
 // logout godoc
@@ -95,7 +97,15 @@ func (a *api) me(c *gin.Context) {
 		perms = append(perms, string(p))
 	}
 	ids := actor.SiteIDList()
-	c.JSON(http.StatusOK, dto.MeResponse{User: toUserDTO(user), Permissions: perms, AllSites: actor.AllSites, SiteIDs: ids})
+	left, err := a.auth.RecoveryCodesLeft(c.Request.Context(), actor)
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.MeResponse{
+		User: toUserDTO(user), Permissions: perms, AllSites: actor.AllSites, SiteIDs: ids,
+		MFASetupRequired: actor.MFASetupRequired, RecoveryCodesLeft: left,
+	})
 }
 
 // setupMFA godoc
@@ -118,22 +128,50 @@ func (a *api) setupMFA(c *gin.Context) {
 
 // enableMFA godoc
 //
-//	@Summary	Confirm a code and turn on two-step verification
-//	@Tags		auth
-//	@Accept		json
-//	@Param		body	body	dto.EnableMFARequest	true	"Code from the authenticator app"
-//	@Success	204
-//	@Failure	401	{object}	dto.ErrorResponse
-//	@Router		/api/v1/auth/mfa/enable [post]
+//	@Summary		Confirm a code and turn on two-step verification
+//	@Description	Returns ten one-time recovery codes. They are shown this once; only their hashes are kept. People whose role needs two-step verification can do nothing else until this succeeds.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.EnableMFARequest	true	"Code from the authenticator app"
+//	@Success		200		{object}	dto.RecoveryCodesResponse
+//	@Failure		401		{object}	dto.ErrorResponse
+//	@Router			/api/v1/auth/mfa/enable [post]
 func (a *api) enableMFA(c *gin.Context) {
 	var req dto.EnableMFARequest
 	if err := bindJSON(c, &req); err != nil {
 		a.fail(c, err)
 		return
 	}
-	if err := a.auth.EnableMFA(c.Request.Context(), actorFrom(c), req.Code); err != nil {
+	codes, err := a.auth.EnableMFA(c.Request.Context(), actorFrom(c), req.Code)
+	if err != nil {
 		a.fail(c, err)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, dto.RecoveryCodesResponse{RecoveryCodes: codes})
+}
+
+// newRecoveryCodes godoc
+//
+//	@Summary		Replace the recovery codes
+//	@Description	Needs a current authenticator code. The old codes stop working at once. The new ones are shown this once.
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.EnableMFARequest	true	"Code from the authenticator app"
+//	@Success		200		{object}	dto.RecoveryCodesResponse
+//	@Failure		401		{object}	dto.ErrorResponse
+//	@Router			/api/v1/auth/mfa/recovery-codes [post]
+func (a *api) newRecoveryCodes(c *gin.Context) {
+	var req dto.EnableMFARequest
+	if err := bindJSON(c, &req); err != nil {
+		a.fail(c, err)
+		return
+	}
+	codes, err := a.auth.NewRecoveryCodes(c.Request.Context(), actorFrom(c), req.Code)
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.RecoveryCodesResponse{RecoveryCodes: codes})
 }

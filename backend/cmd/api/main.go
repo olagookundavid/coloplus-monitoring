@@ -70,8 +70,13 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "create-admin" {
 		return createAdmin(ctx, cfg, log, args[1:])
 	}
+	// `api reset-mfa <email>` switches off a person's two-step verification
+	// when no administrator is left who can do it from the portal.
+	if len(args) > 0 && args[0] == "reset-mfa" {
+		return resetMFA(ctx, cfg, log, args[1:])
+	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate, create-admin)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }
@@ -122,6 +127,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
+	recoveryRepo := postgres.NewRecoveryCodeRepository(db)
 
 	// Audit: batched by default, transactional where a feature asks for it.
 	auditStore := postgres.NewAuditRepository(db)
@@ -154,7 +160,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		notifications, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
 	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
-		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, audit, clock, cfg.Auth.AccessTokenTTL, log)
+		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, recoveryRepo, txManager, notifications, audit, clock, cfg.Auth.AccessTokenTTL, log)
 	if err != nil {
 		return err
 	}
@@ -228,7 +234,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Auth:          authService,
 		Accounts:      accounts,
 		Notifications: notifications,
-		Users:         services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock, accounts),
+		Users:         services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock, accounts, recoveryRepo, notifications),
 		Sites:         services.NewSiteService(siteRepo, txManager, audit),
 		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
 		Incidents:     incidents,
@@ -236,6 +242,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, txManager, audit, clock, loc),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{
@@ -329,20 +336,11 @@ func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args 
 	if len(args) < 2 || password == "" {
 		return errors.New("usage: ADMIN_PASSWORD=... api create-admin <email> <full name>")
 	}
-	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{
-		URL: cfg.DB.URL, MaxConns: 2, MinConns: 0, Timezone: cfg.DB.Timezone,
-	})
+	users, closeDB, err := consoleUserService(ctx, cfg, log)
 	if err != nil {
 		return err
 	}
-	defer pool.Close()
-
-	db := postgres.NewDB(pool)
-	auditStore := postgres.NewAuditRepository(db)
-	// Audit rows are written inside the transaction, so no batcher is needed.
-	audit := services.NewAuditService(auditStore, discardQueue{}, platform.SystemClock{}, log)
-	users := services.NewUserService(postgres.NewUserRepository(db), postgres.NewSiteRepository(db),
-		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{}, nil)
+	defer closeDB()
 
 	admin, err := users.CreateInitialAdmin(ctx, args[0], strings.Join(args[1:], " "), password)
 	if err != nil {
@@ -350,6 +348,42 @@ func createAdmin(ctx context.Context, cfg config.Config, log *slog.Logger, args 
 	}
 	log.Info("administrator created", "email", admin.Email, "id", admin.ID)
 	return nil
+}
+
+func resetMFA(ctx context.Context, cfg config.Config, log *slog.Logger, args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: api reset-mfa <email>")
+	}
+	users, closeDB, err := consoleUserService(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	user, err := users.ResetMFAByEmail(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	log.Info("two-step verification reset; they set it up again at their next sign-in", "email", user.Email, "id", user.ID)
+	return nil
+}
+
+// consoleUserService is the user service for the command-line tools: a small
+// pool, no mail, audit rows written inside the transaction.
+func consoleUserService(ctx context.Context, cfg config.Config, log *slog.Logger) (*services.UserService, func(), error) {
+	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{
+		URL: cfg.DB.URL, MaxConns: 2, MinConns: 0, Timezone: cfg.DB.Timezone,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	db := postgres.NewDB(pool)
+	// Audit rows are written inside the transaction, so no batcher is needed.
+	audit := services.NewAuditService(postgres.NewAuditRepository(db), discardQueue{}, platform.SystemClock{}, log)
+	users := services.NewUserService(postgres.NewUserRepository(db), postgres.NewSiteRepository(db),
+		security.NewBcryptHasher(cfg.Auth.BcryptCost), postgres.NewTxManager(db), audit, platform.SystemClock{}, nil,
+		postgres.NewRecoveryCodeRepository(db), nil)
+	return users, pool.Close, nil
 }
 
 // discardQueue satisfies ports.AuditQueue for commands that only write

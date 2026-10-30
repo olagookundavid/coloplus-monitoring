@@ -5,18 +5,22 @@ import "time"
 type LoginRequest struct {
 	Email    string `json:"email" example:"ada@coloplus.example"`
 	Password string `json:"password" example:"correct-horse-battery-9"`
-	// TOTPCode is the six-digit authenticator code, needed when two-step
-	// verification is on.
+	// TOTPCode is the six-digit authenticator code, or a recovery code, needed
+	// when two-step verification is on.
 	TOTPCode string `json:"totp_code,omitempty" example:"123456"`
 }
 
 type LoginResponse struct {
 	// Status is "ok" or "mfa_required". With mfa_required no token is issued;
 	// send the same request again with totp_code.
-	Status      string     `json:"status" example:"ok"`
-	AccessToken string     `json:"access_token,omitempty"`
-	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
-	User        *UserDTO   `json:"user,omitempty"`
+	Status string `json:"status" example:"ok"`
+	// MFASetupRequired is true when the person is signed in but their role
+	// needs two-step verification they have not set up: everything else is
+	// refused until they have.
+	MFASetupRequired bool       `json:"mfa_setup_required"`
+	AccessToken      string     `json:"access_token,omitempty"`
+	ExpiresAt        *time.Time `json:"expires_at,omitempty"`
+	User             *UserDTO   `json:"user,omitempty"`
 }
 
 type MeResponse struct {
@@ -24,6 +28,11 @@ type MeResponse struct {
 	Permissions []string `json:"permissions"`
 	AllSites    bool     `json:"all_sites"`
 	SiteIDs     []string `json:"site_ids"`
+	// MFASetupRequired: the role needs two-step verification that is not on
+	// yet, so permissions are empty until it is.
+	MFASetupRequired bool `json:"mfa_setup_required"`
+	// RecoveryCodesLeft is how many unused recovery codes remain.
+	RecoveryCodesLeft int `json:"recovery_codes_left"`
 }
 
 type MFASetupResponse struct {
@@ -33,6 +42,11 @@ type MFASetupResponse struct {
 
 type EnableMFARequest struct {
 	Code string `json:"code" example:"123456"`
+}
+
+// RecoveryCodesResponse carries the codes once. They cannot be shown again.
+type RecoveryCodesResponse struct {
+	RecoveryCodes []string `json:"recovery_codes" example:"K7QM-4XWP-92TD"`
 }
 
 type UserDTO struct {

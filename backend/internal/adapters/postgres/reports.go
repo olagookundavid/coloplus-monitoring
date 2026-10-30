@@ -296,6 +296,17 @@ func (r *ReportRepository) ApprovedBetween(ctx context.Context, siteID string, f
 	return r.collect(ctx, rows)
 }
 
+func (r *ReportRepository) ApprovedInRange(ctx context.Context, siteIDs []string, from, to time.Time) ([]domain.DailyReport, error) {
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT `+reportColumns+` FROM daily_reports
+		 WHERE site_id = ANY($1::uuid[]) AND report_date BETWEEN $2 AND $3 AND status = 'approved'
+		 ORDER BY site_id, report_date`, nonNil(siteIDs), from, to)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	return r.collect(ctx, rows)
+}
+
 func (r *ReportRepository) LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error) {
 	rows, err := r.db.q(ctx).Query(ctx,
 		`SELECT DISTINCT ON (site_id) `+reportColumns+` FROM daily_reports

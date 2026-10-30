@@ -21,13 +21,21 @@ type UserService struct {
 	// accounts sends invitations; nil in the create-admin command, which
 	// always sets a password.
 	accounts *AccountService
+	// recovery and notifier serve ResetMFA; notifier is nil in the
+	// command-line tools.
+	recovery ports.RecoveryCodeRepository
+	notifier *NotificationService
 }
 
 func NewUserService(
 	users ports.UserRepository, sites ports.SiteRepository, hasher ports.PasswordHasher,
 	tx ports.TxManager, audit *AuditService, clock ports.Clock, accounts *AccountService,
+	recovery ports.RecoveryCodeRepository, notifier *NotificationService,
 ) *UserService {
-	return &UserService{users: users, sites: sites, hasher: hasher, tx: tx, audit: audit, clock: clock, accounts: accounts}
+	return &UserService{
+		users: users, sites: sites, hasher: hasher, tx: tx, audit: audit, clock: clock, accounts: accounts,
+		recovery: recovery, notifier: notifier,
+	}
 }
 
 type CreateUserInput struct {
@@ -311,6 +319,59 @@ func (s *UserService) ResendInvite(ctx context.Context, actor domain.Actor, id s
 		}
 		return s.audit.RecordInTx(ctx, domain.AuditEvent{
 			ActorID: actor.UserID, Action: "user.invite_resent", EntityType: "user", EntityID: id,
+		})
+	})
+}
+
+// ResetMFA switches off a person's two-step verification and recovery codes,
+// for someone who has lost both their phone and their codes. They are signed
+// out everywhere and set it up again at their next sign-in, and they are
+// emailed. An administrator cannot reset their own: a stolen session must not
+// be able to remove the second step.
+func (s *UserService) ResetMFA(ctx context.Context, actor domain.Actor, id string) error {
+	if !actor.Can(domain.PermUsersManage) {
+		return apperrors.ErrForbidden
+	}
+	if id == actor.UserID {
+		return fmt.Errorf("%w: ask another administrator to reset your two-step verification", apperrors.ErrForbidden)
+	}
+	user, err := s.users.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	return s.resetMFA(ctx, user, actor.UserID, "api")
+}
+
+// ResetMFAByEmail is the same reset for the server console, when no
+// administrator is left who can do it.
+func (s *UserService) ResetMFAByEmail(ctx context.Context, email string) (domain.User, error) {
+	user, err := s.users.GetByEmail(ctx, domain.NormalizeEmail(email))
+	if err != nil {
+		return domain.User{}, err
+	}
+	return user, s.resetMFA(ctx, user, "", "console")
+}
+
+func (s *UserService) resetMFA(ctx context.Context, user domain.User, byID, via string) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.users.ResetTOTP(ctx, user.ID, s.clock.Now()); err != nil {
+			return err
+		}
+		if err := s.recovery.DeleteAll(ctx, user.ID); err != nil {
+			return err
+		}
+		if s.notifier != nil {
+			subject, body := mfaResetEmail(user.FullName)
+			if _, err := s.notifier.Enqueue(ctx, domain.Notification{
+				Kind: "mfa-reset", Recipient: user.Email, Subject: subject, Body: body,
+				DedupeKey: fmt.Sprintf("mfa-reset:%s:%d", user.ID, s.clock.Now().UnixNano()),
+			}); err != nil {
+				return err
+			}
+		}
+		return s.audit.RecordInTx(ctx, domain.AuditEvent{
+			ActorID: byID, Action: "auth.mfa_reset", EntityType: "user", EntityID: user.ID,
+			Metadata: map[string]any{"via": via},
 		})
 	})
 }

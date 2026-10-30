@@ -101,6 +101,28 @@ func (r *UserRepository) SetTOTP(ctx context.Context, id, sealedSecret string, e
 	return err
 }
 
+func (r *UserRepository) ResetTOTP(ctx context.Context, id string, at time.Time) error {
+	tag, err := r.db.q(ctx).Exec(ctx,
+		`UPDATE users SET totp_secret = '', totp_enabled = FALSE, password_changed_at = $2, updated_at = $2
+		 WHERE id = $1`, id, at)
+	if err != nil {
+		return mapErr(err, "")
+	}
+	if tag.RowsAffected() == 0 {
+		return apperrors.ErrNotFound
+	}
+	return nil
+}
+
+func (r *UserRepository) RoleRequiresMFA(ctx context.Context, role domain.Role) (bool, error) {
+	var required bool
+	err := r.db.q(ctx).QueryRow(ctx, `SELECT mfa_required FROM roles WHERE id = $1`, string(role)).Scan(&required)
+	if err != nil {
+		return false, mapErr(err, "")
+	}
+	return required, nil
+}
+
 func (r *UserRepository) PermissionsForRole(ctx context.Context, role domain.Role) ([]domain.Permission, error) {
 	rows, err := r.db.q(ctx).Query(ctx, `SELECT permission_id FROM role_permissions WHERE role_id = $1`, string(role))
 	if err != nil {

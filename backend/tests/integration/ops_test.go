@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/csv"
 	"strings"
 	"testing"
 	"time"
@@ -124,4 +125,78 @@ func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
 		t.Fatalf("Airtel sees more than the published incident: %s", air.Raw)
 	}
 	w.expect(w.call("GET", url, nil, w.ot), 404)
+}
+
+// An export must not turn a gap into a figure, must carry the dispute state,
+// stay inside the caller's sites, and leave an audit trail.
+func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
+	w := newWorkflow(t)
+	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	reviewer := w.login(revEmail)
+	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elsewhere := w.login(elseEmail)
+
+	orig := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/approve", nil, w.supervisor), 200)
+	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/disputes", map[string]any{
+		"report_id": orig, "category": "wrong_metric", "title": "Figure looks low",
+	}, reviewer), 201)
+
+	from, _ := w.reportDay(2)
+	to, _ := w.reportDay(1)
+	url := "/api/v1/exports/daily-summaries.csv?from=" + from + "&to=" + to
+
+	rows := func(r reply) [][]string {
+		t.Helper()
+		recs, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(r.Raw, "\xef\xbb\xbf"))).ReadAll()
+		if err != nil {
+			t.Fatalf("not valid CSV: %v\n%s", err, r.Raw)
+		}
+		return recs
+	}
+	check := func(tok string) {
+		recs := rows(w.expect(w.call("GET", url, nil, tok), 200))
+		col := map[string]int{}
+		for i, h := range recs[0] {
+			col[h] = i
+		}
+		var gap, day []string
+		for _, rec := range recs[1:] {
+			if rec[col["site_id"]] != w.site {
+				continue
+			}
+			switch rec[col["date"]] {
+			case from:
+				gap = rec
+			case to:
+				day = rec
+			}
+		}
+		if gap == nil || day == nil {
+			t.Fatalf("expected a row for each day of the site: %v", recs)
+		}
+		if gap[col["report_status"]] != "no_approved_report" || gap[col["served_minutes"]] != "" ||
+			gap[col["outage_minutes"]] != "" || gap[col["coverage_percent"]] != "" || gap[col["reported_availability_percent"]] != "" || gap[col["confirmed_served_share_percent"]] != "" {
+			t.Fatalf("a day without a report must stay a gap, got %v", gap)
+		}
+		if day[col["report_status"]] != "approved" || day[col["report_id"]] != orig || day[col["served_minutes"]] != "1380" ||
+			day[col["open_disputes"]] != "1" || day[col["formula_version"]] == "" || day[col["assumptions"]] == "" {
+			t.Fatalf("approved day lost its provenance: %v", day)
+		}
+	}
+	check(w.supervisor)
+	check(w.airtel)
+
+	w.expect(w.call("GET", url, nil, w.ot), 403)                         // a reporter has no export right
+	w.expect(w.call("GET", url+"&site_id="+w.site, nil, elsewhere), 404) // not their site
+	for _, rec := range rows(w.expect(w.call("GET", url, nil, elsewhere), 200))[1:] {
+		if rec[0] == w.site {
+			t.Fatalf("export leaked a site outside the caller's scope: %v", rec)
+		}
+	}
+	w.expect(w.call("GET", "/api/v1/exports/daily-summaries.csv?from="+from+"&to=2999-01-01", nil, w.supervisor), 400)
+	if n := w.countAudit("export.daily_summaries", "daily_summaries:"+from+":"+to); n < 2 {
+		t.Fatalf("exports were not audited: %d", n)
+	}
 }

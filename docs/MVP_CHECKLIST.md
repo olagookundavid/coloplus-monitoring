@@ -30,8 +30,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] User administration and site assignments
 - [x] Invitation and password-reset links by email (single use, expiring, a password change ends older sessions)
 - [x] Authenticator-app (TOTP) setup and use, secrets encrypted at rest
-- [ ] **Enforce** two-step sign-in for administrators, supervisors and all Airtel users. **partial** (optional today). Required before the pilot (DECISIONS 024)
-- [ ] Recovery codes for a lost phone. Needed together with enforcement
+- [x] **Enforced** two-step sign-in for administrators, supervisors and all Airtel users: until enrolled they hold no permissions (DECISIONS 038). Confirm the role list with Airtel
+- [x] Recovery codes for a lost phone (one-time, hashed, emailed on use), regenerate, administrator or console reset of a lost second step
 - [ ] Model administrator role (drafts formulas; separate approver). Arrives with the formula engine
 - [ ] Management / auditor role (read-only portfolio and audit scope)
 
@@ -99,7 +99,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Both parties' comments kept; internal Coloplus notes and staff ids never reach Airtel or their emails
 - [x] Reports show `open_disputes`, so a disputed figure says so
 - [ ] Evidence attachments on disputes. **new dependency** (R2); until then evidence is described in comments
-- [ ] Dispute state carried into exports, separately identifiable. Waits for exports (section 12)
+- [x] Dispute state carried into exports (open and total disputes per site-day, corrections do not hide them)
 - [ ] Overdue-dispute alerts. **needs input** (an agreed response time)
 
 ## 9. Commissioning and acceptance (PRD 9)
@@ -133,8 +133,9 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 12. Reports and exports (PRD 10)
 
 - [ ] Daily site summaries, weekly exception report, monthly performance pack, incident register, maintenance log, commissioning backlog
-- [ ] CSV and XLSX export; printable or PDF. **new dependency** (XLSX, PDF)
-- [ ] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state
+- [x] CSV export of daily summaries; gaps stay blank rows
+- [ ] XLSX export; printable or PDF. **new dependency** (XLSX, PDF)
+- [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
 - [ ] Immutable report snapshots with version history; "never overwrite an issued report"
 - [ ] Asynchronous generation with visible progress
 
@@ -142,7 +143,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [x] Authentication, approvals, corrections, publications, disputes, user changes recorded; append-only
 - [x] Audit search (`GET /audit`): by actor, action, entity, time; needs `audit.read`; site-scoped readers see only their sites
-- [ ] Audit of exports (waits for exports)
+- [x] Audit of exports (`export.daily_summaries`, in a transaction)
 - [ ] 24-month online retention and a deletion policy. **needs input** (joint approval)
 
 ## 14. Non-functional targets (PRD 11) and AT11
@@ -164,7 +165,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 | AT06 | Reporter cannot self-approve; a correction keeps the original and makes a new revision | Done, tested |
 | AT07 | Formula activation needs approval; old results reproduce exactly | Not started |
 | AT08 | Fuel movements reconcile; missing values block a false variance | Not started |
-| AT09 | Airtel can raise and track a dispute; exports keep provenance and dispute state | Disputes: done, tested. Exports: not built |
+| AT09 | Airtel can raise and track a dispute; exports keep provenance and dispute state | Disputes: done, tested. Exports: CSV done with provenance and dispute state, tested; XLSX and PDF open |
 | AT10 | Acceptance states stay separate from operational status | Done, tested. KPI rule is a default awaiting Airtel's confirmation |
 | AT11 | Load, access control, notification failure and backup restore meet the pilot targets | Not started |
 
@@ -184,4 +185,5 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 17. Front end (separate engineer)
 
 - [ ] React app and its `CLAUDE.md` in `frontend/`
+- Sign-in screens: login answers `mfa_required` (ask for the authenticator or a recovery code in the same `totp_code` field) or `ok` with `mfa_setup_required` (send them to setup: `/auth/mfa/setup`, show the QR, `/auth/mfa/enable`, then show the ten `recovery_codes` once with a "I have saved these" step)
 - Routes the emailed links assume: `/accept-invite`, `/reset-password`, `/incidents/:id`, `/disputes/:id`, `/sites/:id`, `/sites/:id/acceptance`

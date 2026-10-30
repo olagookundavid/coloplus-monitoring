@@ -114,3 +114,21 @@ func (a *api) updateUser(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, toUserDetail(view))
 }
+
+// resetUserMFA godoc
+//
+//	@Summary		Reset a person's two-step verification
+//	@Description	For someone who lost both their phone and their recovery codes. Turns it off, deletes their recovery codes, signs them out everywhere and emails them; they set it up again at their next sign-in. You cannot reset your own.
+//	@Tags			users
+//	@Param			id	path	string	true	"User id"
+//	@Success		204
+//	@Failure		403	{object}	dto.ErrorResponse
+//	@Failure		404	{object}	dto.ErrorResponse
+//	@Router			/api/v1/users/{id}/reset-mfa [post]
+func (a *api) resetUserMFA(c *gin.Context) {
+	if err := a.users.ResetMFA(c.Request.Context(), actorFrom(c), c.Param("id")); err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}

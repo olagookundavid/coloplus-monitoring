@@ -43,6 +43,8 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 | 034 | Disputes: two parties, two acts, a real correction | Product decision | Accepted (confirm with Airtel) |
 | 035 | Audit search and the overdue-report alert | Product decision | Accepted |
 | 036 | Commissioning and acceptance; the site overview | Product decision | Accepted (confirm the KPI rule with Airtel) |
+| 037 | CSV exports with provenance, no new dependency | Product decision | Accepted |
+| 038 | Two-step sign-in enforced by role, with recovery codes | Product decision | Accepted (confirm the role list) |
 
 ## Template
 ### NNN: Title
@@ -126,7 +128,7 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 - **Type:** Product decision · **Status:** Accepted
 - **Context:** the PRD requires two-step verification for privileged and Airtel users, revocation, session expiry and an audit of sign-ins. The standard names PASETO and bcrypt but no TOTP library.
 - **Decision:** email + password (bcrypt, cost 12, 12 to 72 characters, one letter and one number). Optional authenticator-app step using RFC 6238 TOTP written with the standard library in `pkg-common/totp` (tested against the RFC vectors), so no new dependency. TOTP seeds are stored encrypted (AES-256-GCM, `SECRETS_KEY`). The PASETO access token (12h) is set as an HttpOnly cookie named by `AUTH_COOKIE_NAME` and also returned for API clients. Every authenticated request reloads the user, so deactivation takes effect immediately. Five failed attempts lock the account for 15 minutes; sign-in also has its own per-IP limit. State-changing requests must be `application/json`, which doubles as a CSRF guard.
-- **Consequences:** two-step is available but **not yet enforced**: a policy that requires it for Airtel and privileged roles, and recovery codes for lost phones, are still to build. Losing `SECRETS_KEY` disables everyone's two-step login.
+- **Consequences:** (enforcement and recovery codes were added later, see 038) two-step was available but **not enforced**: a policy that requires it for Airtel and privileged roles, and recovery codes for lost phones, are still to build. Losing `SECRETS_KEY` disables everyone's two-step login.
 - **Revisit when:** before the pilot (enforce two-step), or when Airtel SSO is agreed.
 
 ## 025: Roles, permissions and site scope
@@ -207,3 +209,20 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 - **Site overview:** `GET /sites/:id/overview?days=` returns the profile, condition and as-of time, the last days (a day with no approved report is a visible gap, never zero or available), open incidents, open disputes and the acceptance process in one call. Each section follows the same permission and scope rules as its own endpoint: Airtel sees published incidents only, and an out-of-scope site is a 404.
 - **Not built yet:** documents on the dossier (needs R2), an escalation path beyond the second email, per-milestone due dates.
 
+## 037: CSV exports with provenance, no new dependency
+- **Type:** Product decision · **Status:** Accepted
+- **Decision:** `GET /exports/daily-summaries.csv?from&to[&site_id]` gives one row per site and reporting day (approved reports only), using the standard library only. It needs its own right, `exports.create` (administrator, supervisor, Airtel viewer and reviewer; not the reporter), apart from reading the same figures on screen. At most 92 days and 100,000 rows per file; a bigger ask is refused with a message, not truncated.
+- **Provenance on every row:** site ids and codes, date, time zone, service window, report id and revision, approval time, whether it is a correction, minutes (eligible, served, outage, unknown) and percentages (coverage, reported availability, confirmed served share), provisional flag, basis, declared intervals ignored, open and total disputes, formula and version, generation time and the assumptions in words. Repeating them per row is deliberate: a row pasted into another sheet keeps its meaning.
+- **Gaps stay gaps:** a day with no approved report is still a row, marked `no_approved_report`, with eligible and unknown minutes (the whole window is unknown) and every served, outage and percentage cell blank, never zero (PRD trust rule). Dispute state counts disputes against any revision of that day, plus period-only disputes covering it, so a correction does not hide the dispute behind it.
+- **Audit:** each export writes `export.daily_summaries` in a transaction, with range, site count and row count. Site scope comes from the same actor as every other read; an out-of-scope `site_id` is a 404.
+- **Safe to open:** text cells that start with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet never runs them as a formula; a byte order mark makes Excel read accents correctly.
+- **Not built yet:** XLSX and PDF (new dependencies, waiting for a yes), the incident register, weekly and monthly packs, immutable stored snapshots, asynchronous generation for large files. The file is built in memory, which the row cap makes safe for now.
+
+## 038: Two-step sign-in enforced by role, with recovery codes
+- **Type:** Product decision · **Status:** Accepted (confirm the role list with Airtel). Completes the "not yet enforced" consequence of 024.
+- **Decision:** the PRD asks for MFA for privileged users and Airtel access. A role flag, `roles.mfa_required`, marks administrator, supervisor, Airtel viewer and Airtel reviewer; reporters are not required (they can still turn it on). Code asks the flag, never a role name.
+- **Enforcement by construction:** a person whose role requires it and who has not turned it on signs in (so they can enrol), but `Authenticate` gives them an actor with **no permissions** and `MFASetupRequired`. Every service already refuses an actor without the right permission, so nothing else needs a route allow-list; only `/auth/me`, `/auth/mfa/setup`, `/auth/mfa/enable` and logout work. The same session becomes fully useful the moment they enable it. A reset puts them back in this state at once, even before older sessions expire.
+- **Recovery codes:** ten codes of 12 characters (60 bits, no look-alike letters), shown once when two-step is enabled, only SHA-256 hashes stored, each spends once (an atomic update, safe under concurrent requests). A code is accepted in the same field as the authenticator code, in any case and with or without dashes. A wrong code, of either kind, counts towards the lockout. Using one is audited and emailed to its owner in the same transaction. Making a new set (`POST /auth/mfa/recovery-codes`) needs a current authenticator code and retires the old set.
+- **Lost phone and codes:** `POST /users/:id/reset-mfa` (users.manage) turns it off, deletes the codes, ends older sessions and emails the person; they enrol again at next sign-in. An administrator cannot reset their own, so a stolen admin session cannot remove the second step. If no administrator is left, `api reset-mfa <email>` does the same from the server console (audited, `via: console`).
+- **Contract change for the front end:** `POST /auth/mfa/enable` now answers 200 with `recovery_codes` (it was 204). `/auth/me` and the login response carry `mfa_setup_required`; `/auth/me` also gives `recovery_codes_left`.
+- **Known gaps:** a TOTP code can be replayed within its 30-second window (no used-step memory yet); the "ends older sessions" rule keeps the existing 2-second clock-skew tolerance; recovery codes are hashed with plain SHA-256 (adequate for 60 random bits behind a database that is not public, but a keyed hash would be stronger). Airtel SSO would replace all of this (024's revisit trigger).

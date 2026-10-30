@@ -26,6 +26,7 @@ import (
 
 	"pkg-common/middleware"
 	"pkg-common/token"
+	"pkg-common/totp"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -52,6 +53,9 @@ type stack struct {
 	hasher  *security.BcryptHasher
 	loc     *time.Location
 	batcher *platform.Batcher[domain.AuditEvent]
+	box     *security.SecretBox
+	// authenticator holds each enrolled test user's TOTP secret by email.
+	authenticator map[string]string
 
 	mailer        *fakeMailer
 	notifications *services.NotificationService
@@ -131,6 +135,7 @@ func newStack(t *testing.T) *stack {
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
+	recoveryRepo := postgres.NewRecoveryCodeRepository(db)
 	auditStore := postgres.NewAuditRepository(db)
 
 	batcher, err := platform.NewBatcher(platform.BatcherConfig{
@@ -142,13 +147,13 @@ func newStack(t *testing.T) *stack {
 	t.Cleanup(func() { _ = batcher.Close(context.Background()) })
 	audit := services.NewAuditService(auditStore, batcher, clock, log)
 
+	mailer := &fakeMailer{}
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
 	auth, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(maker),
-		security.NewTOTP("Coloplus"), box, audit, clock, time.Hour, log)
+		security.NewTOTP("Coloplus"), box, recoveryRepo, tx, notifications, audit, clock, time.Hour, log)
 	if err != nil {
 		t.Fatal(err)
 	}
-	mailer := &fakeMailer{}
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
@@ -166,7 +171,7 @@ func newStack(t *testing.T) *stack {
 		Health:   services.NewHealthService(db),
 		Auth:     auth,
 		Accounts: accounts, Notifications: notifications,
-		Users:         services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock, accounts),
+		Users:         services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock, accounts, recoveryRepo, notifications),
 		Sites:         services.NewSiteService(siteRepo, tx, audit),
 		Reports:       services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
 		Incidents:     incidents,
@@ -174,9 +179,11 @@ func newStack(t *testing.T) *stack {
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, tx, audit, clock, loc),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
+		box: box, authenticator: map[string]string{},
 		mailer: mailer, notifications: notifications, incidents: incidents, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
 }
 
@@ -247,6 +254,33 @@ func (s *stack) expect(r reply, code int) reply {
 // seedUser inserts a user directly, as a stand-in for the first-admin command.
 func (s *stack) seedUser(role domain.Role, siteIDs ...string) (email, id string) {
 	s.t.Helper()
+	email, id = s.seedUserWithoutMFA(role, siteIDs...)
+	// Roles that must sign in with two steps are enrolled, as they would be
+	// in real life, so the other tests exercise the normal sign-in.
+	required, err := s.users.RoleRequiresMFA(context.Background(), role)
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	if required {
+		secret, err := totp.NewSecret()
+		if err != nil {
+			s.t.Fatal(err)
+		}
+		sealed, err := s.box.Seal(secret)
+		if err != nil {
+			s.t.Fatal(err)
+		}
+		if err := s.users.SetTOTP(context.Background(), id, sealed, true); err != nil {
+			s.t.Fatal(err)
+		}
+		s.authenticator[email] = secret
+	}
+	return email, id
+}
+
+// seedUserWithoutMFA creates a user who has not set up two-step verification.
+func (s *stack) seedUserWithoutMFA(role domain.Role, siteIDs ...string) (email, id string) {
+	s.t.Helper()
 	ctx := context.Background()
 	hash, err := s.hasher.Hash(testPassword)
 	if err != nil {
@@ -265,10 +299,24 @@ func (s *stack) seedUser(role domain.Role, siteIDs ...string) (email, id string)
 	return email, u.ID
 }
 
+// codeFor is the authenticator code an enrolled test user would read off their phone.
+func (s *stack) codeFor(email string) string {
+	s.t.Helper()
+	code, err := totp.Code(s.authenticator[email], time.Now())
+	if err != nil {
+		s.t.Fatal(err)
+	}
+	return code
+}
+
 // login signs in and returns the access token.
 func (s *stack) login(email string) string {
 	s.t.Helper()
-	r := s.expect(s.call("POST", "/api/v1/auth/login", map[string]any{"email": email, "password": testPassword}, ""), 200)
+	body := map[string]any{"email": email, "password": testPassword}
+	if _, ok := s.authenticator[email]; ok {
+		body["totp_code"] = s.codeFor(email)
+	}
+	r := s.expect(s.call("POST", "/api/v1/auth/login", body, ""), 200)
 	return r.str("access_token")
 }
 

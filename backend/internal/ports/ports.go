@@ -96,6 +96,10 @@ type UserRepository interface {
 	RecordLoginSuccess(ctx context.Context, id string, at time.Time) error
 	RecordLoginFailure(ctx context.Context, id string, failed int, lockedUntil *time.Time) error
 	SetTOTP(ctx context.Context, id, sealedSecret string, enabled bool) error
+	// ResetTOTP turns two-step verification off and ends older sessions.
+	ResetTOTP(ctx context.Context, id string, at time.Time) error
+	// RoleRequiresMFA says whether the role must sign in with two steps.
+	RoleRequiresMFA(ctx context.Context, role domain.Role) (bool, error)
 	// SetPassword stores a new hash, clears lockout, and ends older sessions.
 	SetPassword(ctx context.Context, id, hash string, at time.Time) error
 	// UsersWithPermission returns active users whose role holds the
@@ -105,6 +109,18 @@ type UserRepository interface {
 	PermissionsForRole(ctx context.Context, role domain.Role) ([]domain.Permission, error)
 	SiteIDsForUser(ctx context.Context, userID string) ([]string, error)
 	SetUserSites(ctx context.Context, userID string, siteIDs []string) error
+}
+
+// RecoveryCodeRepository keeps the hashes of a person's one-time recovery codes.
+type RecoveryCodeRepository interface {
+	// Replace removes all the person's codes and stores the new hashes.
+	Replace(ctx context.Context, userID string, hashes []string) error
+	// Consume uses a code up. It reports false when there is no unused match,
+	// and never succeeds twice for one code, even under concurrent requests.
+	Consume(ctx context.Context, userID, hash string, at time.Time) (bool, error)
+	// Remaining counts the unused codes.
+	Remaining(ctx context.Context, userID string) (int, error)
+	DeleteAll(ctx context.Context, userID string) error
 }
 
 // SiteFilter narrows a site listing. SiteIDs applies only when AllSites is
@@ -168,6 +184,9 @@ type ReportRepository interface {
 	// ApprovedBetween returns one site's approved reports, with intervals,
 	// for report dates from..to inclusive, newest first.
 	ApprovedBetween(ctx context.Context, siteID string, from, to time.Time) ([]domain.DailyReport, error)
+	// ApprovedInRange returns the sites' approved reports, with intervals, for
+	// report dates from..to inclusive, ordered by site and date.
+	ApprovedInRange(ctx context.Context, siteIDs []string, from, to time.Time) ([]domain.DailyReport, error)
 	// LatestApproved returns, per site, the approved report with the latest
 	// report date, with intervals.
 	LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error)
@@ -214,6 +233,12 @@ type IncidentRepository interface {
 	Counts(ctx context.Context, f IncidentFilter, now time.Time) (IncidentCounts, error)
 }
 
+// DisputeDay is the dispute state of one site and reporting day.
+type DisputeDay struct{ Open, Total int }
+
+// DayKey identifies one site's reporting day in maps keyed by day.
+func DayKey(siteID string, date time.Time) string { return siteID + "|" + date.Format("2006-01-02") }
+
 // DisputeFilter narrows a dispute listing.
 type DisputeFilter struct {
 	AllSites bool
@@ -253,6 +278,10 @@ type DisputeRepository interface {
 	Counts(ctx context.Context, f DisputeFilter) (DisputeCounts, error)
 	// OpenByReport counts, per report, the disputes that have not closed.
 	OpenByReport(ctx context.Context, reportIDs []string) (map[string]int, error)
+	// ByDay counts the disputes that touch each site and reporting day in
+	// from..to: against any revision of that day's report, or covering the day
+	// by period. Keyed by DayKey.
+	ByDay(ctx context.Context, siteIDs []string, from, to time.Time) (map[string]DisputeDay, error)
 }
 
 // AcceptanceFilter narrows the commissioning backlog. Scope works as in SiteFilter.

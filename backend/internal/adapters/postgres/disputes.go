@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/ports"
@@ -197,6 +198,75 @@ func (r *DisputeRepository) OpenByReport(ctx context.Context, reportIDs []string
 			return nil, fmt.Errorf("scanning dispute counts: %w", err)
 		}
 		out[id] = n
+	}
+	return out, rows.Err()
+}
+
+func (r *DisputeRepository) ByDay(ctx context.Context, siteIDs []string, from, to time.Time) (map[string]ports.DisputeDay, error) {
+	out := map[string]ports.DisputeDay{}
+	if len(siteIDs) == 0 {
+		return out, nil
+	}
+	add := func(siteID string, date time.Time, closed bool) {
+		k := ports.DayKey(siteID, date)
+		d := out[k]
+		d.Total++
+		if !closed {
+			d.Open++
+		}
+		out[k] = d
+	}
+
+	// Against a report: any revision of that day counts, so a correction does
+	// not hide the dispute that led to it.
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT r.site_id::text, r.report_date, d.status = 'closed'
+		 FROM disputes d JOIN daily_reports r ON r.id = d.report_id
+		 WHERE r.site_id = ANY($1::uuid[]) AND r.report_date BETWEEN $2 AND $3`, siteIDs, from, to)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	for rows.Next() {
+		var siteID string
+		var date time.Time
+		var closed bool
+		if err := rows.Scan(&siteID, &date, &closed); err != nil {
+			rows.Close()
+			return nil, fmt.Errorf("scanning disputes by day: %w", err)
+		}
+		add(siteID, date, closed)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// By period alone: counted on every day the period covers.
+	rows, err = r.db.q(ctx).Query(ctx,
+		`SELECT site_id::text, period_from, period_to, status = 'closed'
+		 FROM disputes
+		 WHERE report_id IS NULL AND period_from IS NOT NULL AND site_id = ANY($1::uuid[])
+		   AND period_from <= $3 AND period_to >= $2`, siteIDs, from, to)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var siteID string
+		var pf, pt time.Time
+		var closed bool
+		if err := rows.Scan(&siteID, &pf, &pt, &closed); err != nil {
+			return nil, fmt.Errorf("scanning disputes by period: %w", err)
+		}
+		if pf.Before(from) {
+			pf = from
+		}
+		if pt.After(to) {
+			pt = to
+		}
+		for d := pf; !d.After(pt); d = d.AddDate(0, 0, 1) {
+			add(siteID, d, closed)
+		}
 	}
 	return out, rows.Err()
 }

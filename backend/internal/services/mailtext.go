@@ -27,6 +27,20 @@ func resetEmail(name, link string, ttl time.Duration) (subject, body string) {
 			name, link, humanDuration(ttl))
 }
 
+func recoveryCodeUsedEmail(name string, left int) (subject, body string) {
+	return "A recovery code was used on your Coloplus account",
+		fmt.Sprintf("Hello %s,\n\nA one-time recovery code was just used to sign in to your Coloplus account. "+
+			"You have %d recovery codes left.\n\nIf this was you, no action is needed; consider creating a new set once you are signed in. "+
+			"If it was not you, tell your administrator straight away and change your password.\n", name, left)
+}
+
+func mfaResetEmail(name string) (subject, body string) {
+	return "Two-step verification was reset on your Coloplus account",
+		fmt.Sprintf("Hello %s,\n\nAn administrator reset two-step verification on your Coloplus account, "+
+			"and you have been signed out everywhere. At your next sign-in you will set it up again.\n\n"+
+			"If you did not ask for this, tell your administrator straight away.\n", name)
+}
+
 func overdueIncidentEmail(i domain.Incident, site domain.Site, due time.Time, loc *time.Location, link string) (subject, body string) {
 	return fmt.Sprintf("Update overdue: %s %s", incidentRef(i.Number), i.Title),
 		fmt.Sprintf("The update promised for %s %s at %s was due %s and has not been given.\n\n"+

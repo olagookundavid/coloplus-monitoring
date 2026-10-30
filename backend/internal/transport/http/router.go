@@ -48,6 +48,7 @@ type Deps struct {
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
+	Exports       *services.ExportService
 	Dashboard     *services.DashboardService
 }
 
@@ -68,6 +69,7 @@ type api struct {
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
+	exports       *services.ExportService
 	dashboard     *services.DashboardService
 }
 
@@ -107,7 +109,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -130,12 +132,14 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/auth/me", h.me)
 	authed.POST("/auth/mfa/setup", h.setupMFA)
 	authed.POST("/auth/mfa/enable", h.enableMFA)
+	authed.POST("/auth/mfa/recovery-codes", h.newRecoveryCodes)
 
 	authed.POST("/users", h.createUser)
 	authed.GET("/users", h.listUsers)
 	authed.GET("/users/:id", h.getUser)
 	authed.PATCH("/users/:id", h.updateUser)
 	authed.POST("/users/:id/invite", h.resendInvite)
+	authed.POST("/users/:id/reset-mfa", h.resetUserMFA)
 
 	authed.GET("/notifications", h.listNotifications)
 	authed.POST("/notifications/:id/retry", h.retryNotification)
@@ -175,6 +179,8 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/sites/:id/acceptance", h.getAcceptance)
 	authed.POST("/sites/:id/acceptance/transition", h.transitionAcceptance)
 	authed.GET("/acceptances", h.listAcceptances)
+
+	authed.GET("/exports/daily-summaries.csv", h.exportDailySummaries)
 
 	authed.GET("/audit", h.searchAudit)
 

@@ -406,7 +406,7 @@ func TestAuth_LockoutDeactivationAndMFA(t *testing.T) {
 	s.expect(s.call("POST", "/api/v1/auth/mfa/enable", map[string]any{"code": "000000"}, tok), 401)
 
 	code, _ := totp.Code(secret, time.Now())
-	s.expect(s.call("POST", "/api/v1/auth/mfa/enable", map[string]any{"code": code}, tok), 204)
+	s.expect(s.call("POST", "/api/v1/auth/mfa/enable", map[string]any{"code": code}, tok), 200)
 
 	step1 := s.expect(s.call("POST", "/api/v1/auth/login", map[string]any{"email": email, "password": testPassword}, ""), 200)
 	if step1.str("status") != "mfa_required" || step1.str("access_token") != "" {
