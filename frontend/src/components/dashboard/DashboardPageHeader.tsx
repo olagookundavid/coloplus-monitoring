@@ -4,7 +4,7 @@ import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { ButtonLink } from '../ui'
 
 export interface DashboardPageHeaderProps {
-  eyebrow: string
+  eyebrow?: string
   title: string
   subtitle?: ReactNode
   actions?: ReactNode
@@ -28,7 +28,11 @@ export function DashboardPageHeader({
             {back.label}
           </ButtonLink>
         )}
-        <p className="text-sm font-semibold uppercase tracking-wide text-primary-600">{eyebrow}</p>
+        {eyebrow && (
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary-600">
+            {eyebrow}
+          </p>
+        )}
         <h1 className="mt-1 text-2xl font-bold text-text sm:text-3xl">{title}</h1>
         {subtitle && <div className="mt-1 text-sm text-text-muted">{subtitle}</div>}
       </div>

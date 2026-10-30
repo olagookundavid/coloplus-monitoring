@@ -1,61 +1,98 @@
 /* eslint-disable react-refresh/only-export-components -- Provider and its
    useAuth() hook are intentionally colocated in one context file. */
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 
-import { AUTH_STORAGE_KEY } from '../constants'
-import type { AuthSession, User } from '../types'
+import { fetchMe, logout as logoutRequest } from '../services'
+import type { User } from '../types'
 
-interface AuthContextValue {
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
+
+interface SessionState {
   user: User | null
-  session: AuthSession | null
+  permissions: string[]
+  allSites: boolean
+  siteIds: string[]
+  mfaSetupRequired: boolean
+  recoveryCodesLeft: number
+}
+
+interface AuthContextValue extends SessionState {
+  status: AuthStatus
   isAuthenticated: boolean
-  setSession: (session: AuthSession) => void
-  logout: () => void
+  // Returns the freshly-fetched user (or null) so a caller that needs it
+  // right away -- e.g. to pick a role-appropriate landing page -- doesn't
+  // have to wait for a re-render to see it on context.
+  refreshSession: () => Promise<User | null>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function readStoredSession(): AuthSession | null {
-  try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as AuthSession
-    if (new Date(parsed.expiresAt).getTime() <= Date.now()) {
-      localStorage.removeItem(AUTH_STORAGE_KEY)
-      return null
-    }
-    // A session stored before `User.name` existed won't have it — treat it
-    // the same as expired rather than handing components a half-shaped
-    // user, so a stale browser session bounces back to login instead of
-    // crashing the first component that reads `user.name`.
-    if (!parsed.user?.name) {
-      localStorage.removeItem(AUTH_STORAGE_KEY)
-      return null
-    }
-    return parsed
-  } catch {
-    return null
+const EMPTY_PERMISSIONS: string[] = []
+const EMPTY_SITE_IDS: string[] = []
+
+function emptySession(): SessionState {
+  return {
+    user: null,
+    permissions: EMPTY_PERMISSIONS,
+    allSites: false,
+    siteIds: EMPTY_SITE_IDS,
+    mfaSetupRequired: false,
+    recoveryCodesLeft: 0,
   }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSessionState] = useState<AuthSession | null>(() => readStoredSession())
+  const [status, setStatus] = useState<AuthStatus>('loading')
+  const [session, setSession] = useState<SessionState>(() => emptySession())
+  const initialized = useRef(false)
 
-  const setSession = (next: AuthSession) => {
-    setSessionState(next)
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next))
+  // The session cookie is HttpOnly, so the client has no way to know
+  // whether one exists without asking the server — /auth/me is the one
+  // source of truth, called once on mount and again after every login.
+  async function refreshSession(): Promise<User | null> {
+    try {
+      const me = await fetchMe()
+      setSession({
+        user: me.user,
+        permissions: me.permissions,
+        allSites: me.allSites,
+        siteIds: me.siteIds,
+        mfaSetupRequired: me.mfaSetupRequired,
+        recoveryCodesLeft: me.recoveryCodesLeft,
+      })
+      setStatus('authenticated')
+      return me.user
+    } catch {
+      setSession(emptySession())
+      setStatus('unauthenticated')
+      return null
+    }
   }
 
-  const logout = () => {
-    setSessionState(null)
-    localStorage.removeItem(AUTH_STORAGE_KEY)
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    void refreshSession()
+  }, [])
+
+  async function logout() {
+    try {
+      await logoutRequest()
+    } catch {
+      // A failed network call shouldn't trap the user signed in locally —
+      // clear local state regardless.
+    } finally {
+      setSession(emptySession())
+      setStatus('unauthenticated')
+    }
   }
 
   const value: AuthContextValue = {
-    user: session?.user ?? null,
-    session,
-    isAuthenticated: session !== null,
-    setSession,
+    status,
+    ...session,
+    isAuthenticated: status === 'authenticated',
+    refreshSession,
     logout,
   }
 

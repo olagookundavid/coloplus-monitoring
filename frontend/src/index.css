@@ -35,6 +35,10 @@
 
   --radius-md: 0.625rem;
   --radius-lg: 0.875rem;
+
+  /* Large display headings only (auth pages). Body text stays on the
+     default sans-serif. Loaded in index.html. */
+  --font-heading: 'Nunito', ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -76,5 +80,20 @@
   }
   *::-webkit-scrollbar-thumb:hover {
     background-color: var(--color-primary-600);
+  }
+
+  /* Auth pages' brand panel: a subtle diagonal texture over the teal
+     gradient. One rule, not two layered utilities -- both would set
+     background-image and the second would just replace the first. */
+  .auth-brand-panel {
+    background-image:
+      repeating-linear-gradient(
+        135deg,
+        rgb(255 255 255 / 5%) 0,
+        rgb(255 255 255 / 5%) 1px,
+        transparent 1px,
+        transparent 14px
+      ),
+      linear-gradient(to bottom right, var(--color-primary-700), var(--color-primary-600));
   }
 }

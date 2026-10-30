@@ -3,12 +3,16 @@ import { useLocation } from 'react-router-dom'
 
 import { IconButton } from '../ui'
 import { AccountMenu } from './AccountMenu'
-import { CUSTOMER_NAV } from './customerNav'
+import type { NavItem } from './navTypes'
 import { TopbarClock } from './TopbarClock'
 
-export function Topbar() {
+export interface TopbarProps {
+  nav: NavItem[]
+}
+
+export function Topbar({ nav }: TopbarProps) {
   const location = useLocation()
-  const activeItem = CUSTOMER_NAV.find((item) => item.to === location.pathname)
+  const activeItem = nav.find((item) => item.to === location.pathname)
   const breadcrumbLabel = activeItem?.label ?? 'Overview'
 
   return (

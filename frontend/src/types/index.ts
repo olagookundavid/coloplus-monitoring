@@ -1,12 +1,19 @@
 export type {
   User,
-  AuthSession,
   LoginRequest,
+  LoginResult,
   ForgotPasswordRequest,
-  AcceptInviteRequest,
+  SetPasswordRequest,
+  MeResult,
+  MfaSetupResult,
+  EnableMfaRequest,
+  RecoveryCodesResult,
   AuthApiErrorShape,
 } from './auth'
 export type { Site, SiteStatus, PowerSource } from './site'
+export type { AdminSite } from './adminSite'
+export type { StaffRole, ManagedUser } from './user'
+export { STAFF_ROLE_LABELS, STAFF_ROLES } from './user'
 export type { Incident, IncidentStatus } from './incident'
 export type { FuelHealthSite, FuelHealthSummary } from './fuel'
 export type { PortfolioSummary, TrendMetric, PerformanceTrendPoint } from './measurement'

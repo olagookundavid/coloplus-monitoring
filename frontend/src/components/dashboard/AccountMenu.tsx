@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRightOnRectangleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
+import { ArrowRightOnRectangleIcon, ChevronDownIcon, KeyIcon } from '@heroicons/react/24/outline'
 
+import { RegenerateRecoveryCodesModal } from '../auth'
 import { useAuth } from '../../contexts'
 
 function getInitials(name: string | undefined): string {
@@ -13,6 +14,7 @@ function getInitials(name: string | undefined): string {
 export function AccountMenu() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [regenerateOpen, setRegenerateOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -68,12 +70,26 @@ export function AccountMenu() {
             <p className="truncate text-xs text-text-muted">{user.email}</p>
           </div>
           <div className="border-t border-border p-1.5">
+            {user.mfaEnabled && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false)
+                  setRegenerateOpen(true)
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-subtle"
+              >
+                <KeyIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                Regenerate recovery codes
+              </button>
+            )}
             <button
               type="button"
               role="menuitem"
-              onClick={() => {
+              onClick={async () => {
                 setOpen(false)
-                logout()
+                await logout()
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50"
             >
@@ -83,6 +99,11 @@ export function AccountMenu() {
           </div>
         </div>
       )}
+
+      <RegenerateRecoveryCodesModal
+        open={regenerateOpen}
+        onClose={() => setRegenerateOpen(false)}
+      />
     </div>
   )
 }

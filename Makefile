@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 DB_URL ?= postgres://coloplus:coloplus@127.0.0.1:5432/coloplus?sslmode=disable
 
-.PHONY: help swag run build migrate vet test test/integration test/all lint tidy db/up db/down db/psql
+.PHONY: help swag run build migrate seed vet test test/integration test/all lint tidy db/up db/down db/psql
 
 ## help: list the available commands
 help:
@@ -22,6 +22,10 @@ build: swag
 ## migrate: apply pending database migrations
 migrate:
 	cd backend && go run ./cmd/api migrate
+
+## seed: insert sample users, sites, reports and workflow records for local development
+seed:
+	cd backend && go run ./cmd/api seed
 
 ## vet: go vet both modules
 vet: swag

@@ -43,6 +43,9 @@ Auth: `POST /auth/login|logout|forgot-password|set-password|mfa/setup|mfa/enable
 ## First administrator
 `ADMIN_PASSWORD=... go run ./cmd/api create-admin boss@example.com Full Name` after `make migrate`. Administrators must set up two-step sign-in at their first login (`/auth/mfa/setup`, then `/auth/mfa/enable`; with curl until the front end exists). Locked out with no administrator left: `go run ./cmd/api reset-mfa boss@example.com`.
 
+## Sample data
+`make seed` (dev only) inserts one user per role, a handful of sites, daily reports moving through their workflow, an incident, a dispute, and sites at different acceptance stages — through the real services, so it carries a real audit trail. Safe to run more than once; it looks for what already exists before creating anything. Prints each seeded login and the shared password once, at the end.
+
 ## Pooling
 - pgxpool from env: `DB_MAX_CONNS` (default 8), `DB_MIN_CONNS` (1); lifetime 1h, idle 5m, health 30s, connect 5s. Shared Postgres: keep this product's share small and documented.
 - No pooler today, so default protocol. A pooler in transaction mode needs `QueryExecModeSimpleProtocol` and a DECISIONS entry.

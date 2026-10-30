@@ -10,12 +10,18 @@ export interface SidePanelProps {
   open: boolean
   onClose?: () => void
   eyebrow?: string
-  title: string
+  /** Plain text in the common case; a ReactNode when a caller needs richer
+      content in the title row (e.g. an avatar beside a name). */
+  title: ReactNode
   /** Caller composes whatever meta row it needs (a location line, status
       badges) — same philosophy as Modal's subtitle. */
   subtitle?: ReactNode
   /** Slot beside the close button, e.g. a "Create ticket" action. */
   headerActions?: ReactNode
+  /** Persistent actions pinned below the scrollable body — same philosophy
+      as Modal's footer (Cancel/primary order is the caller's choice here,
+      since a detail panel's actions aren't always a cancel/confirm pair). */
+  footer?: ReactNode
   maxWidth?: ModalMaxWidth
   children: ReactNode
 }
@@ -36,6 +42,7 @@ export function SidePanel({
   title,
   subtitle,
   headerActions,
+  footer,
   maxWidth = 'xl',
   children,
 }: SidePanelProps) {
@@ -109,6 +116,12 @@ export function SidePanel({
         </div>
 
         <div className="min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
+
+        {footer && (
+          <div className="flex flex-col gap-2 border-t border-border p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:p-6">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body

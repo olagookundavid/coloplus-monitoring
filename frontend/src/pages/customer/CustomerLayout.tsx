@@ -11,6 +11,7 @@ import {
   PERIOD_PRESETS,
   REGION_OPTIONS,
 } from '../../components/dashboard'
+import { ROUTES } from '../../constants'
 
 export interface CustomerLayoutContextValue {
   region: string
@@ -46,7 +47,17 @@ export function CustomerLayout() {
   }
 
   return (
-    <DashboardShell nav={CUSTOMER_NAV}>
+    <DashboardShell
+      nav={CUSTOMER_NAV}
+      portalLabel="Customer portal"
+      orgBadge={{ initials: 'AT', name: 'Airtel Nigeria', subtitle: 'Customer workspace' }}
+      supportCard={{
+        title: 'A team behind every site.',
+        body: 'Your Coloplus operations team is here to help.',
+        to: ROUTES.CUSTOMER_TICKETS,
+        linkLabel: 'Contact support',
+      }}
+    >
       <Outlet context={context} />
       <CreateTicketModal
         open={isCreateTicketOpen}

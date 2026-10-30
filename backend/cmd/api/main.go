@@ -75,8 +75,13 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "reset-mfa" {
 		return resetMFA(ctx, cfg, log, args[1:])
 	}
+	// `api seed` inserts a sample dataset for local development. Dev-only,
+	// safe to run more than once.
+	if len(args) > 0 && args[0] == "seed" {
+		return seed(ctx, cfg, log)
+	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, seed)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }

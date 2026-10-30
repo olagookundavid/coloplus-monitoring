@@ -46,6 +46,7 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void
   getRowHref?: (row: T) => string
   className?: string
+  rowClassName?: (row: T) => string
 }
 
 const ALIGN_CLASS: Record<NonNullable<Column<unknown>['align']>, string> = {
@@ -68,6 +69,7 @@ export function DataTable<T>({
   onRowClick,
   getRowHref,
   className = '',
+  rowClassName,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -211,7 +213,10 @@ export function DataTable<T>({
                     : undefined
                 const detailLabel = rowName ? `View ${rowName}` : 'View details'
                 return (
-                  <tr key={row.id} className="border-b border-border last:border-b-0">
+                  <tr
+                    key={row.id}
+                    className={`border-b border-border last:border-b-0 ${rowClassName?.(row.original) ?? ''}`}
+                  >
                     {row.getVisibleCells().map((cell, columnIndex) => {
                       const column = columns[columnIndex]
                       const align = column?.align ?? 'left'
