@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    # The front end deploys through Vercel; its pushes must not redeploy the API.
+    paths-ignore:
+      - "frontend/**"
+      - "docs/**"
   pull_request:
 
 permissions:
@@ -80,6 +84,11 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:latest
             ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          # deploy.sh reads these to say what shipped in its alert email.
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
 
   deploy:
     needs: build
