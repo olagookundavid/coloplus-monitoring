@@ -19,6 +19,9 @@ import { lazyNamed } from './utils'
 // group, customer/ops are lazy-loaded).
 const CustomerLayout = lazyNamed(() => import('./pages/customer/CustomerLayout'), 'CustomerLayout')
 const Overview = lazyNamed(() => import('./pages/customer/Overview'), 'Overview')
+const Sites = lazyNamed(() => import('./pages/customer/Sites'), 'Sites')
+const SupportTickets = lazyNamed(() => import('./pages/customer/SupportTickets'), 'SupportTickets')
+const Reports = lazyNamed(() => import('./pages/customer/Reports'), 'Reports')
 const ComingSoon = lazyNamed<ComingSoonProps>(
   () => import('./pages/customer/ComingSoon'),
   'ComingSoon'
@@ -56,10 +59,14 @@ export function App() {
           }
         >
           <Route path={ROUTES.HOME} element={<Overview />} />
-          <Route path={ROUTES.CUSTOMER_SITES} element={<ComingSoon title="Sites" />} />
+          <Route path={ROUTES.CUSTOMER_SITES} element={<Sites />} />
           <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<ComingSoon title="Site detail" />} />
-          <Route path={ROUTES.CUSTOMER_TICKETS} element={<ComingSoon title="Support tickets" />} />
-          <Route path={ROUTES.CUSTOMER_REPORTS} element={<ComingSoon title="Reports" />} />
+          <Route path={ROUTES.CUSTOMER_TICKETS} element={<SupportTickets />} />
+          <Route
+            path={ROUTES.TICKET_DETAIL_PATTERN}
+            element={<ComingSoon title="Ticket detail" />}
+          />
+          <Route path={ROUTES.CUSTOMER_REPORTS} element={<Reports />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

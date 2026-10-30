@@ -10,8 +10,13 @@ export const ROUTES = {
   CUSTOMER_TICKETS: '/support-tickets',
   CUSTOMER_REPORTS: '/reports',
   SITE_DETAIL_PATTERN: '/sites/:id',
+  TICKET_DETAIL_PATTERN: '/support-tickets/:id',
 } as const
 
 export function siteDetailPath(id: string): string {
   return `/sites/${id}`
+}
+
+export function ticketDetailPath(id: string): string {
+  return `/support-tickets/${id}`
 }

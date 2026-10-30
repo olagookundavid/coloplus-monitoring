@@ -13,35 +13,22 @@ import {
   DashboardFilterBar,
   DashboardPageHeader,
   FuelHealthCard,
+  NO_SITES,
   PerformanceTrendChart,
+  SITE_COLUMNS,
+  SiteAttentionBanner,
+  STATUS_FILTER_OPTIONS,
   StatCard,
 } from '../../components/dashboard'
 import { FuelIcon } from '../../components/icons'
-import {
-  AlertBanner,
-  Button,
-  DataTable,
-  Select,
-  StatusBadge,
-  Tabs,
-  type Column,
-} from '../../components/ui'
-import { ROUTES, siteDetailPath } from '../../constants'
+import { Button, DataTable, Select, Tabs } from '../../components/ui'
+import { siteDetailPath } from '../../constants'
 import { usePortfolioOverview, useSitePerformance } from '../../hooks'
-import type { Site, SiteStatus, TrendMetric } from '../../types'
-import { getSiteStatusTone } from '../../utils'
+import type { SiteStatus, TrendMetric } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
-const STATUS_FILTER_OPTIONS: Array<SiteStatus | 'All statuses'> = [
-  'All statuses',
-  'Available',
-  'Low diesel',
-  'Power outage',
-  'Update overdue',
-]
-
 export function Overview() {
-  const { region, setRegion, period, setPeriod } = useDashboardFilters()
+  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
   const [metric, setMetric] = useState<TrendMetric>('availability')
   const [statusFilter, setStatusFilter] = useState<SiteStatus | 'All statuses'>('All statuses')
 
@@ -49,113 +36,10 @@ export function Overview() {
   const sitesQuery = useSitePerformance({ region, period })
 
   const filteredSites = useMemo(() => {
-    const sites = sitesQuery.data ?? []
+    const sites = sitesQuery.data ?? NO_SITES
     if (statusFilter === 'All statuses') return sites
     return sites.filter((site) => site.status === statusFilter)
   }, [sitesQuery.data, statusFilter])
-
-  const columns = useMemo<Column<Site>[]>(
-    () => [
-      {
-        header: 'Site / Location',
-        accessor: (site) => site.name,
-        cell: (site) => (
-          <div>
-            <p className="font-medium text-text">{site.name}</p>
-            <p className="text-xs text-text-muted">
-              {site.code} · {site.region}
-            </p>
-          </div>
-        ),
-        sortable: true,
-      },
-      {
-        header: 'Site status',
-        accessor: (site) => site.status,
-        cell: (site) => <StatusBadge label={site.status} tone={getSiteStatusTone(site.status)} />,
-        sortable: true,
-      },
-      {
-        header: 'Power source',
-        accessor: (site) => site.powerSource,
-        sortable: true,
-      },
-      {
-        header: 'Energy',
-        accessor: (site) => site.energyKwh,
-        cell: (site) => `${site.energyKwh.toLocaleString()} kWh`,
-        align: 'right',
-        sortable: true,
-      },
-      {
-        header: 'Diesel level',
-        accessor: (site) => site.dieselPercent,
-        cell: (site) => (
-          <div className="flex items-center justify-end gap-2">
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-subtle">
-              <div
-                className={`h-full rounded-full ${site.dieselPercent < 25 ? 'bg-warning' : 'bg-primary'}`}
-                style={{ width: `${site.dieselPercent}%` }}
-              />
-            </div>
-            <span>{site.dieselPercent}%</span>
-          </div>
-        ),
-        align: 'right',
-        sortable: true,
-      },
-      {
-        header: 'Power avail.',
-        accessor: (site) => site.powerAvailabilityPercent,
-        cell: (site) => (
-          <span
-            className={site.powerAvailabilityPercent < 98 ? 'text-warning-700' : 'text-primary-700'}
-          >
-            {site.powerAvailabilityPercent.toFixed(2)}%
-          </span>
-        ),
-        align: 'right',
-        sortable: true,
-      },
-      {
-        header: 'Radio avail.',
-        accessor: (site) => site.radioAvailabilityPercent,
-        cell: (site) =>
-          site.radioAvailabilityPercent == null ? (
-            <div>
-              <p>—</p>
-              <p className="text-xs text-text-muted">Awaiting data</p>
-            </div>
-          ) : (
-            <span>{site.radioAvailabilityPercent.toFixed(2)}%</span>
-          ),
-        align: 'right',
-        sortable: true,
-        sortValue: (site) => site.radioAvailabilityPercent ?? -1,
-      },
-      {
-        header: 'Updated WAT',
-        accessor: (site) => site.updatedAt,
-        cell: (site) => {
-          const time = new Date(site.updatedAt).toLocaleTimeString('en-GB', {
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'Africa/Lagos',
-          })
-          return (
-            <div>
-              <p>{time}</p>
-              {site.status === 'Update overdue' && (
-                <p className="text-xs text-warning-700">Update overdue</p>
-              )}
-            </div>
-          )
-        },
-        sortable: true,
-      },
-    ],
-    []
-  )
 
   const summary = overviewQuery.data?.summary
   const trend = overviewQuery.data?.trend ?? []
@@ -176,7 +60,9 @@ export function Overview() {
             <Button variant="outline" icon={ArrowDownTrayIcon}>
               Export report
             </Button>
-            <Button icon={PlusIcon}>Create ticket</Button>
+            <Button icon={PlusIcon} onClick={openCreateTicket}>
+              Create ticket
+            </Button>
           </>
         }
       />
@@ -282,13 +168,7 @@ export function Overview() {
         <FuelHealthCard summary={fuelHealth} />
       </div>
 
-      <AlertBanner
-        tone="warning"
-        icon={ExclamationTriangleIcon}
-        title="2 sites need attention."
-        description="An active power fault is being addressed."
-        action={{ label: 'View issues', to: ROUTES.CUSTOMER_SITES }}
-      />
+      <SiteAttentionBanner sites={sitesQuery.data ?? NO_SITES} />
 
       <div>
         <div className="mb-3 flex items-center gap-2">
@@ -299,7 +179,7 @@ export function Overview() {
         </div>
         <DataTable
           data={filteredSites}
-          columns={columns}
+          columns={SITE_COLUMNS}
           getRowId={(site) => site.id}
           loading={sitesQuery.isLoading}
           getRowHref={(site) => siteDetailPath(site.id)}

@@ -34,15 +34,11 @@ export function DashboardFilterBar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-2 sm:flex-row">
-        <div className="relative w-full sm:w-44">
-          <MapPinIcon
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
-            aria-hidden="true"
-          />
+        <div className="w-full sm:w-44">
           <Select
+            icon={MapPinIcon}
             value={region}
             onChange={(event) => onRegionChange(event.target.value)}
-            className="pl-9"
             aria-label="Region"
           >
             {REGION_OPTIONS.map((option) => (
@@ -52,15 +48,11 @@ export function DashboardFilterBar({
             ))}
           </Select>
         </div>
-        <div className="relative w-full sm:w-52">
-          <CalendarIcon
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted"
-            aria-hidden="true"
-          />
+        <div className="w-full sm:w-52">
           <Select
+            icon={CalendarIcon}
             value={period}
             onChange={(event) => onPeriodChange(event.target.value)}
-            className="pl-9"
             aria-label="Period"
           >
             {PERIOD_PRESETS.map((option) => (

@@ -12,8 +12,9 @@ export interface StatCardProps {
   icon: ComponentType<SVGProps<SVGSVGElement>>
   trend: StatCardTrend
   /** What the number's basis/period is — PRD §5/§7's "every metric exposes
-      its definition," not decoration. */
-  caption: ReactNode
+      its definition," not decoration. Optional: some cards (Support tickets)
+      only need the single trend line, not a second muted caption line. */
+  caption?: ReactNode
 }
 
 const TREND_TONE_CLASS: Record<StatCardTrend['tone'], string> = {
@@ -38,7 +39,7 @@ export function StatCard({ label, value, icon: Icon, trend, caption }: StatCardP
         <TrendIcon className="h-4 w-4" aria-hidden="true" />
         {trend.label}
       </p>
-      <p className="mt-1 text-xs text-text-muted">{caption}</p>
+      {caption && <p className="mt-1 text-xs text-text-muted">{caption}</p>}
     </div>
   )
 }
