@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowDownTrayIcon,
   ArrowTrendingUpIcon,
@@ -8,13 +8,19 @@ import {
   PlusIcon,
   TicketIcon,
 } from '@heroicons/react/24/outline'
+import { useNavigate, useParams } from 'react-router-dom'
 
-import { DashboardFilterBar, DashboardPageHeader, StatCard } from '../../components/dashboard'
+import {
+  DashboardFilterBar,
+  DashboardPageHeader,
+  StatCard,
+  TicketDetailPanel,
+} from '../../components/dashboard'
 import { Button, DataTable, Select, StatusBadge, type Column } from '../../components/ui'
-import { ticketDetailPath } from '../../constants'
+import { ROUTES, ticketDetailPath } from '../../constants'
 import { useTickets } from '../../hooks'
 import type { Ticket, TicketStatus } from '../../types'
-import { getTicketPriorityTone, getTicketStatusTone } from '../../utils'
+import { formatDateTimeWAT, getTicketPriorityTone, getTicketStatusTone } from '../../utils'
 import { useDashboardFilters } from './CustomerLayout'
 
 const NO_TICKETS: Ticket[] = []
@@ -62,15 +68,7 @@ const TICKET_COLUMNS: Column<Ticket>[] = [
   {
     header: 'Created WAT',
     accessor: (ticket) => ticket.createdAt,
-    cell: (ticket) =>
-      new Date(ticket.createdAt).toLocaleString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Africa/Lagos',
-      }),
+    cell: (ticket) => formatDateTimeWAT(ticket.createdAt),
     sortable: true,
   },
 ]
@@ -78,9 +76,22 @@ const TICKET_COLUMNS: Column<Ticket>[] = [
 export function SupportTickets() {
   const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'All tickets'>('All tickets')
+  const { id: selectedTicketId } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
 
   const ticketsQuery = useTickets()
   const tickets = ticketsQuery.data ?? NO_TICKETS
+  const selectedTicket = selectedTicketId
+    ? (tickets.find((ticket) => ticket.id === selectedTicketId) ?? null)
+    : null
+
+  // A stale or mistyped ticket id in the URL — send the customer back to the
+  // list rather than leaving the panel open with nothing to show.
+  useEffect(() => {
+    if (selectedTicketId && !ticketsQuery.isLoading && !selectedTicket) {
+      navigate(ROUTES.CUSTOMER_TICKETS, { replace: true })
+    }
+  }, [selectedTicketId, ticketsQuery.isLoading, selectedTicket, navigate])
 
   const filteredTickets = useMemo(() => {
     if (statusFilter === 'All tickets') return tickets
@@ -204,6 +215,12 @@ export function SupportTickets() {
           </Button>
         </div>
       </div>
+
+      <TicketDetailPanel
+        ticket={selectedTicket}
+        open={Boolean(selectedTicket)}
+        onClose={() => navigate(ROUTES.CUSTOMER_TICKETS)}
+      />
     </div>
   )
 }

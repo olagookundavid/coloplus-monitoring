@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowDownTrayIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 import {
   DashboardFilterBar,
@@ -16,7 +16,7 @@ import type { SiteStatus } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
 export function Sites() {
-  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
+  const { region, setRegion, period, setPeriod } = useDashboardFilters()
   const [statusFilter, setStatusFilter] = useState<SiteStatus | 'All statuses'>('All statuses')
 
   const sitesQuery = useSitePerformance({ region, period })
@@ -34,14 +34,9 @@ export function Sites() {
         title="Your site portfolio"
         subtitle="Explore site performance, fuel levels and service history."
         actions={
-          <>
-            <Button variant="outline" icon={ArrowDownTrayIcon}>
-              Export report
-            </Button>
-            <Button icon={PlusIcon} onClick={openCreateTicket}>
-              Create ticket
-            </Button>
-          </>
+          <Button variant="outline" icon={ArrowDownTrayIcon}>
+            Export report
+          </Button>
         }
       />
 

@@ -1,14 +1,8 @@
-import {
-  useEffect,
-  useId,
-  useRef,
-  type KeyboardEvent,
-  type MouseEvent,
-  type ReactNode,
-} from 'react'
+import { useId, useRef, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 
+import { useDialogLifecycle } from './dialogBehavior'
 import { IconButton } from './IconButton'
 
 export type ModalMaxWidth = 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl'
@@ -35,15 +29,6 @@ const MAX_WIDTH_CLASSES: Record<ModalMaxWidth, string> = {
   '4xl': 'max-w-4xl',
 }
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
-function getFocusable(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => el.offsetParent !== null
-  )
-}
-
 export function Modal({
   open,
   onClose,
@@ -57,54 +42,9 @@ export function Modal({
   const dialogRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const subtitleId = useId()
-
-  // Focus the dialog on open (not the first field — autofocusing a <select>
-  // can pop its options open in some browsers, and it would skip announcing
-  // the title first). Restore focus to whatever triggered it on close.
-  useEffect(() => {
-    if (!open) return
-    const previouslyFocused = document.activeElement as HTMLElement | null
-    dialogRef.current?.focus()
-    return () => {
-      previouslyFocused?.focus()
-    }
-  }, [open])
-
-  // Reentrant-safe scroll lock: restore the *previous* value, not '', so a
-  // future ConfirmDialog stacking on top of this Modal won't prematurely
-  // unlock scroll when it closes first.
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [open])
+  const { handleKeyDown } = useDialogLifecycle(open, dialogRef, onClose)
 
   if (!open) return null
-
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      onClose?.()
-      return
-    }
-    if (event.key !== 'Tab' || !dialogRef.current) return
-    const focusable = getFocusable(dialogRef.current)
-    if (focusable.length === 0) {
-      event.preventDefault()
-      return
-    }
-    const first = focusable[0]
-    const last = focusable[focusable.length - 1]
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault()
-      last?.focus()
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault()
-      first?.focus()
-    }
-  }
 
   function handlePanelClick(event: MouseEvent<HTMLDivElement>) {
     event.stopPropagation()

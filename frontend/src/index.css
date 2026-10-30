@@ -55,4 +55,26 @@
     background-color: var(--color-surface-subtle);
     color: var(--color-text);
   }
+
+  /* Branded scrollbar everywhere scrollable (sidebar nav, page content,
+     modals, DataTable's horizontal scroller) instead of the OS default. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-primary-600) 35%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--color-primary-600) 35%, transparent);
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-primary-600);
+  }
 }

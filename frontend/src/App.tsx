@@ -62,10 +62,7 @@ export function App() {
           <Route path={ROUTES.CUSTOMER_SITES} element={<Sites />} />
           <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<ComingSoon title="Site detail" />} />
           <Route path={ROUTES.CUSTOMER_TICKETS} element={<SupportTickets />} />
-          <Route
-            path={ROUTES.TICKET_DETAIL_PATTERN}
-            element={<ComingSoon title="Ticket detail" />}
-          />
+          <Route path={ROUTES.TICKET_DETAIL_PATTERN} element={<SupportTickets />} />
           <Route path={ROUTES.CUSTOMER_REPORTS} element={<Reports />} />
         </Route>
 
