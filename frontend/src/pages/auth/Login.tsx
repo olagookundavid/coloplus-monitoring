@@ -17,6 +17,7 @@ import { useLoginMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
 import {
   getFieldErrors,
+  landingRouteFor,
   loginSchema,
   mfaCodeSchema,
   toast,
@@ -92,16 +93,16 @@ export function Login() {
   }
 
   // Respects an explicit redirect target (RequireAuth/RequireRole sent them
-  // here from somewhere specific) over the role-based default, so e.g. an
-  // admin bounced off /ops/users for being signed out lands back there.
+  // here from somewhere specific) over the permission-based default, so e.g.
+  // an admin bounced off /ops/users for being signed out lands back there.
   // ROUTES.HOME doesn't count as "somewhere specific": RequireAuth records
   // it as `from` for every signed-out visitor who just opens the app at
   // '/', not only ones deep-linking into the customer portal, so treating
-  // it as deliberate would make the role-based default never apply.
-  function destinationAfterLogin(role: string | undefined): string {
+  // it as deliberate would make the permission-based default never apply.
+  function destinationAfterLogin(permissions: string[]): string {
     const from = (location.state as LocationState | null)?.from?.pathname
     if (from && from !== ROUTES.HOME) return from
-    return role === 'admin' ? ROUTES.OPS_OVERVIEW : ROUTES.HOME
+    return landingRouteFor(permissions)
   }
 
   // Shared by both steps: login is one call resubmitted whole with
@@ -115,15 +116,18 @@ export function Login() {
       return
     }
 
-    const me = await refreshSession()
+    const session = await refreshSession()
     // Not actually in the dashboard yet if MFA enrollment is still required —
     // the welcome toast belongs at the point they're really authenticated in.
     if (!result.mfaSetupRequired) {
       toast.success('Welcome back.')
     }
-    navigate(result.mfaSetupRequired ? ROUTES.MFA_SETUP : destinationAfterLogin(me?.role), {
-      replace: true,
-    })
+    navigate(
+      result.mfaSetupRequired
+        ? ROUTES.MFA_SETUP
+        : destinationAfterLogin(session?.permissions ?? []),
+      { replace: true }
+    )
   }
 
   async function handleCredentialsSubmit(event: FormEvent<HTMLFormElement>) {

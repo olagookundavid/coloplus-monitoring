@@ -10,8 +10,10 @@ export interface RequireRoleProps {
   /** A real backend permission string (from GET /auth/me's permissions[]),
       never a role name — frontend/CLAUDE.md §14: the backend is the
       authority, this is defense in depth so an unauthorized user is
-      redirected cleanly rather than shown a broken admin shell. */
-  permission: string
+      redirected cleanly rather than shown a broken admin shell. A list is
+      "any of" -- e.g. a route both an admin and a supervisor should reach,
+      for different, non-overlapping permissions. */
+  permission: string | string[]
   children: ReactNode
 }
 

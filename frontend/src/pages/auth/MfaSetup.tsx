@@ -4,11 +4,16 @@ import { toDataURL } from 'qrcode'
 
 import { AuthLayout, RecoveryCodesModal } from '../../components/auth'
 import { Button, Field, OtpInput, Spinner } from '../../components/ui'
-import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
 import { useEnableMfaMutation, useMfaSetupMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
-import { getFieldErrors, mfaCodeSchema, toast, type MfaCodeFormValues } from '../../utils'
+import {
+  getFieldErrors,
+  landingRouteFor,
+  mfaCodeSchema,
+  toast,
+  type MfaCodeFormValues,
+} from '../../utils'
 
 const INITIAL_VALUES: MfaCodeFormValues = { code: '' }
 
@@ -83,9 +88,9 @@ export function MfaSetup() {
 
   async function handleContinue() {
     setContinuing(true)
-    const me = await refreshSession()
+    const session = await refreshSession()
     toast.success('Welcome back.')
-    navigate(me?.role === 'admin' ? ROUTES.OPS_OVERVIEW : ROUTES.HOME, { replace: true })
+    navigate(landingRouteFor(session?.permissions ?? []), { replace: true })
   }
 
   if (alreadyEnabled) {

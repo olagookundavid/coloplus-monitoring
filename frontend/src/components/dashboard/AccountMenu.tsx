@@ -1,8 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
-import { ArrowRightOnRectangleIcon, ChevronDownIcon, KeyIcon } from '@heroicons/react/24/outline'
+import { useState } from 'react'
+import {
+  ArrowRightOnRectangleIcon,
+  ChevronDownIcon,
+  ShieldCheckIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline'
 
-import { RegenerateRecoveryCodesModal } from '../auth'
 import { useAuth } from '../../contexts'
+import { useDropdownMenu } from '../../hooks'
+import { STAFF_ROLE_LABELS, type StaffRole } from '../../types'
+import { ConfirmDialog } from '../ui'
+import { MyProfileModal } from './MyProfileModal'
+import { SecurityModal } from './SecurityModal'
 
 function getInitials(name: string | undefined): string {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
@@ -13,31 +22,22 @@ function getInitials(name: string | undefined): string {
 
 export function AccountMenu() {
   const { user, logout } = useAuth()
-  const [open, setOpen] = useState(false)
-  const [regenerateOpen, setRegenerateOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-
-    function handlePointerDown(event: MouseEvent) {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setOpen(false)
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('mousedown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open])
+  const { open, setOpen, containerRef } = useDropdownMenu<HTMLDivElement>()
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
+  const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
 
   if (!user) return null
+
+  const roleLabel = STAFF_ROLE_LABELS[user.role as StaffRole] ?? user.role
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    await logout()
+    setSigningOut(false)
+    setConfirmSignOut(false)
+  }
 
   return (
     <div ref={containerRef} className="relative">
@@ -67,42 +67,61 @@ export function AccountMenu() {
         >
           <div className="p-4">
             <p className="truncate text-sm font-semibold text-text">{user.name}</p>
-            <p className="truncate text-xs text-text-muted">{user.email}</p>
+            <p className="truncate text-xs text-text-muted">{roleLabel}</p>
           </div>
           <div className="border-t border-border p-1.5">
-            {user.mfaEnabled && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  setOpen(false)
-                  setRegenerateOpen(true)
-                }}
-                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-subtle"
-              >
-                <KeyIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                Regenerate recovery codes
-              </button>
-            )}
             <button
               type="button"
               role="menuitem"
-              onClick={async () => {
+              onClick={() => {
                 setOpen(false)
-                await logout()
+                setProfileOpen(true)
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-subtle"
+            >
+              <UserCircleIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              My profile
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                setSecurityOpen(true)
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-text transition-colors hover:bg-surface-subtle"
+            >
+              <ShieldCheckIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              Security and 2-step verification
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                setConfirmSignOut(true)
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-danger-600 transition-colors hover:bg-danger-50"
             >
               <ArrowRightOnRectangleIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-              Log out
+              Sign out
             </button>
           </div>
         </div>
       )}
 
-      <RegenerateRecoveryCodesModal
-        open={regenerateOpen}
-        onClose={() => setRegenerateOpen(false)}
+      <MyProfileModal user={user} open={profileOpen} onClose={() => setProfileOpen(false)} />
+      <SecurityModal user={user} open={securityOpen} onClose={() => setSecurityOpen(false)} />
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Log out?"
+        confirmLabel="Log out"
+        tone="info"
+        icon={ArrowRightOnRectangleIcon}
+        pending={signingOut}
+        onConfirm={() => void handleSignOut()}
+        onCancel={() => setConfirmSignOut(false)}
       />
     </div>
   )

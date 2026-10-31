@@ -26,7 +26,13 @@ export {
 } from './users'
 export type { CreateUserRequest, UpdateUserPatch } from './users'
 export { fetchAdminSites } from './adminSites'
-export { fetchPendingApprovals } from './adminReports'
+export {
+  fetchPendingApprovals,
+  fetchReports,
+  fetchReportDetail,
+  approveReport,
+  rejectReport,
+} from './adminReports'
 export type { PendingApproval } from './adminReports'
-export { fetchRecentAuditEvents } from './adminAudit'
+export { fetchRecentAuditEvents, fetchAuditEvents } from './adminAudit'
 export type { AuditEvent } from './adminAudit'

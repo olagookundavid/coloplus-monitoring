@@ -2,12 +2,12 @@ import type { ReactNode } from 'react'
 
 import { BottomNav } from './BottomNav'
 import { DashboardFooter } from './DashboardFooter'
-import type { NavItem } from './navTypes'
+import type { NavGroup } from './navTypes'
 import { Sidebar, type SidebarOrgBadge, type SidebarSupportCard } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export interface DashboardShellProps {
-  nav: NavItem[]
+  nav: NavGroup[]
   /** Which portal this is — e.g. "Customer portal," "Admin console." */
   portalLabel: string
   orgBadge?: SidebarOrgBadge

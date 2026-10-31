@@ -13,7 +13,12 @@ import {
 import type { PendingApproval } from '../../services'
 import type { AdminSite, ManagedUser } from '../../types'
 import { STAFF_ROLE_LABELS } from '../../types'
-import { formatDateTimeWAT, getManagedUserStatus, getManagedUserStatusTone } from '../../utils'
+import {
+  formatAge,
+  formatDateTimeWAT,
+  getManagedUserStatus,
+  getManagedUserStatusTone,
+} from '../../utils'
 
 const NO_USERS: ManagedUser[] = []
 const NO_SITES: AdminSite[] = []
@@ -37,14 +42,6 @@ const ACTION_LABELS: Record<string, string> = {
 
 function describeAction(action: string): string {
   return ACTION_LABELS[action] ?? action
-}
-
-function formatAge(iso?: string): string {
-  if (!iso) return '—'
-  const ms = Date.now() - new Date(iso).getTime()
-  const hours = Math.max(0, Math.floor(ms / 3_600_000))
-  if (hours < 24) return `${hours}h`
-  return `${Math.floor(hours / 24)}d`
 }
 
 function countOlderThan48Hours(approvals: PendingApproval[]): number {

@@ -13,6 +13,11 @@ export function usePermissions() {
     role: user?.role,
     allSites,
     siteIds,
-    can: (permission: string) => permissions.includes(permission),
+    // A list is "any of" -- e.g. an Approvals route that an admin (view
+    // only, no reports.review) and a supervisor (can act) both reach.
+    can: (permission: string | string[]) =>
+      Array.isArray(permission)
+        ? permission.some((p) => permissions.includes(p))
+        : permissions.includes(permission),
   }
 }

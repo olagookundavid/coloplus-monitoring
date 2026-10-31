@@ -24,3 +24,12 @@ export type {
   TicketCategory,
   CreateTicketRequest,
 } from './ticket'
+export type {
+  ReportStatus,
+  DailyReport,
+  ReportSummary,
+  ReportCalculation,
+  ReportDetail,
+} from './report'
+export type { AuditEvent, AuditCategory } from './audit'
+export { AUDIT_CATEGORY_LABELS, AUDIT_CATEGORY_TONES } from './audit'

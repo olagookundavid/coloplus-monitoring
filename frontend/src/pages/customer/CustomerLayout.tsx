@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { Outlet, useOutletContext } from 'react-router-dom'
 
 import {
-  CUSTOMER_NAV,
+  CUSTOMER_NAV_GROUPS,
   CreateTicketModal,
   DashboardShell,
   PERIOD_PRESETS,
@@ -48,7 +48,7 @@ export function CustomerLayout() {
 
   return (
     <DashboardShell
-      nav={CUSTOMER_NAV}
+      nav={CUSTOMER_NAV_GROUPS}
       portalLabel="Customer portal"
       orgBadge={{ initials: 'AT', name: 'Airtel Nigeria', subtitle: 'Customer workspace' }}
       supportCard={{

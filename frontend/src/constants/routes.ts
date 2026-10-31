@@ -16,6 +16,9 @@ export const ROUTES = {
   OPS_OVERVIEW: '/ops',
   OPS_USERS: '/ops/users',
   OPS_SITE_ASSIGNMENTS: '/ops/site-assignments',
+  OPS_APPROVALS: '/ops/approvals',
+  OPS_AUDIT_LOG: '/ops/audit-log',
+  OPS_SETTINGS: '/ops/settings',
 } as const
 
 export function siteDetailPath(id: string): string {
