@@ -44,6 +44,7 @@ type Deps struct {
 	Sites         *services.SiteService
 	Reports       *services.ReportService
 	Incidents     *services.IncidentService
+	Corrections   *services.CorrectionService
 	Disputes      *services.DisputeService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
@@ -65,6 +66,7 @@ type api struct {
 	sites         *services.SiteService
 	reports       *services.ReportService
 	incidents     *services.IncidentService
+	corrections   *services.CorrectionService
 	disputes      *services.DisputeService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
@@ -109,7 +111,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -167,6 +169,11 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/incidents/:id/transition", h.transitionIncident)
 	authed.POST("/incidents/:id/updates", h.addIncidentUpdate)
 	authed.POST("/incidents/:id/publish", h.publishIncident)
+	authed.POST("/incidents/:id/corrections", h.requestIncidentCorrection)
+	authed.GET("/incident-corrections", h.listIncidentCorrections)
+	authed.GET("/incident-corrections/:id", h.getIncidentCorrection)
+	authed.POST("/incident-corrections/:id/approve", h.approveIncidentCorrection)
+	authed.POST("/incident-corrections/:id/reject", h.rejectIncidentCorrection)
 
 	authed.POST("/sites/:id/disputes", h.raiseDispute)
 	authed.GET("/disputes", h.listDisputes)
@@ -185,6 +192,7 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/audit", h.searchAudit)
 
 	authed.GET("/dashboard/overview", h.overview)
+	authed.GET("/dashboard/my-sites", h.mySites)
 
 	r.NoRoute(func(c *gin.Context) {
 		respondError(c, d.Log, apperrors.ErrNotFound)

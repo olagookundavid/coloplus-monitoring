@@ -176,6 +176,69 @@ func TestDailyReport_ValidationAndScope(t *testing.T) {
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+empty.str("id")+"/submit", nil, w.reporter), 400)
 }
 
+// TestDailyReport_ToggleSubmitsWithGeneratorHours exercises the reporter's
+// simplified day-level entry (power_status + generator_hours, no hand-entered
+// intervals), for today's date specifically: this is the scenario the old
+// "declared basis, full calendar day" design would have rejected as "an
+// observation cannot end in the future", and that a declared (rather than
+// observed) interval would have left permanently uncounted by Submit's
+// "add at least one observed interval" rule.
+func TestDailyReport_ToggleSubmitsWithGeneratorHours(t *testing.T) {
+	w := newWorkflow(t)
+	date, _ := w.reportDay(0) // today
+
+	created := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", map[string]any{
+		"report_date": date, "power_status": "outage", "generator_hours": 3.5,
+	}, w.reporter), 201)
+	id := created.str("id")
+	if created.str("generator_hours") != "3.5" {
+		t.Fatalf("generator_hours = %s, want 3.5", created.str("generator_hours"))
+	}
+
+	submitted := w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	if submitted.str("status") != "submitted" {
+		t.Fatalf("status = %s, want submitted: the day-level interval must count as observed", submitted.str("status"))
+	}
+
+	// Missing generator hours on a day with an outage is refused.
+	date2, _ := w.reportDay(2)
+	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports",
+		map[string]any{"report_date": date2, "power_status": "outage"}, w.reporter), 400)
+}
+
+// TestDailyReport_MineFilterScopesToAuthor guards against a reporter's
+// "my reports" view leaking another reporter's entries on the same site.
+func TestDailyReport_MineFilterScopesToAuthor(t *testing.T) {
+	w := newWorkflow(t)
+	id1 := w.draft(1)
+
+	secondEmail, _ := w.seedUser(domain.RoleReporter, w.site)
+	second := w.login(secondEmail)
+	date2, at2 := w.reportDay(2)
+	id2 := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", map[string]any{
+		"report_date": date2,
+		"intervals":   []any{iv(at2(0, 0), at2(1, 0), "served", "grid")},
+	}, second), 201).str("id")
+
+	mineFirst := w.expect(w.call("GET", "/api/v1/daily-reports?mine=true", nil, w.reporter), 200)
+	first := mineFirst.list("reports")
+	if len(first) != 1 {
+		t.Fatalf("mine=true for the first reporter returned %d reports, want 1: %s", len(first), mineFirst.Raw)
+	}
+	if got, _ := first[0].(map[string]any)["id"].(string); got != id1 {
+		t.Fatalf("mine=true returned report %s, want the caller's own %s", got, id1)
+	}
+
+	mineSecond := w.expect(w.call("GET", "/api/v1/daily-reports?mine=true", nil, second), 200)
+	second2 := mineSecond.list("reports")
+	if len(second2) != 1 {
+		t.Fatalf("mine=true for the second reporter returned %d reports, want 1: %s", len(second2), mineSecond.Raw)
+	}
+	if got, _ := second2[0].(map[string]any)["id"].(string); got != id2 {
+		t.Fatalf("mine=true returned report %s, want the caller's own %s", got, id2)
+	}
+}
+
 func TestDailyReport_CorrectionKeepsTheOriginalUntilApproved(t *testing.T) {
 	w := newWorkflow(t)
 	orig := w.draft(1)

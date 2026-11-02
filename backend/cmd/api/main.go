@@ -128,6 +128,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
+	incidentCorrectionRepo := postgres.NewIncidentCorrectionRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
@@ -159,6 +160,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, txManager, notifications, audit, clock, cfg.Mail.BaseURL)
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
+	corrections := services.NewCorrectionService(incidentCorrectionRepo, incidentRepo, txManager, audit, clock)
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
@@ -243,12 +245,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Sites:         services.NewSiteService(siteRepo, txManager, audit),
 		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
 		Incidents:     incidents,
+		Corrections:   corrections,
 		Disputes:      disputes,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, txManager, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,

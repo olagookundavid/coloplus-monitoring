@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react'
 
 import { BottomNav } from './BottomNav'
-import { DashboardFooter } from './DashboardFooter'
 import type { NavGroup } from './navTypes'
 import { Sidebar, type SidebarOrgBadge, type SidebarSupportCard } from './Sidebar'
 import { Topbar } from './Topbar'
 
 export interface DashboardShellProps {
   nav: NavGroup[]
-  /** Which portal this is — e.g. "Customer portal," "Admin console." */
+  /** Which portal this is — e.g. "Customer portal," "Admin portal." */
   portalLabel: string
   orgBadge?: SidebarOrgBadge
   supportCard?: SidebarSupportCard
@@ -43,7 +42,6 @@ export function DashboardShell({
             This is the one scrollable region in the whole shell. */}
         <div className="min-w-0 flex-1 overflow-y-auto pb-20 lg:pb-0">
           <main className="min-w-0 px-4 py-6 sm:px-6">{children}</main>
-          <DashboardFooter />
         </div>
       </div>
       <BottomNav nav={nav} />

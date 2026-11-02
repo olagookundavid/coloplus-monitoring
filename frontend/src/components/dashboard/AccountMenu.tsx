@@ -116,6 +116,7 @@ export function AccountMenu() {
       <ConfirmDialog
         open={confirmSignOut}
         title="Log out?"
+        description="You'll need to sign in again to continue."
         confirmLabel="Log out"
         tone="info"
         icon={ArrowRightOnRectangleIcon}

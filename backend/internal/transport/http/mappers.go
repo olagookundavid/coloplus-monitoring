@@ -27,6 +27,8 @@ func toSiteDTO(s domain.Site) dto.SiteDTO {
 		ServiceStartMinute: s.ServiceStartMinute, ServiceEndMinute: s.ServiceEndMinute,
 		FreshnessHours: s.FreshnessHours, Status: string(s.Status),
 		Latitude: s.Latitude, Longitude: s.Longitude, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
+		GeneratorCapacity: s.GeneratorCapacity, AccessContactName: s.AccessContactName,
+		AccessContactPhone: s.AccessContactPhone, SupervisorName: s.SupervisorName,
 	}
 	if s.CommissioningDate != nil {
 		d := s.CommissioningDate.Format("2006-01-02")
@@ -46,6 +48,8 @@ func fromSiteRequest(r dto.SiteRequest) (domain.Site, error) {
 		ServiceStartMinute: r.ServiceStartMinute, ServiceEndMinute: r.ServiceEndMinute,
 		FreshnessHours: r.FreshnessHours, Status: domain.SiteStatus(r.Status),
 		Latitude: r.Latitude, Longitude: r.Longitude,
+		GeneratorCapacity: r.GeneratorCapacity, AccessContactName: r.AccessContactName,
+		AccessContactPhone: r.AccessContactPhone, SupervisorName: r.SupervisorName,
 	}
 	if r.CommissioningDate != nil && *r.CommissioningDate != "" {
 		d, err := time.Parse("2006-01-02", *r.CommissioningDate)
@@ -90,6 +94,7 @@ func toReportDTO(r domain.DailyReport, loc *time.Location) dto.ReportDTO {
 		Intervals: toIntervalDTOs(r.Intervals, loc), SubmittedAt: r.SubmittedAt, ReviewedAt: r.ReviewedAt,
 		ReviewerID: r.ReviewerID, ReviewComment: r.ReviewComment, SupersedesID: r.SupersedesID,
 		CorrectionReason: r.CorrectionReason, RowVersion: r.RowVersion, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+		GeneratorHours: r.GeneratorHours,
 	}
 }
 
@@ -98,6 +103,18 @@ func toPublishedDTO(r domain.DailyReport, loc *time.Location) dto.PublishedRepor
 	return dto.PublishedReportDTO{
 		ID: r.ID, SiteID: r.SiteID, ReportDate: r.Date.Format("2006-01-02"), Revision: r.Revision,
 		Status: string(r.Status), Intervals: toIntervalDTOs(r.Intervals, loc), ApprovedAt: r.ReviewedAt,
+		GeneratorHours: r.GeneratorHours,
+	}
+}
+
+// toReportStatusDTO is the lightweight status-only view for an overview
+// table cell.
+func toReportStatusDTO(r *domain.DailyReport) *dto.ReportStatusDTO {
+	if r == nil {
+		return nil
+	}
+	return &dto.ReportStatusDTO{
+		ReportID: r.ID, Status: string(r.Status), RowVersion: r.RowVersion, ReviewComment: r.ReviewComment,
 	}
 }
 
@@ -142,7 +159,8 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 	for i, r := range o.Sites {
 		row := dto.SiteRowDTO{
 			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
-			State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
+			SiteType: r.Site.SiteType, State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
+			TodayStatus: toReportStatusDTO(r.TodayReport), YesterdayStatus: toReportStatusDTO(r.YesterdayReport),
 		}
 		if r.AsOf != nil {
 			t := r.AsOf.In(loc)
@@ -159,7 +177,29 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		ActiveSites: o.Counts.Active, PendingSites: o.Counts.PendingAcceptance, SuspendedSites: o.Counts.Suspended,
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
-		Portfolio: toSummaryDTO(o.Portfolio), Sites: rows,
+		OutagesThisWeek: o.OutagesThisWeek,
+		Portfolio:       toSummaryDTO(o.Portfolio), Sites: rows,
+	}
+}
+
+func toMySitesResponse(m services.MySites) dto.MySitesResponse {
+	rows := make([]dto.MySiteRowDTO, len(m.Sites))
+	for i, r := range m.Sites {
+		bars := make([]dto.DayBarDTO, len(r.Bars))
+		for j, b := range r.Bars {
+			bars[j] = dto.DayBarDTO{Date: b.Date.Format("2006-01-02"), Color: string(b.Color)}
+		}
+		rows[i] = dto.MySiteRowDTO{
+			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
+			SiteType: r.Site.SiteType, Address: r.Site.Address, State: r.Site.State,
+			GeneratorCapacity: r.Site.GeneratorCapacity, AccessContactName: r.Site.AccessContactName,
+			AccessContactPhone: r.Site.AccessContactPhone, SupervisorName: r.Site.SupervisorName,
+			TodayStatus: toReportStatusDTO(r.TodayStatus), AvailabilityPct30d: round2(r.AvailabilityPct),
+			OpenIncidents: r.OpenIncidents, Bars: bars,
+		}
+	}
+	return dto.MySitesResponse{
+		Date: m.Date.Format("2006-01-02"), Timezone: m.Timezone, GeneratedAt: m.GeneratedAt, Sites: rows,
 	}
 }
 
@@ -201,6 +241,18 @@ func toIncidentUpdateDTO(u domain.IncidentUpdate) dto.IncidentUpdateDTO {
 }
 
 func disputeRef(number int64) string { return fmt.Sprintf("DSP-%06d", number) }
+
+func correctionRef(number int64) string { return fmt.Sprintf("COR-%06d", number) }
+
+func toIncidentCorrectionDTO(c domain.IncidentCorrection) dto.IncidentCorrectionDTO {
+	return dto.IncidentCorrectionDTO{
+		ID: c.ID, Ref: correctionRef(c.Number), IncidentID: c.IncidentID, SiteID: c.SiteID,
+		Field: string(c.Field), OriginalValue: c.OriginalValue, CorrectedValue: c.CorrectedValue,
+		Reason: c.Reason, Status: string(c.Status), RequestedBy: c.RequestedBy,
+		ReviewedBy: c.ReviewedBy, ReviewedAt: c.ReviewedAt, ReviewNote: c.ReviewNote,
+		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
+	}
+}
 
 func dateString(t *time.Time) string {
 	if t == nil {

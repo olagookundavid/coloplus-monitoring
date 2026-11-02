@@ -9,6 +9,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { usePermissions } from '../../hooks'
+import { Logo } from '../icons'
 import { ButtonLink } from '../ui'
 import type { NavGroup } from './navTypes'
 
@@ -96,15 +97,7 @@ export function Sidebar({ nav, portalLabel, orgBadge, supportCard }: SidebarProp
           to={ROUTES.HOME}
           className={`flex items-center ${collapsed ? 'justify-center' : 'gap-1.5'}`}
         >
-          {collapsed ? (
-            <span className="text-xl font-bold tracking-tight text-text">
-              c<span className="text-orange-500">.</span>
-            </span>
-          ) : (
-            <span className="text-xl font-bold tracking-tight text-text">
-              coloplus<span className="text-orange-500">.</span>
-            </span>
-          )}
+          <Logo variant={collapsed ? 'mark' : 'full'} className="h-7" />
         </Link>
         {!collapsed && (
           <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-text-muted">

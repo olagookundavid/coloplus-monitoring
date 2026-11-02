@@ -7,5 +7,6 @@ import { ROUTES } from '../constants'
 export function landingRouteFor(permissions: string[]): string {
   if (permissions.includes('users.manage')) return ROUTES.OPS_OVERVIEW
   if (permissions.includes('reports.review')) return ROUTES.OPS_APPROVALS
+  if (permissions.includes('reports.create')) return ROUTES.OPS_REPORTER_OVERVIEW
   return ROUTES.HOME
 }

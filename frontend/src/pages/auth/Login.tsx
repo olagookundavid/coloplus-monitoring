@@ -94,7 +94,7 @@ export function Login() {
 
   // Respects an explicit redirect target (RequireAuth/RequireRole sent them
   // here from somewhere specific) over the permission-based default, so e.g.
-  // an admin bounced off /ops/users for being signed out lands back there.
+  // an admin bounced off /users for being signed out lands back there.
   // ROUTES.HOME doesn't count as "somewhere specific": RequireAuth records
   // it as `from` for every signed-out visitor who just opens the app at
   // '/', not only ones deep-linking into the customer portal, so treating

@@ -2,6 +2,7 @@ import { getApi } from './api'
 import { mapAxiosError } from './auth'
 import type {
   DailyReport,
+  PowerStatus,
   ReportCalculation,
   ReportDetail,
   ReportStatus,
@@ -20,6 +21,14 @@ export interface PendingApproval {
   submittedAt?: string
 }
 
+interface IntervalDTO {
+  start: string
+  end: string
+  state: string
+  source?: string
+  basis?: string
+}
+
 interface ReportDTO {
   id: string
   site_id: string
@@ -28,6 +37,8 @@ interface ReportDTO {
   status: ReportStatus
   author_id: string
   notes: string
+  intervals?: IntervalDTO[]
+  generator_hours?: number | null
   submitted_at?: string
   reviewed_at?: string
   reviewer_id?: string
@@ -96,6 +107,14 @@ function mapDailyReport(dto: ReportDTO): DailyReport {
     status: dto.status,
     authorId: dto.author_id,
     notes: dto.notes,
+    intervals: dto.intervals?.map((iv) => ({
+      start: iv.start,
+      end: iv.end,
+      state: iv.state as PowerStatus,
+      source: iv.source,
+      basis: iv.basis as 'observed' | 'declared' | undefined,
+    })),
+    generatorHours: dto.generator_hours ?? null,
     submittedAt: dto.submitted_at,
     reviewedAt: dto.reviewed_at,
     reviewerId: dto.reviewer_id,
@@ -150,16 +169,101 @@ export async function fetchPendingApprovals(): Promise<PendingApproval[]> {
 
 export async function fetchReports(params: {
   status?: ReportStatus
+  mine?: boolean
+  siteId?: string
+  /** yyyy-mm-dd, inclusive. */
+  from?: string
+  to?: string
   limit?: number
   offset?: number
 }): Promise<{ reports: DailyReport[]; total: number }> {
   try {
     const { data } = await getApi().get<ReportListResponseDTO>('/daily-reports', {
-      params: { status: params.status, limit: params.limit ?? 200, offset: params.offset },
+      params: {
+        status: params.status,
+        mine: params.mine ? 'true' : undefined,
+        site_id: params.siteId,
+        from: params.from,
+        to: params.to,
+        limit: params.limit ?? 200,
+        offset: params.offset,
+      },
     })
     return { reports: (data.reports ?? []).map(mapDailyReport), total: data.total }
   } catch (error) {
     throw mapAxiosError(error, 'Could not load reports.')
+  }
+}
+
+// The reporter's simplified day-level entry: a power-status toggle and an
+// optional generator-hours number, no hand-entered intervals. The backend
+// builds the day's single interval from powerStatus itself.
+export interface DailyReportFormInput {
+  powerStatus: PowerStatus
+  generatorHours: number | null
+  notes: string
+}
+
+function reportFormBody(input: DailyReportFormInput) {
+  return {
+    power_status: input.powerStatus,
+    generator_hours: input.generatorHours,
+    notes: input.notes,
+  }
+}
+
+export async function createDailyReport(
+  siteId: string,
+  reportDate: string,
+  input: DailyReportFormInput
+): Promise<DailyReport> {
+  try {
+    const { data } = await getApi().post<ReportDTO>(`/sites/${siteId}/daily-reports`, {
+      report_date: reportDate,
+      ...reportFormBody(input),
+    })
+    return mapDailyReport(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not start this report.')
+  }
+}
+
+export async function saveDailyReportDraft(
+  id: string,
+  rowVersion: number,
+  input: DailyReportFormInput
+): Promise<DailyReport> {
+  try {
+    const { data } = await getApi().put<ReportDTO>(`/daily-reports/${id}`, {
+      row_version: rowVersion,
+      ...reportFormBody(input),
+    })
+    return mapDailyReport(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not save this report.')
+  }
+}
+
+export async function submitDailyReport(id: string): Promise<DailyReport> {
+  try {
+    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${id}/submit`)
+    return mapDailyReport(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not submit this report.')
+  }
+}
+
+// Opens a new, editable revision of an already-approved report, linked via
+// supersedes_id -- the original stays visible and unchanged until this
+// revision is itself submitted and approved (backend/internal/services
+// /reports.go StartCorrection). The reporter then edits it through the same
+// save/submit path as any other draft.
+export async function startReportCorrection(reportId: string, reason: string): Promise<DailyReport> {
+  try {
+    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${reportId}/corrections`, { reason })
+    return mapDailyReport(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not start this correction.')
   }
 }
 

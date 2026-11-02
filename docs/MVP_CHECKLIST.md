@@ -89,6 +89,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Link an incident to the outage intervals of daily reports without duplicating downtime. Also the automatic midnight split
 - [ ] Evidence attachments on incidents. **new dependency** (R2)
 - [ ] Link planned maintenance and approval references
+- [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
 ## 8. Disputes (PRD 9)
 

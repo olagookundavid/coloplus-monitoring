@@ -58,10 +58,11 @@ func (r *IncidentRepository) Save(ctx context.Context, i domain.Incident) error 
 		`UPDATE incidents SET status = $2, owner_id = NULLIF($3, '')::uuid, next_action = $4, next_update_due = $5,
 		        restoration_target = $6, restored_at = $7, restored_by = NULLIF($8, '')::uuid,
 		        verified_at = $9, verified_by = NULLIF($10, '')::uuid, closed_at = $11, root_cause = $12,
-		        published_at = $13, updated_at = $14
+		        published_at = $13, updated_at = $14, started_at = $15
 		 WHERE id = $1`,
 		i.ID, string(i.Status), i.OwnerID, i.NextAction, i.NextUpdateDue, i.RestorationTarget,
-		i.RestoredAt, i.RestoredBy, i.VerifiedAt, i.VerifiedBy, i.ClosedAt, i.RootCause, i.PublishedAt, i.UpdatedAt)
+		i.RestoredAt, i.RestoredBy, i.VerifiedAt, i.VerifiedBy, i.ClosedAt, i.RootCause, i.PublishedAt, i.UpdatedAt,
+		i.StartedAt.UTC())
 	if err != nil {
 		return mapErr(err, "")
 	}

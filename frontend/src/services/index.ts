@@ -32,7 +32,22 @@ export {
   fetchReportDetail,
   approveReport,
   rejectReport,
+  createDailyReport,
+  saveDailyReportDraft,
+  submitDailyReport,
+  startReportCorrection,
 } from './adminReports'
-export type { PendingApproval } from './adminReports'
+export type { PendingApproval, DailyReportFormInput } from './adminReports'
+export { fetchDashboardOverview } from './dashboardOverview'
+export { fetchMySites } from './mySites'
+export {
+  fetchReporterIncidents,
+  fetchReporterIncidentDetail,
+  createIncident,
+  addIncidentUpdate,
+  restoreIncident,
+} from './reporterIncidents'
+export type { CreateIncidentInput } from './reporterIncidents'
 export { fetchRecentAuditEvents, fetchAuditEvents } from './adminAudit'
 export type { AuditEvent } from './adminAudit'
+export { fetchIncidentCorrections, requestIncidentCorrection } from './incidentCorrections'

@@ -82,18 +82,20 @@
     background-color: var(--color-primary-600);
   }
 
-  /* Auth pages' brand panel: a subtle diagonal texture over the teal
-     gradient. One rule, not two layered utilities -- both would set
-     background-image and the second would just replace the first. */
+  /* Auth pages' brand panel: a subtle diagonal texture over a near-black
+     gradient -- black, not teal, because the logo itself is red/white/black
+     (DECISIONS 039's brand kit); teal only clashed with it. One rule, not
+     two layered utilities -- both would set background-image and the second
+     would just replace the first. */
   .auth-brand-panel {
     background-image:
       repeating-linear-gradient(
         135deg,
-        rgb(255 255 255 / 5%) 0,
-        rgb(255 255 255 / 5%) 1px,
+        rgb(255 255 255 / 4%) 0,
+        rgb(255 255 255 / 4%) 1px,
         transparent 1px,
         transparent 14px
       ),
-      linear-gradient(to bottom right, var(--color-primary-700), var(--color-primary-600));
+      linear-gradient(to bottom right, #000000, #1a1a1a);
   }
 }

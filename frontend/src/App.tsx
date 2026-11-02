@@ -29,6 +29,14 @@ const OpsSiteAssignments = lazyNamed(() => import('./pages/ops/SiteAssignments')
 const OpsApprovals = lazyNamed(() => import('./pages/ops/Approvals'), 'Approvals')
 const OpsAuditLog = lazyNamed(() => import('./pages/ops/AuditLog'), 'AuditLog')
 const OpsSettings = lazyNamed(() => import('./pages/ops/Settings'), 'Settings')
+const ReporterOverview = lazyNamed(() => import('./pages/ops/ReporterOverview'), 'ReporterOverview')
+const MySites = lazyNamed(() => import('./pages/ops/MySites'), 'MySites')
+const DailyReports = lazyNamed(() => import('./pages/ops/DailyReports'), 'DailyReports')
+const ReporterIncidents = lazyNamed(
+  () => import('./pages/ops/ReporterIncidents'),
+  'ReporterIncidents'
+)
+const Corrections = lazyNamed(() => import('./pages/ops/Corrections'), 'Corrections')
 
 export function App() {
   return (
@@ -129,6 +137,28 @@ export function App() {
           }
         >
           <Route path={ROUTES.OPS_AUDIT_LOG} element={<OpsAuditLog />} />
+        </Route>
+
+        {/* A fourth, separate block: reports.create is the field reporter's
+            own permission, held by no other ops role (App.tsx's existing
+            pattern -- Approvals and Audit log each get their own block
+            rather than widening an existing permission list). */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="reports.create">
+                <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_REPORTER_OVERVIEW} element={<ReporterOverview />} />
+          <Route path={ROUTES.OPS_MY_SITES} element={<MySites />} />
+          <Route path={ROUTES.OPS_DAILY_REPORTS} element={<DailyReports />} />
+          <Route path={ROUTES.OPS_INCIDENTS} element={<ReporterIncidents />} />
+          <Route path={ROUTES.OPS_CORRECTIONS} element={<Corrections />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

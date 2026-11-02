@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { Logo } from '../icons'
+
 export interface AuthLayoutProps {
   eyebrow?: string
   title: string
@@ -8,20 +10,12 @@ export interface AuthLayoutProps {
   footer?: ReactNode
 }
 
-// Each maps to a real, shipped rule, not marketing filler: site scope per
-// role, every disputed figure traces back to a report/interval, and the
-// append-only audit log.
-const BRAND_HIGHLIGHTS = ['Role-based access', 'Evidence-linked records', 'Audit history']
-
 export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthLayoutProps) {
   return (
     <div className="min-h-dvh w-full bg-surface md:grid md:grid-cols-2">
       <div className="flex min-h-dvh flex-col px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2 pt-6">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-            C
-          </span>
-          <span className="text-lg font-bold tracking-tight text-text">Coloplus</span>
+          <Logo className="h-7" />
         </div>
 
         <div className="flex flex-1 items-center justify-center py-8 md:max-h-dvh md:overflow-y-auto">
@@ -37,30 +31,12 @@ export function AuthLayout({ eyebrow, title, subtitle, children, footer }: AuthL
         <p className="pb-6 text-xs text-text-muted">&copy; {new Date().getFullYear()} Coloplus</p>
       </div>
 
-      <div className="auth-brand-panel hidden flex-col justify-center gap-6 px-10 py-10 text-white md:flex md:min-h-dvh">
-        <p className="text-xs font-semibold tracking-wide text-white/70 uppercase">
-          Remote Monitoring Portal
+      <div className="auth-brand-panel hidden flex-col items-center justify-center gap-8 px-10 py-10 text-center text-white md:flex md:min-h-dvh">
+        <Logo className="h-40 lg:h-56" />
+        <p className="max-w-sm text-base text-white/70">
+          One traceable record of site power service — latest status, fault history and the evidence
+          behind every figure.
         </p>
-
-        <div className="flex aspect-[4/3] w-full max-w-md items-center justify-center rounded-lg border border-dashed border-white/30 p-6 text-center text-sm text-white/60">
-          Placeholder — site photo or brand imagery goes here
-        </div>
-
-        <div>
-          <h2 className="font-heading text-3xl font-extrabold text-balance">
-            One traceable record of site power service.
-          </h2>
-          <p className="mt-3 max-w-md text-sm text-white/80">
-            Latest site status, fault history and restoration updates, with the evidence behind
-            every figure.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs font-medium text-white/70">
-          {BRAND_HIGHLIGHTS.map((label) => (
-            <span key={label}>{label}</span>
-          ))}
-        </div>
       </div>
     </div>
   )

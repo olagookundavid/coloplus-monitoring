@@ -37,14 +37,14 @@ export interface ConfirmDialogProps {
 
 const TONE_ICON_CLASSES: Record<ConfirmDialogTone, string> = {
   success: 'bg-primary-soft text-primary-700',
-  info: 'bg-sky-50 text-sky-700',
+  info: 'bg-primary-soft text-primary-700',
   warning: 'bg-warning-soft text-warning-700',
   danger: 'bg-danger-50 text-danger-600',
 }
 
 const TONE_BUTTON_VARIANT: Record<ConfirmDialogTone, ButtonVariant> = {
   success: 'success',
-  info: 'info',
+  info: 'primary',
   warning: 'warning',
   danger: 'danger',
 }

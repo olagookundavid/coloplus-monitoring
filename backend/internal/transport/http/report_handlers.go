@@ -56,7 +56,10 @@ func (a *api) createReport(c *gin.Context) {
 		return
 	}
 	r, err := a.reports.CreateDraft(c.Request.Context(), actorFrom(c), c.Param("id"), date,
-		services.ReportInput{Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals)})
+		services.ReportInput{
+			Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals),
+			PowerStatus: parsePowerStatus(req.PowerStatus), GeneratorHours: req.GeneratorHours,
+		})
 	if err != nil {
 		a.fail(c, err)
 		return
@@ -83,7 +86,10 @@ func (a *api) saveReport(c *gin.Context) {
 		return
 	}
 	r, err := a.reports.SaveDraft(c.Request.Context(), actorFrom(c), c.Param("id"), req.RowVersion,
-		services.ReportInput{Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals)})
+		services.ReportInput{
+			Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals),
+			PowerStatus: parsePowerStatus(req.PowerStatus), GeneratorHours: req.GeneratorHours,
+		})
 	if err != nil {
 		a.fail(c, err)
 		return
@@ -222,6 +228,7 @@ func (a *api) getReport(c *gin.Context) {
 //	@Tags		daily-reports
 //	@Produce	json
 //	@Param		site_id	query		string	false	"Only this site"
+//	@Param		mine	query		bool	false	"Only reports you authored"
 //	@Param		from	query		string	false	"First report date, 2026-12-01"
 //	@Param		to		query		string	false	"Last report date"
 //	@Param		status	query		string	false	"draft, submitted, approved, rejected or superseded"
@@ -231,6 +238,9 @@ func (a *api) getReport(c *gin.Context) {
 //	@Router		/api/v1/daily-reports [get]
 func (a *api) listReports(c *gin.Context) {
 	in := services.ListReportsInput{SiteID: c.Query("site_id"), Limit: intQuery(c, "limit"), Offset: intQuery(c, "offset")}
+	if c.Query("mine") == "true" {
+		in.AuthorID = actorFrom(c).UserID
+	}
 	var err error
 	if in.From, err = optionalDate(c.Query("from")); err != nil {
 		a.fail(c, err)
@@ -269,6 +279,17 @@ func (a *api) listReports(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// parsePowerStatus reads the reporter's simplified toggle. An empty or
+// unrecognised value is left to domain.ValidateIntervals to reject, worded
+// for the reporter, rather than failing early here with a generic error.
+func parsePowerStatus(v string) *domain.IntervalState {
+	if v == "" {
+		return nil
+	}
+	st := domain.IntervalState(v)
+	return &st
+}
+
 func optionalDate(v string) (*time.Time, error) {
 	if v == "" {
 		return nil, nil
@@ -301,6 +322,23 @@ func (a *api) overview(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, toOverviewResponse(o, a.loc))
+}
+
+// mySites godoc
+//
+//	@Summary		The reporter's own site grid
+//	@Description	Today's status, a trailing 7-day health strip, pooled 30-day availability and open-incident count, one card per assigned site. A site with no approved report in the window has a null availability -- never 0 -- and every bar red.
+//	@Tags			dashboard
+//	@Produce		json
+//	@Success		200	{object}	dto.MySitesResponse
+//	@Router			/api/v1/dashboard/my-sites [get]
+func (a *api) mySites(c *gin.Context) {
+	m, err := a.dashboard.MySites(c.Request.Context(), actorFrom(c))
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toMySitesResponse(m))
 }
 
 func (a *api) dashboardDate(v string) (time.Time, error) {

@@ -142,7 +142,7 @@ export function Overview() {
   return (
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
-        title="Administration overview"
+        title="Overview"
         subtitle="Users, site assignments and configuration."
         actions={<ButtonLink to={ROUTES.OPS_USERS}>Manage users</ButtonLink>}
       />
