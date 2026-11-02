@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
+import { landingRouteFor } from '../../utils'
 import { MainLoader } from '../ui'
 
 // Guards /mfa-setup itself: bounces away once enrollment is already done,
@@ -10,7 +11,7 @@ import { MainLoader } from '../ui'
 // that overwrites the pending secret and would desync whatever the user
 // is scanning from what the server now expects.
 export function RequireMfaSetup({ children }: { children: ReactNode }) {
-  const { status, mfaSetupRequired } = useAuth()
+  const { status, mfaSetupRequired, permissions } = useAuth()
 
   if (status === 'loading') {
     return <MainLoader />
@@ -20,8 +21,10 @@ export function RequireMfaSetup({ children }: { children: ReactNode }) {
     return <Navigate to={ROUTES.LOGIN} replace />
   }
 
+  // Already enrolled -- land on this account's own home, not
+  // unconditionally the customer portal.
   if (!mfaSetupRequired) {
-    return <Navigate to={ROUTES.HOME} replace />
+    return <Navigate to={landingRouteFor(permissions)} replace />
   }
 
   return <>{children}</>

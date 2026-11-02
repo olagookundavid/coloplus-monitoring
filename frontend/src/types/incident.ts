@@ -61,7 +61,10 @@ export interface IncidentUpdateEntry {
 }
 
 // One incident on the reporter's Incidents page -- mirrors dto.IncidentDTO's
-// reporter-relevant fields.
+// reporter-relevant fields. The supervisor Incidents page reuses this same
+// shape (the fields below it, e.g. nextAction/overdue/publishedAt, are the
+// ones only a supervisor view needs) since GET /incidents is one generic,
+// actor-scoped endpoint, not a reporter-specific one.
 export interface ReporterIncident {
   id: string
   /** Server-formatted, e.g. "INC-000123". */
@@ -76,10 +79,14 @@ export interface ReporterIncident {
   startedAt: string
   detectedAt: string
   ownerId?: string
+  nextAction?: string
+  nextUpdateDue?: string
+  overdue: boolean
   restoredAt?: string
   verifiedAt?: string
   closedAt?: string
   rootCause?: string
+  publishedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -87,4 +94,12 @@ export interface ReporterIncident {
 export interface ReporterIncidentDetail {
   incident: ReporterIncident
   updates: IncidentUpdateEntry[]
+}
+
+// Mirrors dto.IncidentSummaryResponse (GET /incidents/summary).
+export interface IncidentSummary {
+  open: number
+  active: number
+  critical: number
+  overdue: number
 }

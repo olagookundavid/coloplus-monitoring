@@ -37,6 +37,15 @@ const ReporterIncidents = lazyNamed(
   'ReporterIncidents'
 )
 const Corrections = lazyNamed(() => import('./pages/ops/Corrections'), 'Corrections')
+const SupervisorOverview = lazyNamed(
+  () => import('./pages/ops/SupervisorOverview'),
+  'SupervisorOverview'
+)
+const SupervisorSites = lazyNamed(() => import('./pages/ops/SupervisorSites'), 'SupervisorSites')
+const SupervisorIncidents = lazyNamed(
+  () => import('./pages/ops/SupervisorIncidents'),
+  'SupervisorIncidents'
+)
 
 export function App() {
   return (
@@ -159,6 +168,29 @@ export function App() {
           <Route path={ROUTES.OPS_DAILY_REPORTS} element={<DailyReports />} />
           <Route path={ROUTES.OPS_INCIDENTS} element={<ReporterIncidents />} />
           <Route path={ROUTES.OPS_CORRECTIONS} element={<Corrections />} />
+        </Route>
+
+        {/* A fifth, separate block: the operations supervisor portal.
+            reports.review is the door key (same reasoning as the Approvals
+            block above) -- it's the one permission this codebase already
+            uses to mean "supervisor-flavored actor," and admin explicitly
+            does not hold it (Decision 025), so this cleanly excludes admin
+            from a near-duplicate nav group. Finer actions inside Incidents
+            (assign/transition/publish) still check incidents.manage. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="reports.review">
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_SUPERVISOR_OVERVIEW} element={<SupervisorOverview />} />
+          <Route path={ROUTES.OPS_SUPERVISOR_SITES} element={<SupervisorSites />} />
+          <Route path={ROUTES.OPS_SUPERVISOR_INCIDENTS} element={<SupervisorIncidents />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

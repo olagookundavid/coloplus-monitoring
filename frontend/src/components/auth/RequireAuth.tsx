@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
@@ -7,14 +7,13 @@ import { MainLoader } from '../ui'
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const { status, mfaSetupRequired } = useAuth()
-  const location = useLocation()
 
   if (status === 'loading') {
     return <MainLoader />
   }
 
   if (status === 'unauthenticated') {
-    return <Navigate to={ROUTES.LOGIN} replace state={{ from: location }} />
+    return <Navigate to={ROUTES.LOGIN} replace />
   }
 
   // The backend grants no permissions until a required MFA enrollment is

@@ -29,6 +29,12 @@ export const ROUTES = {
   OPS_DAILY_REPORTS: '/daily-reports',
   OPS_INCIDENTS: '/incidents',
   OPS_CORRECTIONS: '/corrections',
+  // The supervisor portal. OPS_OVERVIEW/OPS_INCIDENTS above are already taken
+  // by admin/reporter, so these get their own slugs even though they're
+  // conceptually "overview"/"incidents" for a third ops role.
+  OPS_SUPERVISOR_OVERVIEW: '/supervision',
+  OPS_SUPERVISOR_SITES: '/site-oversight',
+  OPS_SUPERVISOR_INCIDENTS: '/incident-management',
 } as const
 
 export function siteDetailPath(id: string): string {

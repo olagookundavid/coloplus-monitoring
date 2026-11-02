@@ -38,8 +38,18 @@ export {
   createIncident,
   addIncidentUpdate,
   restoreIncident,
+  assignIncident,
+  transitionIncident,
+  publishIncident,
+  fetchIncidentSummary,
 } from './reporterIncidents'
-export type { CreateIncidentInput } from './reporterIncidents'
+export type {
+  CreateIncidentInput,
+  AssignIncidentInput,
+  TransitionIncidentInput,
+} from './reporterIncidents'
+export { fetchSiteOverview } from './siteOverview'
+export type { SiteOverview } from './siteOverview'
 export { fetchRecentAuditEvents, fetchAuditEvents } from './adminAudit'
 export type { AuditEvent } from './adminAudit'
 export { fetchIncidentCorrections, requestIncidentCorrection } from './incidentCorrections'
