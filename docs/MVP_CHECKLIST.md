@@ -152,8 +152,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
-- [ ] Immutable report snapshots with version history; "never overwrite an issued report"
-- [ ] Asynchronous generation with visible progress
+- [x] Issued reports are never overwritten: every export is entered in an immutable register with its SHA-256, and the exact file is kept when storage is on (`GET /exports/issued`; DECISIONS 056). Approved daily reports were already immutable, with linked revisions
+- [ ] Asynchronous generation with visible progress: not needed while exports take well under a second; revisit if a pack grows large
 
 ## 13. Audit (PRD 11)
 

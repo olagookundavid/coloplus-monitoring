@@ -204,7 +204,7 @@ func newStack(t *testing.T) *stack {
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc).WithAcceptances(acceptanceRepo),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), store),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
@@ -389,6 +389,7 @@ type fakeStore struct {
 	mu      sync.Mutex
 	objects map[string]ports.ObjectInfo
 	deleted []string
+	puts    []string
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{objects: map[string]ports.ObjectInfo{}} }
@@ -454,4 +455,12 @@ func mustWebhook(t *testing.T) *mail.ResendWebhook {
 		t.Fatal(err)
 	}
 	return wh
+}
+
+func (f *fakeStore) Put(_ context.Context, key, _ string, data []byte) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.objects[key] = ports.ObjectInfo{SizeBytes: int64(len(data))}
+	f.puts = append(f.puts, key)
+	return nil
 }

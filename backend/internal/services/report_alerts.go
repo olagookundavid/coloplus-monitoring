@@ -40,7 +40,7 @@ func NewReportAlertService(
 // left alone, so a new site is not nagged before its first report is due.
 func (s *ReportAlertService) AlertOverdue(ctx context.Context) (int, error) {
 	now := s.clock.Now()
-	sites, _, err := s.sites.List(ctx, ports.SiteFilter{AllSites: true, Status: domain.SiteActive, Limit: overviewSiteLimit})
+	sites, err := listAllActiveSites(ctx, s.sites)
 	if err != nil {
 		return 0, err
 	}

@@ -1,10 +1,13 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"coloplus-backend/internal/domain"
 	apperrors "coloplus-backend/internal/errors"
+	"coloplus-backend/internal/ports"
 )
 
 const (
@@ -47,4 +50,22 @@ func forbidden(format string, args ...any) error {
 // reachable; the caller is told to try again later, never why.
 func unavailableErr(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", apperrors.ErrUnavailable, fmt.Sprintf(format, args...))
+}
+
+// listAllActiveSites reads every active site, a page at a time, for jobs that
+// must look at all of them. A job that stopped at the first page would skip the
+// rest of a large portfolio without a word.
+func listAllActiveSites(ctx context.Context, repo ports.SiteRepository) ([]domain.Site, error) {
+	const page = 500
+	var all []domain.Site
+	for offset := 0; ; offset += page {
+		sites, _, err := repo.List(ctx, ports.SiteFilter{AllSites: true, Status: domain.SiteActive, Limit: page, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, sites...)
+		if len(sites) < page {
+			return all, nil
+		}
+	}
 }

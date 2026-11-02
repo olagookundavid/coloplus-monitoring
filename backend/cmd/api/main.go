@@ -302,7 +302,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), objectStore),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours),
 	})
 	srv := &http.Server{

@@ -502,6 +502,8 @@ type ObjectStore interface {
 	Stat(ctx context.Context, key string) (ObjectInfo, error)
 	// Delete removes an object. Deleting one that is not there is not an error.
 	Delete(ctx context.Context, key string) error
+	// Put stores bytes the server itself holds, such as an issued export.
+	Put(ctx context.Context, key, contentType string, data []byte) error
 }
 
 type AttachmentRepository interface {
@@ -573,4 +575,11 @@ type MailEvent struct {
 // headers are lower case. A forged or stale one is apperrors.ErrUnauthorized.
 type MailEventVerifier interface {
 	Verify(headers map[string]string, body []byte, now time.Time) (MailEvent, error)
+}
+
+type IssuedExportRepository interface {
+	Create(ctx context.Context, e domain.IssuedExport) (domain.IssuedExport, error)
+	GetByID(ctx context.Context, id string) (domain.IssuedExport, error)
+	// List returns issued exports newest first; issuedBy narrows to one person.
+	List(ctx context.Context, issuedBy string, limit, offset int) (items []domain.IssuedExport, total int, err error)
 }

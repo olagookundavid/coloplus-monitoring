@@ -2,7 +2,9 @@ package integration
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/csv"
+	"encoding/hex"
 	"strings"
 	"testing"
 	"time"
@@ -404,5 +406,57 @@ func TestReportPacks_MonthlyWeeklyAndBacklog(t *testing.T) {
 	}
 	if n < 3 {
 		t.Fatalf("the packs were not all audited: %d", n)
+	}
+}
+
+// Every export is entered in a register with the fingerprint of the file as
+// sent, and the exact file is kept: nobody can later be handed something
+// different and call it the same report, and one person cannot fetch another's.
+func TestIssuedExports_FingerprintStoredCopyAndImmutable(t *testing.T) {
+	w := newWorkflow(t)
+	id := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	reviewer := w.login(revEmail)
+	otherEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	other := w.login(otherEmail)
+
+	day, _ := w.reportDay(1)
+	r := w.expect(w.call("GET", "/api/v1/exports/daily-summaries.csv?from="+day+"&to="+day, nil, reviewer), 200)
+	exportID, digest := r.Header.Get("X-Export-Id"), r.Header.Get("X-Content-SHA256")
+	sum := sha256.Sum256([]byte(r.Raw))
+	if exportID == "" || digest != hex.EncodeToString(sum[:]) {
+		t.Fatalf("the response must carry the export's id and the SHA-256 of the file it sent: id=%q digest=%q", exportID, digest)
+	}
+
+	mine := w.expect(w.call("GET", "/api/v1/exports/issued", nil, reviewer), 200)
+	list := mine.list("exports")
+	if len(list) != 1 || list[0].(map[string]any)["sha256"] != digest || list[0].(map[string]any)["stored"] != true || list[0].(map[string]any)["kind"] != "daily_summaries" {
+		t.Fatalf("the register should hold the export with its fingerprint: %s", mine.Raw)
+	}
+	if n := len(w.expect(w.call("GET", "/api/v1/exports/issued", nil, other), 200).list("exports")); n != 0 {
+		t.Fatalf("a person sees only their own issued exports, got %d", n)
+	}
+	if n := len(w.store.puts); n < 1 {
+		t.Fatal("the exact file was not kept")
+	}
+
+	link := w.expect(w.call("GET", "/api/v1/exports/issued/"+exportID+"/download", nil, reviewer), 200)
+	if !strings.HasPrefix(link.str("url"), "https://store.test/dl/exports/") {
+		t.Fatalf("the owner should get a link to the stored file: %s", link.Raw)
+	}
+	w.expect(w.call("GET", "/api/v1/exports/issued/"+exportID+"/download", nil, other), 404)
+	w.expect(w.call("GET", "/api/v1/exports/issued", nil, w.ot), 403)
+	if all := w.expect(w.call("GET", "/api/v1/exports/issued", nil, w.admin), 200); len(all.list("exports")) < 1 {
+		t.Fatalf("someone who reads the audit log sees everyone's: %s", all.Raw)
+	}
+
+	// The register itself cannot be rewritten.
+	if _, err := w.pool.Exec(context.Background(), `UPDATE issued_exports SET sha256 = repeat('0', 64) WHERE id = $1::uuid`, exportID); err == nil {
+		t.Fatal("an issued export's fingerprint was changed")
+	}
+	if _, err := w.pool.Exec(context.Background(), `DELETE FROM issued_exports WHERE id = $1::uuid`, exportID); err == nil {
+		t.Fatal("an issued export was deleted")
 	}
 }

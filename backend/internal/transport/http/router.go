@@ -219,6 +219,8 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/sites/:id/acceptance/transition", h.transitionAcceptance)
 	authed.GET("/acceptances", h.listAcceptances)
 
+	authed.GET("/exports/issued", h.listIssuedExports)
+	authed.GET("/exports/issued/:id/download", h.downloadIssuedExport)
 	authed.GET("/exports/daily-summaries.csv", h.exportDailySummaries)
 	authed.GET("/exports/incidents.csv", h.exportIncidents)
 	authed.GET("/exports/monthly-performance.csv", h.exportMonthly)

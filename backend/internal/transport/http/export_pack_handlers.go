@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"encoding/csv"
 	"fmt"
 	"net/http"
@@ -13,19 +14,42 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// writeCSV sends a table as a download with the byte order mark Excel needs.
-func writeCSV(c *gin.Context, filename string, header []string, rows [][]string) {
-	c.Header("Content-Type", "text/csv; charset=utf-8")
-	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
-	c.Header("Cache-Control", "no-store")
-	c.Status(http.StatusOK)
-	_, _ = c.Writer.WriteString("\xef\xbb\xbf")
-	w := csv.NewWriter(c.Writer)
+// csvSink collects rows so a finished export can be fingerprinted before it
+// is handed over.
+type csvSink struct{ rows [][]string }
+
+func (s *csvSink) Write(r []string) error { s.rows = append(s.rows, r); return nil }
+
+// issueCSV hands over a finished export and records it in the register of
+// issued exports: the response carries the export's id and SHA-256 so a file can
+// be checked against what was issued, and the exact bytes are kept when storage
+// is up. The register cannot be skipped: if the fingerprint cannot be recorded
+// the export is not issued.
+func (a *api) issueCSV(c *gin.Context, kind, filename string, params map[string]any, header []string, rows [][]string) {
+	var buf bytes.Buffer
+	// The byte order mark lets Excel read accents correctly.
+	buf.WriteString("\xef\xbb\xbf")
+	w := csv.NewWriter(&buf)
 	_ = w.Write(header)
 	for _, r := range rows {
 		_ = w.Write(r)
 	}
 	w.Flush()
+
+	issued, err := a.exports.Issue(c.Request.Context(), actorFrom(c), services.IssueInput{
+		Kind: kind, Filename: filename, Params: params, RowCount: len(rows), Content: buf.Bytes(),
+	})
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	if issued.ID != "" {
+		c.Header("X-Export-Id", issued.ID)
+		c.Header("X-Content-SHA256", issued.SHA256)
+	}
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Header("Cache-Control", "no-store")
+	c.Data(http.StatusOK, "text/csv; charset=utf-8", buf.Bytes())
 }
 
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -89,7 +113,8 @@ func (a *api) exportMonthly(c *gin.Context) {
 			itoa(r.IncidentsStarted), basis, pack.Formula, pack.Version, gen, services.ExportAssumptions,
 		})
 	}
-	writeCSV(c, fmt.Sprintf("coloplus-monthly-performance_%s.csv", pack.From.Format("2006-01")), monthlyHeader, rows)
+	a.issueCSV(c, "monthly_performance", fmt.Sprintf("coloplus-monthly-performance_%s.csv", pack.From.Format("2006-01")),
+		map[string]any{"month": pack.From.Format("2006-01"), "region": c.Query("region")}, monthlyHeader, rows)
 }
 
 var weeklyHeader = []string{
@@ -131,7 +156,8 @@ func (a *api) exportWeekly(c *gin.Context) {
 			"Days without a report are assumed available for sites available by default; they are listed here so they are seen.",
 		})
 	}
-	writeCSV(c, fmt.Sprintf("coloplus-weekly-exceptions_%s.csv", rep.From.Format("2006-01-02")), weeklyHeader, rows)
+	a.issueCSV(c, "weekly_exceptions", fmt.Sprintf("coloplus-weekly-exceptions_%s.csv", rep.From.Format("2006-01-02")),
+		map[string]any{"week_start": rep.From.Format("2006-01-02"), "region": c.Query("region")}, weeklyHeader, rows)
 }
 
 var backlogHeader = []string{
@@ -166,5 +192,6 @@ func (a *api) exportBacklog(c *gin.Context) {
 			"Time waiting for inspection is not operational performance and is not part of availability.",
 		})
 	}
-	writeCSV(c, "coloplus-commissioning-backlog_"+b.GeneratedAt.In(a.loc).Format("2006-01-02")+".csv", backlogHeader, rows)
+	a.issueCSV(c, "commissioning_backlog", "coloplus-commissioning-backlog_"+b.GeneratedAt.In(a.loc).Format("2006-01-02")+".csv",
+		map[string]any{"region": c.Query("region")}, backlogHeader, rows)
 }

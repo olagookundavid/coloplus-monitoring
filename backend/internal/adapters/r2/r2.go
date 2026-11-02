@@ -5,7 +5,9 @@
 package r2
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
@@ -174,4 +176,30 @@ func (s *Store) do(ctx context.Context, method, key string, headers map[string]s
 		return nil, fmt.Errorf("%w: storage is not reachable: %v", apperrors.ErrUnavailable, err)
 	}
 	return resp, nil
+}
+
+// Put stores bytes the server holds, with a signed PUT of its own. The digest
+// is signed in, so the store refuses anything but exactly these bytes.
+func (s *Store) Put(ctx context.Context, key, contentType string, data []byte) error {
+	sum := sha256.Sum256(data)
+	headers := map[string]string{
+		"content-type":          contentType,
+		"content-length":        strconv.Itoa(len(data)),
+		"x-amz-checksum-sha256": base64.StdEncoding.EncodeToString(sum[:]),
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, s.sign(http.MethodPut, key, time.Minute, nil, headers), bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("r2: building request: %w", err)
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("x-amz-checksum-sha256", headers["x-amz-checksum-sha256"])
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: storage is not reachable: %v", apperrors.ErrUnavailable, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("%w: storage answered %d", apperrors.ErrUnavailable, resp.StatusCode)
+	}
+	return nil
 }

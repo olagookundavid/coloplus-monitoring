@@ -22,10 +22,13 @@ type ExportService struct {
 	incidents ports.IncidentRepository
 	// acceptances is set with WithAcceptances, for the commissioning backlog.
 	acceptances ports.AcceptanceRepository
-	tx          ports.TxManager
-	audit       *AuditService
-	clock       ports.Clock
-	loc         *time.Location
+	// issued and snapshots keep the register of issued exports and their files.
+	issued    ports.IssuedExportRepository
+	snapshots ports.ObjectStore
+	tx        ports.TxManager
+	audit     *AuditService
+	clock     ports.Clock
+	loc       *time.Location
 }
 
 func NewExportService(

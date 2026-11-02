@@ -1517,6 +1517,75 @@
                 }
             }
         },
+        "/api/v1/exports/issued": {
+            "get": {
+                "description": "Every CSV export handed out, newest first, with the request that made it, its row count and SHA-256. Each export response carries its id (X-Export-Id) and digest (X-Content-SHA256), so a file can be checked against this register. You see your own; someone who can read the audit log sees everyone's. Records are never changed or removed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Exports that were issued",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IssuedExportListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/exports/issued/{id}/download": {
+            "get": {
+                "description": "Returns a short-lived link to the stored copy of an issued export, byte for byte what was sent. Only the person who issued it, or someone who can read the audit log, may have it; it is not found if the file was not stored.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "A link to the exact file that was issued",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Issued export id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DownloadResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/exports/monthly-performance.csv": {
             "get": {
                 "description": "One row per site for a calendar month (the current month runs to today): the pooled figures, the minutes assumed rather than confirmed, minutes by source, generator hours, how many days were reported, late reports and corrections, the data-quality level and the incidents that started. Every row says how it was reached. Needs export access and is recorded in the audit log.",
@@ -4667,6 +4736,65 @@
                     "description": "State is served or outage.",
                     "type": "string",
                     "example": "served"
+                }
+            }
+        },
+        "dto.IssuedExportDTO": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "issued_by": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "monthly_performance"
+                },
+                "params": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "row_count": {
+                    "type": "integer"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "description": "SizeBytes and SHA256 describe the file as sent.",
+                    "type": "integer"
+                },
+                "stored": {
+                    "description": "Stored: the exact file was kept and can be fetched again.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.IssuedExportListResponse": {
+            "type": "object",
+            "properties": {
+                "exports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IssuedExportDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },

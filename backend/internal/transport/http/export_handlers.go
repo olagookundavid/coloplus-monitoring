@@ -1,9 +1,7 @@
 package httpapi
 
 import (
-	"encoding/csv"
 	"fmt"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -58,14 +56,7 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 	}
 
 	name := fmt.Sprintf("coloplus-daily-summaries_%s_%s.csv", exp.From.Format("2006-01-02"), exp.To.Format("2006-01-02"))
-	c.Header("Content-Type", "text/csv; charset=utf-8")
-	c.Header("Content-Disposition", `attachment; filename="`+name+`"`)
-	c.Header("Cache-Control", "no-store")
-	c.Status(http.StatusOK)
-	// The byte order mark lets Excel read accents correctly.
-	_, _ = c.Writer.WriteString("\xef\xbb\xbf")
-	w := csv.NewWriter(c.Writer)
-	_ = w.Write(dailySummaryHeader)
+	w := &csvSink{}
 
 	generated := exp.GeneratedAt.UTC().Format(time.RFC3339)
 	for _, r := range exp.Rows {
@@ -99,7 +90,9 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			exp.Formula, exp.Version, generated, services.ExportAssumptions,
 		})
 	}
-	w.Flush()
+	a.issueCSV(c, "daily_summaries", name, map[string]any{
+		"from": exp.From.Format("2006-01-02"), "to": exp.To.Format("2006-01-02"), "site_id": in.SiteID, "region": in.Region,
+	}, dailySummaryHeader, w.rows)
 }
 
 var incidentHeader = []string{
@@ -141,13 +134,7 @@ func (a *api) exportIncidents(c *gin.Context) {
 	}
 
 	name := fmt.Sprintf("coloplus-incidents_%s_%s.csv", exp.From.Format("2006-01-02"), exp.To.Format("2006-01-02"))
-	c.Header("Content-Type", "text/csv; charset=utf-8")
-	c.Header("Content-Disposition", `attachment; filename="`+name+`"`)
-	c.Header("Cache-Control", "no-store")
-	c.Status(http.StatusOK)
-	_, _ = c.Writer.WriteString("\xef\xbb\xbf")
-	w := csv.NewWriter(c.Writer)
-	_ = w.Write(incidentHeader)
+	w := &csvSink{}
 
 	utc := func(t *time.Time) string {
 		if t == nil {
@@ -172,7 +159,9 @@ func (a *api) exportIncidents(c *gin.Context) {
 			duration, exp.Timezone, generated, services.ExportIncidentRegisterAssumptions,
 		})
 	}
-	w.Flush()
+	a.issueCSV(c, "incident_register", name, map[string]any{
+		"from": exp.From.Format("2006-01-02"), "to": exp.To.Format("2006-01-02"), "site_id": in.SiteID, "region": in.Region,
+	}, incidentHeader, w.rows)
 }
 
 func percent(v *float64) string {

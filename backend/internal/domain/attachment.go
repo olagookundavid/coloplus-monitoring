@@ -83,12 +83,16 @@ type Attachment struct {
 
 // NewStorageKey makes the random object key for a site's file. The file's name
 // is never part of it.
-func NewStorageKey(siteID string) (string, error) {
+func NewStorageKey(siteID string) (string, error) { return NewObjectKey("attachments/" + siteID) }
+
+// NewObjectKey makes a random object key under a folder, for files that are not
+// a site's evidence, such as an issued export.
+func NewObjectKey(folder string) (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", fmt.Errorf("generating storage key: %w", err)
 	}
-	return "attachments/" + siteID + "/" + hex.EncodeToString(b[:]), nil
+	return folder + "/" + hex.EncodeToString(b[:]), nil
 }
 
 // SafeFilename keeps only the file's own name: no folders, no control

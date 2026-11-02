@@ -266,7 +266,7 @@ func (s *FuelService) Void(ctx context.Context, actor domain.Actor, id, reason s
 // returns the number of emails queued.
 func (s *FuelService) AlertLow(ctx context.Context) (int, error) {
 	now := s.clock.Now()
-	sites, _, err := s.sites.List(ctx, ports.SiteFilter{AllSites: true, Status: domain.SiteActive, Limit: overviewSiteLimit})
+	sites, err := listAllActiveSites(ctx, s.sites)
 	if err != nil {
 		return 0, err
 	}
