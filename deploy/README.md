@@ -29,6 +29,9 @@ health route `/healthcheck`.
    Production will not start with `MAIL_PROVIDER=log`.
 5. **Front end origin:** needed for `CORS_ALLOW_ORIGINS` and `APP_BASE_URL`
    (https, exact origin). Production refuses to start without them.
+6. **Front end API URL:** already handled, nothing to configure — `frontend/.env.production`
+   is committed with `VITE_API_BASE_URL=https://api.remotems.com/api/v1`. Vite loads it
+   automatically for any production build, so Vercel picks it up with no dashboard env var.
 
 ## 2. Server
 
