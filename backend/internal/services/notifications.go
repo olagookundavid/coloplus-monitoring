@@ -32,6 +32,16 @@ type NotificationService struct {
 	audit  *AuditService
 	clock  ports.Clock
 	log    *slog.Logger
+	// alerts, when set, also keeps each EnqueueFor alert in the person's
+	// in-app alert centre until they acknowledge it.
+	alerts ports.AlertRepository
+}
+
+// WithAlerts adds the in-app alert centre: every alert queued for a person is
+// also kept for them here. Account emails never come this way.
+func (s *NotificationService) WithAlerts(a ports.AlertRepository) *NotificationService {
+	s.alerts = a
+	return s
 }
 
 func NewNotificationService(store ports.NotificationStore, mailer ports.Mailer, audit *AuditService, clock ports.Clock, log *slog.Logger) *NotificationService {
@@ -62,6 +72,13 @@ func (s *NotificationService) EnqueueFor(ctx context.Context, users []domain.Use
 		}
 		if ok {
 			queued++
+		}
+		// The same alert waits in the person's alert centre. It carries the
+		// dedupe key, so running the job again adds nothing.
+		if s.alerts != nil {
+			if _, err := s.alerts.Add(ctx, u.ID, kind, subject, body, key, s.clock.Now()); err != nil {
+				return queued, err
+			}
 		}
 	}
 	return queued, nil

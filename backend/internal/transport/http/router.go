@@ -49,6 +49,7 @@ type Deps struct {
 	Tickets       *services.TicketService
 	Attachments   *services.AttachmentService
 	Fuel          *services.FuelService
+	Alerts        *services.AlertService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
@@ -74,6 +75,7 @@ type api struct {
 	tickets       *services.TicketService
 	attachments   *services.AttachmentService
 	fuel          *services.FuelService
+	alerts        *services.AlertService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
@@ -117,7 +119,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, alerts: d.Alerts, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -196,6 +198,10 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/tickets/:id/transition", h.transitionTicket)
 	authed.POST("/tickets/:id/incident", h.linkTicketIncident)
 
+	authed.GET("/alerts", h.listAlerts)
+	authed.POST("/alerts/acknowledge-all", h.acknowledgeAllAlerts)
+	authed.POST("/alerts/:id/acknowledge", h.acknowledgeAlert)
+
 	authed.POST("/sites/:id/fuel", h.recordFuel)
 	authed.GET("/sites/:id/fuel", h.fuelStatus)
 	authed.POST("/fuel/:id/void", h.voidFuel)
@@ -212,6 +218,9 @@ func NewRouter(d Deps) *gin.Engine {
 
 	authed.GET("/exports/daily-summaries.csv", h.exportDailySummaries)
 	authed.GET("/exports/incidents.csv", h.exportIncidents)
+	authed.GET("/exports/monthly-performance.csv", h.exportMonthly)
+	authed.GET("/exports/weekly-exceptions.csv", h.exportWeekly)
+	authed.GET("/exports/commissioning-backlog.csv", h.exportBacklog)
 
 	authed.GET("/audit", h.searchAudit)
 

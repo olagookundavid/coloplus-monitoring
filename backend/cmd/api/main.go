@@ -164,7 +164,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 
 	// Use cases.
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
+	alertRepo := postgres.NewAlertRepository(db)
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo)
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, txManager, notifications, audit, clock, cfg.Mail.BaseURL)
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
@@ -293,10 +294,11 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Tickets:       tickets,
 		Attachments:   attachments,
 		Fuel:          fuelService,
+		Alerts:        services.NewAlertService(alertRepo, clock),
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours),
 	})
 	srv := &http.Server{

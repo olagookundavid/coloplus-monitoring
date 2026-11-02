@@ -60,6 +60,94 @@
                 }
             }
         },
+        "/api/v1/alerts": {
+            "get": {
+                "description": "The alerts waiting for you, newest first: late reports, overdue incidents, low fuel, replies on tickets and disputes. Each stays until you acknowledge it. You only ever see your own. unread is the number you have not acknowledged, for a badge.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Your alerts",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Only those not yet acknowledged",
+                        "name": "unread",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AlertListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/acknowledge-all": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Acknowledge all your open alerts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AcknowledgeAllResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/alerts/{id}/acknowledge": {
+            "post": {
+                "description": "Safe to repeat. Someone else's alert, or one that does not exist, is not found.",
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Acknowledge one of your alerts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/attachments": {
             "get": {
                 "description": "Received files only. Coloplus's internal files are left out for Airtel. For acceptance, owner_id is the site's id.",
@@ -1275,6 +1363,40 @@
                 }
             }
         },
+        "/api/v1/exports/commissioning-backlog.csv": {
+            "get": {
+                "description": "The sites not yet accepted, with the stage, whose move it is, the next action and when it is due. Time since ready for inspection is reported apart from operational performance. Needs export access and acceptance access; audited.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Commissioning backlog (CSV)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/exports/daily-summaries.csv": {
             "get": {
                 "description": "One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures. For a site that is available by default its availability is shown as assumed (assumed_available_minutes), never as confirmed. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.",
@@ -1388,6 +1510,88 @@
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/exports/monthly-performance.csv": {
+            "get": {
+                "description": "One row per site for a calendar month (the current month runs to today): the pooled figures, the minutes assumed rather than confirmed, minutes by source, generator hours, how many days were reported, late reports and corrections, the data-quality level and the incidents that started. Every row says how it was reached. Needs export access and is recorded in the audit log.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Monthly performance pack (CSV)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Month, 2026-12",
+                        "name": "month",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/exports/weekly-exceptions.csv": {
+            "get": {
+                "description": "For the week starting on the given Monday (the current week runs to today), only the sites with something to look at: an outage, a day with no report, a late report, a correction, or an open or overdue incident or dispute. A site with nothing to report is left out and counted in sites_in_view, so a short list is not mistaken for a short portfolio. The open counts are as of when the report is made. Needs export access and is audited.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Weekly exception report (CSV)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "The Monday, 2026-12-07",
+                        "name": "week_start",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3339,6 +3543,64 @@
                     "type": "integer"
                 },
                 "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AcknowledgeAllResponse": {
+            "type": "object",
+            "properties": {
+                "acknowledged": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AlertDTO": {
+            "type": "object",
+            "properties": {
+                "acknowledged_at": {
+                    "description": "AcknowledgedAt is null until the person acknowledges it.",
+                    "type": "string"
+                },
+                "body": {
+                    "description": "Body is the full text of the alert, the same as the email.",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "fuel.low"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AlertListResponse": {
+            "type": "object",
+            "properties": {
+                "alerts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AlertDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "description": "Total counts the alerts matching the request; Unread all open alerts.",
+                    "type": "integer"
+                },
+                "unread": {
                     "type": "integer"
                 }
             }

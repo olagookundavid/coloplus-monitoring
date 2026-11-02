@@ -158,7 +158,8 @@ func newStack(t *testing.T) *stack {
 	audit := services.NewAuditService(auditStore, batcher, clock, log)
 
 	mailer := &fakeMailer{}
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log)
+	alertRepo := postgres.NewAlertRepository(db)
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo)
 	auth, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(maker),
 		security.NewTOTP("Coloplus"), box, recoveryRepo, tx, notifications, audit, clock, time.Hour, log)
 	if err != nil {
@@ -198,10 +199,11 @@ func newStack(t *testing.T) *stack {
 		Tickets:       tickets,
 		Attachments:   attachments,
 		Fuel:          fuel,
+		Alerts:        services.NewAlertService(alertRepo, clock),
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc).WithAcceptances(acceptanceRepo),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,

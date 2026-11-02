@@ -327,3 +327,82 @@ func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
 	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.airtel), 200)
 	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.ot), 404)
 }
+
+// The report packs carry the same provenance as the other exports, list only
+// what they should, stay inside the caller's sites and leave an audit trail.
+func TestReportPacks_MonthlyWeeklyAndBacklog(t *testing.T) {
+	w := newWorkflow(t)
+	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	reviewer := w.login(revEmail)
+	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elsewhere := w.login(elseEmail)
+
+	id := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
+		"category": "grid_loss", "severity": "major", "impact": "outage", "title": "Grid loss", "started_at": ago(time.Hour),
+	}, w.supervisor), 201)
+
+	yesterday, _ := w.reportDay(1)
+	day, _ := time.Parse("2006-01-02", yesterday)
+	month := day.Format("2006-01")
+	monday := day.AddDate(0, 0, -((int(day.Weekday()) + 6) % 7)).Format("2006-01-02")
+
+	table := func(r reply) ([]string, [][]string) {
+		recs, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(r.Raw, "\xef\xbb\xbf"))).ReadAll()
+		if err != nil || len(recs) == 0 {
+			t.Fatalf("not valid CSV: %v\n%s", err, r.Raw)
+		}
+		return recs[0], recs[1:]
+	}
+	find := func(head []string, rows [][]string, siteID string) map[string]string {
+		for _, r := range rows {
+			if r[0] == siteID {
+				m := map[string]string{}
+				for i, h := range head {
+					m[h] = r[i]
+				}
+				return m
+			}
+		}
+		return nil
+	}
+
+	head, rows := table(w.expect(w.call("GET", "/api/v1/exports/monthly-performance.csv?month="+month, nil, reviewer), 200))
+	m := find(head, rows, w.site)
+	if m == nil || m["days_reported"] == "0" || m["assumed_available_minutes"] == "" || m["formula_version"] == "" ||
+		m["availability_basis"] != "available by default" || m["assumptions"] == "" || m["source_minutes"] == "" {
+		t.Fatalf("the monthly row must carry its figures and how they were reached: %v", m)
+	}
+	if _, others := table(w.expect(w.call("GET", "/api/v1/exports/monthly-performance.csv?month="+month, nil, elsewhere), 200)); len(others) != 1 || others[0][0] == w.site {
+		t.Fatalf("a pack must stay inside the caller's sites: %v", others)
+	}
+	w.expect(w.call("GET", "/api/v1/exports/monthly-performance.csv?month=2999-01", nil, reviewer), 400)
+	w.expect(w.call("GET", "/api/v1/exports/monthly-performance.csv?month=last", nil, reviewer), 400)
+
+	head, rows = table(w.expect(w.call("GET", "/api/v1/exports/weekly-exceptions.csv?week_start="+monday, nil, reviewer), 200))
+	e := find(head, rows, w.site)
+	if e == nil || !strings.Contains(e["exceptions"], "outage") || e["outage_minutes"] != "30" || e["sites_in_view"] != "1" {
+		t.Fatalf("the week's outage should be an exception: %v", e)
+	}
+	w.expect(w.call("GET", "/api/v1/exports/weekly-exceptions.csv?week_start="+yesterday+"x", nil, reviewer), 400)
+	if day.Weekday() != time.Monday {
+		w.expect(w.call("GET", "/api/v1/exports/weekly-exceptions.csv?week_start="+yesterday, nil, reviewer), 400) // not a Monday
+	}
+
+	head, _ = table(w.expect(w.call("GET", "/api/v1/exports/commissioning-backlog.csv", nil, reviewer), 200))
+	if head[0] != "site_id" || len(head) < 10 {
+		t.Fatalf("the backlog export lost its header: %v", head)
+	}
+	w.expect(w.call("GET", "/api/v1/exports/commissioning-backlog.csv", nil, w.ot), 403) // a reporter has no export right
+	_ = w.countAudit("export.monthly_performance", "-")                                  // flushes the audit batch
+	var n int
+	if err := w.pool.QueryRow(context.Background(),
+		`SELECT count(*) FROM audit_log WHERE action IN ('export.monthly_performance', 'export.weekly_exceptions', 'export.commissioning_backlog')`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n < 3 {
+		t.Fatalf("the packs were not all audited: %d", n)
+	}
+}

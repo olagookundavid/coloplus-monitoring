@@ -535,3 +535,17 @@ type FuelRepository interface {
 	// oldest first, at most the latest 500 per site. Sites with none are absent.
 	ListLive(ctx context.Context, siteIDs []string) (map[string][]domain.FuelEntry, error)
 }
+
+type AlertRepository interface {
+	// Add records an alert for a person; false when the same one (same dedupe
+	// key) was already recorded for them.
+	Add(ctx context.Context, userID, kind, title, body, dedupeKey string, at time.Time) (bool, error)
+	// List returns a person's alerts, newest first, with how many of all of
+	// their alerts are unacknowledged.
+	List(ctx context.Context, userID string, unreadOnly bool, limit, offset int) (alerts []domain.Alert, total int, unread int, err error)
+	// Acknowledge marks one of the person's own alerts; false when it is not
+	// theirs. Repeating it changes nothing.
+	Acknowledge(ctx context.Context, userID, alertID string, at time.Time) (bool, error)
+	// AcknowledgeAll marks every open alert of the person and returns how many.
+	AcknowledgeAll(ctx context.Context, userID string, at time.Time) (int, error)
+}

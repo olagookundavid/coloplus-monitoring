@@ -130,7 +130,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Email outbox: written with the change, sent by a job; retried 1m, 5m, 30m, 2h; failures visible to administrators and retryable; never sent twice
 - [x] Resend adapter (plain HTTP, paced); log-only mailer for development
 - [ ] Verified sending domain and live Resend key. **needs input** (domain)
-- [ ] In-app alert centre with acknowledgement
+- [x] In-app alert centre with acknowledgement: `GET /alerts`, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all` (DECISIONS 054)
 - [x] Overdue-report alert to the site's reporters and supervisors, once a day while late; says "stale or missing", never "outage"
 - [ ] Daily and weekly digests; repeat reminders; approved recipient lists; per-user preferences
 - [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
@@ -146,7 +146,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 12. Reports and exports (PRD 10)
 
-- [ ] Daily site summaries, weekly exception report, monthly performance pack, incident register, maintenance log, commissioning backlog
+- [x] Daily site summaries, incident register, weekly exception report, monthly performance pack and commissioning backlog (CSV; DECISIONS 054)
+- [ ] Maintenance log: planned maintenance has no record yet
 - [x] CSV export of daily summaries; gaps stay blank rows
 - [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)

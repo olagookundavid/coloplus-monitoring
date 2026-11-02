@@ -20,10 +20,12 @@ type ExportService struct {
 	reports   ports.ReportRepository
 	disputes  ports.DisputeRepository
 	incidents ports.IncidentRepository
-	tx        ports.TxManager
-	audit     *AuditService
-	clock     ports.Clock
-	loc       *time.Location
+	// acceptances is set with WithAcceptances, for the commissioning backlog.
+	acceptances ports.AcceptanceRepository
+	tx          ports.TxManager
+	audit       *AuditService
+	clock       ports.Clock
+	loc         *time.Location
 }
 
 func NewExportService(
