@@ -51,8 +51,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Interval validation: whole minutes, inside the reporting day (Africa/Lagos), no future, no served/outage overlap, a source for served time
 - [x] Observed versus declared intervals; only observed counts
 - [x] Airtel sees a published view of approved reports only (no notes, authors, review comments)
-- [ ] Explanation required for late submissions and overrides
-- [ ] Automatic splitting of events that cross midnight (DECISIONS 027). Reporter splits by hand today
+- [x] Explanation required for late submissions (a correction already requires its reason) (DECISIONS 049)
+- [ ] Automatic splitting of events that cross midnight (DECISIONS 027). The reporter still splits by hand, but the error now names the exact two parts to enter. Automatic splitting writes into another day's report, which may already be approved: **needs input** (DECISIONS 049)
 - [ ] CSV/XLSX import: preview, row errors, duplicate detection, explicit commit, batch id and idempotency key. **new dependency** (an XLSX reader)
 - [ ] Source hours, maintenance and open-issue fields on the daily summary. **partial**
 - [ ] Load, generator, fuel and tank inputs (section 6 tables)

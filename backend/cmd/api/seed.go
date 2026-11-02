@@ -265,7 +265,7 @@ func (sd *seeder) ensureReportDay(
 	if targetStatus == domain.ReportDraft {
 		return created, nil
 	}
-	submitted, err := sd.reports.Submit(ctx, reporter, created.ID)
+	submitted, err := sd.reports.Submit(ctx, reporter, created.ID, "Entered from the sample data")
 	if err != nil {
 		return domain.DailyReport{}, err
 	}

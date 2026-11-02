@@ -101,15 +101,22 @@ func (a *api) saveReport(c *gin.Context) {
 // submitReport godoc
 //
 //	@Summary		Submit a draft for approval
-//	@Description	Safe to repeat: submitting an already submitted report changes nothing.
+//	@Description	Safe to repeat: submitting an already submitted report changes nothing. A report submitted after its site would already show "Awaiting update" (the day ended more than the site's freshness window ago) needs late_reason; without it the answer is 400 saying so. A correction does not.
 //	@Tags			daily-reports
 //	@Accept			json
 //	@Produce		json
-//	@Param			id	path		string	true	"Report id"
-//	@Success		200	{object}	dto.ReportDTO
+//	@Param			id		path		string				true	"Report id"
+//	@Param			body	body		dto.SubmitRequest	false	"Why it is late, when it is"
+//	@Success		200		{object}	dto.ReportDTO
+//	@Failure		400		{object}	dto.ErrorResponse
 //	@Router			/api/v1/daily-reports/{id}/submit [post]
 func (a *api) submitReport(c *gin.Context) {
-	r, err := a.reports.Submit(c.Request.Context(), actorFrom(c), c.Param("id"))
+	var req dto.SubmitRequest
+	if err := bindOptionalJSON(c, &req); err != nil {
+		a.fail(c, err)
+		return
+	}
+	r, err := a.reports.Submit(c.Request.Context(), actorFrom(c), c.Param("id"), req.LateReason)
 	if err != nil {
 		a.fail(c, err)
 		return

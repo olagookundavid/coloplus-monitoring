@@ -20,14 +20,14 @@ func NewReportRepository(db *DB) *ReportRepository { return &ReportRepository{db
 
 const reportColumns = `id::text, site_id::text, report_date, revision, status, author_id::text, notes,
 	submitted_at, reviewed_at, COALESCE(reviewer_id::text, ''), review_comment,
-	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at, generator_hours`
+	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at, generator_hours, late_reason`
 
 func scanReport(row pgx.Row) (domain.DailyReport, error) {
 	var r domain.DailyReport
 	var status string
 	err := row.Scan(&r.ID, &r.SiteID, &r.Date, &r.Revision, &status, &r.AuthorID, &r.Notes,
 		&r.SubmittedAt, &r.ReviewedAt, &r.ReviewerID, &r.ReviewComment,
-		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt, &r.GeneratorHours)
+		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt, &r.GeneratorHours, &r.LateReason)
 	r.Status = domain.ReportStatus(status)
 	return r, err
 }
@@ -150,10 +150,10 @@ func (r *ReportRepository) SaveDraft(ctx context.Context, rep domain.DailyReport
 	return r.GetByID(ctx, rep.ID, false)
 }
 
-func (r *ReportRepository) MarkSubmitted(ctx context.Context, id string, at time.Time) error {
+func (r *ReportRepository) MarkSubmitted(ctx context.Context, id string, at time.Time, lateReason string) error {
 	tag, err := r.db.q(ctx).Exec(ctx,
-		`UPDATE daily_reports SET status = 'submitted', submitted_at = $2, row_version = row_version + 1, updated_at = now()
-		 WHERE id = $1 AND status IN ('draft', 'rejected')`, id, at)
+		`UPDATE daily_reports SET status = 'submitted', submitted_at = $2, late_reason = $3, row_version = row_version + 1, updated_at = now()
+		 WHERE id = $1 AND status IN ('draft', 'rejected')`, id, at, lateReason)
 	if err != nil {
 		return mapErr(err, "")
 	}

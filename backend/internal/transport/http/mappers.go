@@ -95,7 +95,7 @@ func toReportDTO(r domain.DailyReport, loc *time.Location) dto.ReportDTO {
 		Intervals: toIntervalDTOs(r.Intervals, loc), SubmittedAt: r.SubmittedAt, ReviewedAt: r.ReviewedAt,
 		ReviewerID: r.ReviewerID, ReviewComment: r.ReviewComment, SupersedesID: r.SupersedesID,
 		CorrectionReason: r.CorrectionReason, RowVersion: r.RowVersion, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
-		GeneratorHours: r.GeneratorHours,
+		GeneratorHours: r.GeneratorHours, LateReason: r.LateReason,
 	}
 }
 

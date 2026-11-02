@@ -3,7 +3,9 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
+	"unicode/utf8"
 
 	"coloplus-backend/internal/domain"
 	apperrors "coloplus-backend/internal/errors"
@@ -195,7 +197,7 @@ func (s *ReportService) SaveDraft(ctx context.Context, actor domain.Actor, id st
 
 // Submit hands a draft to the supervisor. Submitting something already
 // submitted does nothing, so a retry after a dropped connection is safe.
-func (s *ReportService) Submit(ctx context.Context, actor domain.Actor, id string) (domain.DailyReport, error) {
+func (s *ReportService) Submit(ctx context.Context, actor domain.Actor, id, lateReason string) (domain.DailyReport, error) {
 	if !actor.Can(domain.PermReportsCreate) {
 		return domain.DailyReport{}, apperrors.ErrForbidden
 	}
@@ -224,10 +226,22 @@ func (s *ReportService) Submit(ctx context.Context, actor domain.Actor, id strin
 		if !hasObserved(r.Intervals) {
 			problems = append(problems, "add at least one observed interval before submitting")
 		}
+		// A report that arrives after its site would already show "Awaiting
+		// update" has to say why. A correction already carries its own reason.
+		lateReason = strings.TrimSpace(lateReason)
+		late := r.SupersedesID == "" && domain.IsLate(site, r.Date, now, s.loc)
+		switch {
+		case late && lateReason == "":
+			problems = append(problems, "this report is late; say why it was not submitted sooner")
+		case utf8.RuneCountInString(lateReason) > 1000:
+			problems = append(problems, "the reason for being late is too long")
+		case !late:
+			lateReason = ""
+		}
 		if len(problems) > 0 {
 			return invalidProblems(problems)
 		}
-		if err := s.reports.MarkSubmitted(ctx, id, now); err != nil {
+		if err := s.reports.MarkSubmitted(ctx, id, now, lateReason); err != nil {
 			return err
 		}
 		out, err = s.reports.GetByID(ctx, id, false)
@@ -236,7 +250,7 @@ func (s *ReportService) Submit(ctx context.Context, actor domain.Actor, id strin
 		}
 		return s.audit.RecordInTx(ctx, domain.AuditEvent{
 			ActorID: actor.UserID, Action: "report.submitted", EntityType: "daily_report", EntityID: id,
-			Metadata: map[string]any{"site_id": r.SiteID, "date": dateString(r.Date), "revision": r.Revision},
+			Metadata: map[string]any{"site_id": r.SiteID, "date": dateString(r.Date), "revision": r.Revision, "late": late},
 		})
 	})
 	return out, err

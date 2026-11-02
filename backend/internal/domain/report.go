@@ -71,6 +71,8 @@ type DailyReport struct {
 
 	SupersedesID     string
 	CorrectionReason string
+	// LateReason is why a late report was late; empty when it was on time.
+	LateReason string
 
 	// RowVersion is the optimistic-concurrency token: every edit must quote
 	// the version it was based on.
@@ -82,6 +84,15 @@ type DailyReport struct {
 // Editable reports whether the reporter may still change the report.
 func (r DailyReport) Editable() bool {
 	return r.Status == ReportDraft || r.Status == ReportRejected
+}
+
+// IsLate reports whether submitting the report for date at now is late: the
+// day ended more than the site's freshness window ago, which is when a site
+// with nothing newer starts to show "Awaiting update". It follows the site's own
+// freshness setting, so it moves when the reporting cadence is agreed.
+func IsLate(site Site, date time.Time, now time.Time, loc *time.Location) bool {
+	_, dayEnd := DayBounds(date, loc)
+	return now.After(dayEnd.Add(time.Duration(site.FreshnessHours) * time.Hour))
 }
 
 // DayBounds returns the start (inclusive) and end (exclusive) of the
@@ -148,8 +159,7 @@ func ValidateIntervals(site Site, date time.Time, intervals []PowerInterval, now
 			continue
 		}
 		if iv.Start.Before(dayStart) || iv.End.After(dayEnd) {
-			problems = append(problems, fmt.Sprintf(
-				"interval %d: must stay within %s. Enter the part after midnight in the next day's report", n, date.Format("2 Jan 2006")))
+			problems = append(problems, crossesDay(n, date, iv, dayStart, dayEnd, loc))
 		}
 		if iv.End.After(now) {
 			problems = append(problems, fmt.Sprintf("interval %d: an observation cannot end in the future", n))
@@ -409,4 +419,20 @@ func lastKnownState(r *DailyReport) IntervalState {
 		return ""
 	}
 	return last.State
+}
+
+// crossesDay words the error for an interval that leaves the reporting day,
+// naming the two parts to enter so nobody has to work them out.
+func crossesDay(n int, date time.Time, iv PowerInterval, dayStart, dayEnd time.Time, loc *time.Location) string {
+	const hm = "15:04"
+	day := date.Format("2 Jan 2006")
+	switch {
+	case iv.Start.Before(dayStart) && iv.End.After(dayStart):
+		return fmt.Sprintf("interval %d: it starts before %s. Enter %s to %s in the previous day's report, and %s to %s here",
+			n, day, iv.Start.In(loc).Format(hm), "24:00", "00:00", iv.End.In(loc).Format(hm))
+	case iv.Start.Before(dayEnd) && iv.End.After(dayEnd):
+		return fmt.Sprintf("interval %d: it runs past midnight. Enter %s to 24:00 here, and 00:00 to %s in the next day's report",
+			n, iv.Start.In(loc).Format(hm), iv.End.In(loc).Format(hm))
+	}
+	return fmt.Sprintf("interval %d: must stay within %s", n, day)
 }

@@ -37,6 +37,12 @@ type SaveReportRequest struct {
 	GeneratorHours *float64 `json:"generator_hours,omitempty" example:"3.5"`
 }
 
+// SubmitRequest is optional. A report submitted after its site would already
+// show "Awaiting update" must say why it is late.
+type SubmitRequest struct {
+	LateReason string `json:"late_reason,omitempty" example:"Site had no network until Tuesday"`
+}
+
 type ReviewRequest struct {
 	Comment string `json:"comment"`
 }
@@ -69,6 +75,8 @@ type ReportDTO struct {
 	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at"`
 	GeneratorHours   *float64      `json:"generator_hours,omitempty"`
+	// LateReason is why the report was submitted late; absent when it was on time.
+	LateReason string `json:"late_reason,omitempty"`
 }
 
 // PublishedReportDTO is what Airtel sees: approved facts only. Internal notes,

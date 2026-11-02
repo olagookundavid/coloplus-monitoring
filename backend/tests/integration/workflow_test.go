@@ -343,7 +343,7 @@ func TestSelfApprovalIsBlocked(t *testing.T) {
 
 	_, body := w.goodDay(3)
 	id := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", body, dual), 201).str("id")
-	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, dual), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", map[string]any{"late_reason": "entered later"}, dual), 200)
 
 	denied := w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, dual), 403)
 	if !strings.Contains(denied.str("error"), "your own entry") {
@@ -599,5 +599,30 @@ func TestDashboard_KeptAnswersNeverCrossSiteScopes(t *testing.T) {
 		if got := siteIDs(other); got != otherSite {
 			t.Fatalf("round %d: the second Airtel user should see only %s, got %s", i, otherSite, got)
 		}
+	}
+}
+
+// A report that arrives after its site would already show "Awaiting update"
+// must say why; on time it needs nothing, and the reason stays with the report.
+func TestReportSubmit_LateNeedsAReasonOnTimeDoesNot(t *testing.T) {
+	w := newWorkflow(t)
+
+	onTime := w.draft(1)
+	if r := w.expect(w.call("POST", "/api/v1/daily-reports/"+onTime+"/submit", nil, w.reporter), 200); r.Body["late_reason"] != nil {
+		t.Fatalf("an on-time report carries no late reason: %s", r.Raw)
+	}
+
+	late := w.draft(4)
+	denied := w.expect(w.call("POST", "/api/v1/daily-reports/"+late+"/submit", nil, w.reporter), 400)
+	if !strings.Contains(denied.str("error"), "late") {
+		t.Fatalf("the refusal should say the report is late: %s", denied.Raw)
+	}
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+late+"/submit", map[string]any{"late_reason": "  "}, w.reporter), 400)
+	r := w.expect(w.call("POST", "/api/v1/daily-reports/"+late+"/submit", map[string]any{"late_reason": "No network at the site until Tuesday"}, w.reporter), 200)
+	if r.str("late_reason") != "No network at the site until Tuesday" {
+		t.Fatalf("the reason must stay with the report: %s", r.Raw)
+	}
+	if got := w.expect(w.call("GET", "/api/v1/daily-reports/"+late, nil, w.supervisor), 200).Body["report"].(map[string]any)["late_reason"]; got == nil {
+		t.Fatal("the approver must see why it was late")
 	}
 }

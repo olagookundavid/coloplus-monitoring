@@ -18,7 +18,7 @@ func TestMySites_PooledAvailabilityAndIncidentScope(t *testing.T) {
 	// w.site gets one approved report with an outage, 3 days ago -- inside
 	// both the 7-day bar window and the 30-day pooling window.
 	id := w.draft(3)
-	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", map[string]any{"late_reason": "entered later"}, w.reporter), 200)
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
 
 	// One open incident on w.site only.

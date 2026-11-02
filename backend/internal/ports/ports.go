@@ -176,7 +176,7 @@ type ReportRepository interface {
 	// SaveDraft replaces notes and intervals and sets the status back to
 	// draft. ErrConflict when rowVersion is stale.
 	SaveDraft(ctx context.Context, r domain.DailyReport, rowVersion int) (domain.DailyReport, error)
-	MarkSubmitted(ctx context.Context, id string, at time.Time) error
+	MarkSubmitted(ctx context.Context, id string, at time.Time, lateReason string) error
 	// MarkReviewed records approval or return, with who and why.
 	MarkReviewed(ctx context.Context, id string, status domain.ReportStatus, reviewerID, comment string, at time.Time) error
 	MarkSuperseded(ctx context.Context, id string) error

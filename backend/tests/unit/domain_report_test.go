@@ -132,7 +132,7 @@ func TestValidateIntervals(t *testing.T) {
 		{"zero length", []domain.PowerInterval{served(at(5, 0), at(5, 0), domain.SourceGrid)}, "end must be after"},
 		{"seconds", []domain.PowerInterval{served(at(1, 0), at(5, 0).Add(7*time.Second), domain.SourceGrid)}, "whole minutes"},
 		{"future", []domain.PowerInterval{served(at(22, 0), at(23, 30), domain.SourceGrid)}, "future"},
-		{"crosses midnight", []domain.PowerInterval{outage(at(22, 0).Add(-24*time.Hour), at(1, 0))}, "within"},
+		{"crosses midnight", []domain.PowerInterval{outage(at(22, 0).Add(-24*time.Hour), at(1, 0))}, "Enter 22:00 to 24:00 in the previous day's report, and 00:00 to 01:00 here"},
 		{"served without source", []domain.PowerInterval{served(at(1, 0), at(2, 0), "")}, "which power source"},
 		{"source not installed", []domain.PowerInterval{served(at(1, 0), at(2, 0), domain.SourceSolar)}, "not an installed source"},
 		{"outage with source", []domain.PowerInterval{{Start: at(1, 0), End: at(2, 0), State: domain.StateOutage, Source: domain.SourceGrid, Basis: domain.BasisObserved}}, "no serving source"},

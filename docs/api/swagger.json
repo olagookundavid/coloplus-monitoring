@@ -834,7 +834,7 @@
         },
         "/api/v1/daily-reports/{id}/submit": {
             "post": {
-                "description": "Safe to repeat: submitting an already submitted report changes nothing.",
+                "description": "Safe to repeat: submitting an already submitted report changes nothing. A report submitted after its site would already show \"Awaiting update\" (the day ended more than the site's freshness window ago) needs late_reason; without it the answer is 400 saying so. A correction does not.",
                 "consumes": [
                     "application/json"
                 ],
@@ -852,6 +852,14 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Why it is late, when it is",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SubmitRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -859,6 +867,12 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -4395,6 +4409,10 @@
                         "$ref": "#/definitions/dto.IntervalDTO"
                     }
                 },
+                "late_reason": {
+                    "description": "LateReason is why the report was submitted late; absent when it was on time.",
+                    "type": "string"
+                },
                 "notes": {
                     "type": "string"
                 },
@@ -4982,6 +5000,15 @@
                 },
                 "yesterday_status": {
                     "$ref": "#/definitions/dto.ReportStatusDTO"
+                }
+            }
+        },
+        "dto.SubmitRequest": {
+            "type": "object",
+            "properties": {
+                "late_reason": {
+                    "type": "string",
+                    "example": "Site had no network until Tuesday"
                 }
             }
         },
