@@ -136,7 +136,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Not yet tested against the live bucket
 - [x] Abandoned-upload cleanup, off by default (`ATTACHMENT_GC_ENABLED`), reports what it would delete
-- [ ] Virus scan before Airtel can open a Coloplus file (DECISIONS 016). **needs input**: a scanner service. Until then files are limited to photos, PDF, text, CSV, Word and Excel and are always downloaded, never displayed
+- [x] No virus scanner, by decision: only an allow-list of file types is accepted (photos, PDF, text, CSV, Word, Excel), the name's extension must match the type, and files are always downloaded, never displayed (DECISIONS 047)
 - [ ] Attach to daily reports
 
 ## 12. Reports and exports (PRD 10)
@@ -144,7 +144,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Daily site summaries, weekly exception report, monthly performance pack, incident register, maintenance log, commissioning backlog
 - [x] CSV export of daily summaries; gaps stay blank rows
 - [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
-- [ ] XLSX export; printable or PDF. **new dependency** (XLSX, PDF)
+- [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
 - [ ] Immutable report snapshots with version history; "never overwrite an issued report"
 - [ ] Asynchronous generation with visible progress

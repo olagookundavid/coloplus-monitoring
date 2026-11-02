@@ -45,6 +45,7 @@ var allowedAttachmentTypes = map[string]string{
 	"image/jpeg":      ".jpg .jpeg",
 	"image/png":       ".png",
 	"image/webp":      ".webp",
+	"image/heic":      ".heic .heif",
 	"application/pdf": ".pdf",
 	"text/plain":      ".txt .log",
 	"text/csv":        ".csv",
@@ -132,7 +133,7 @@ func (a Attachment) ValidateNew(maxBytes int64) []string {
 	exts, ok := allowedAttachmentTypes[a.ContentType]
 	switch {
 	case !ok:
-		problems = append(problems, "that kind of file is not accepted; send a photo (JPEG, PNG, WebP), a PDF, a text or CSV file, or a Word or Excel file")
+		problems = append(problems, "that kind of file is not accepted; send a photo (JPEG, PNG, WebP, HEIC), a PDF, a text or CSV file, or a Word or Excel file")
 	case !hasExt(a.Filename, exts):
 		problems = append(problems, "the file name does not match its type")
 	}

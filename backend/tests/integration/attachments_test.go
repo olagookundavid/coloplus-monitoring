@@ -54,6 +54,13 @@ func TestAttachments_OnlyTheRightPeopleSeeTheRightFiles(t *testing.T) {
 	good := body("ticket", ticket, "panel.jpg", "image/jpeg", int64(len(photo)), sha(photo), false)
 	w.expect(w.call("POST", "/api/v1/attachments", body("ticket", ticket, "run.html", "text/html", 10, sha("x"), false), w.airtel), 400)
 	w.expect(w.call("POST", "/api/v1/attachments", body("ticket", ticket, "panel.png", "image/jpeg", 10, sha("x"), false), w.airtel), 400)
+	// A script is refused whatever it claims to be: by its type, and by its name.
+	for _, s := range [][2]string{
+		{"run.py", "text/x-python"}, {"run.sh", "application/x-sh"}, {"run.exe", "application/octet-stream"},
+		{"run.py", "text/plain"}, {"run.sh", "application/pdf"}, {"run.js", "image/png"},
+	} {
+		w.expect(w.call("POST", "/api/v1/attachments", body("ticket", ticket, s[0], s[1], 10, sha("x"), false), w.airtel), 400)
+	}
 	w.expect(w.call("POST", "/api/v1/attachments", body("ticket", ticket, "big.pdf", "application/pdf", 11<<20, sha("x"), false), w.airtel), 400)
 	w.expect(w.call("POST", "/api/v1/attachments", good, elsewhere), 404) // another site's ticket
 	w.expect(w.call("POST", "/api/v1/attachments", good, w.ot), 403)      // a reporter has no ticket rights
