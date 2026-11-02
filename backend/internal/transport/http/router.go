@@ -133,6 +133,9 @@ func NewRouter(d Deps) *gin.Engine {
 	v1.POST("/auth/forgot-password", middleware.RateLimit(d.RateLimitCtx, d.AuthRateLimit), h.forgotPassword)
 	v1.POST("/auth/set-password", middleware.RateLimit(d.RateLimitCtx, d.AuthRateLimit), h.setPassword)
 
+	// The email provider reports bounces here. No session: the signature is the proof.
+	v1.POST("/webhooks/resend", h.resendWebhook)
+
 	// Everything below requires a valid token for an active user. Services
 	// decide what each person may do, by permission and by site scope.
 	authed := v1.Group("",

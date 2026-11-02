@@ -35,6 +35,43 @@ type NotificationService struct {
 	// alerts, when set, also keeps each EnqueueFor alert in the person's
 	// in-app alert centre until they acknowledge it.
 	alerts ports.AlertRepository
+	// events, when set, checks and reads the provider's bounce webhooks.
+	events ports.MailEventVerifier
+}
+
+// WithMailEvents turns on bounce handling from the provider's webhooks.
+func (s *NotificationService) WithMailEvents(v ports.MailEventVerifier) *NotificationService {
+	s.events = v
+	return s
+}
+
+// MailWebhookEnabled says whether bounce handling is switched on.
+func (s *NotificationService) MailWebhookEnabled() bool { return s.events != nil }
+
+// HandleMailWebhook checks a provider webhook and, for a bounce or a spam
+// complaint, marks the email it was about as failed with the reason, so it shows
+// in the admin list instead of looking delivered. Other events are ignored. An
+// event for an email we do not know is ignored too. The address is not logged.
+func (s *NotificationService) HandleMailWebhook(ctx context.Context, headers map[string]string, body []byte) error {
+	if s.events == nil {
+		return apperrors.ErrNotFound
+	}
+	ev, err := s.events.Verify(headers, body, s.clock.Now())
+	if err != nil {
+		return err
+	}
+	if ev.Kind != ports.MailBounced && ev.Kind != ports.MailComplained {
+		return nil
+	}
+	id, ok, err := s.store.MarkBounced(ctx, ev.ProviderID, "not delivered: "+string(ev.Kind)+": "+truncate(ev.Reason, 400))
+	if err != nil || !ok {
+		return err
+	}
+	s.log.Warn("an email was not delivered", "notification_id", id, "event", string(ev.Kind))
+	return s.audit.Record(ctx, domain.AuditEvent{
+		Action: "notification." + string(ev.Kind), EntityType: "notification", EntityID: id,
+		Metadata: map[string]any{"reason": truncate(ev.Reason, 400)},
+	})
 }
 
 // WithAlerts adds the in-app alert centre: every alert queued for a person is

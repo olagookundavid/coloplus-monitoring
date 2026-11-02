@@ -135,7 +135,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Daily and weekly digests; repeat reminders; approved recipient lists; per-user preferences
 - [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
 - [ ] Runtime anomaly alerts
-- [ ] Bounce handling (Resend webhooks)
+- [x] Bounce handling: Resend webhook `POST /webhooks/resend` (signature-checked), a bounced or spam-reported email is marked not delivered in the admin list (DECISIONS 055). Needs the webhook created in Resend and `RESEND_WEBHOOK_SECRET` set
 
 ## 11. Evidence and files (PRD 6)
 

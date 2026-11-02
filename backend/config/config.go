@@ -99,11 +99,14 @@ type Audit struct {
 // Mail configures outgoing email. Resend is the provider; log only prints
 // emails and is for local development.
 type Mail struct {
-	Provider      string
-	ResendAPIKey  string
-	From          string
-	RatePerSecond int
-	Timeout       time.Duration
+	Provider     string
+	ResendAPIKey string
+	// ResendWebhookSecret, when set, switches on bounce handling from Resend's
+	// webhooks (the "whsec_..." signing secret).
+	ResendWebhookSecret string
+	From                string
+	RatePerSecond       int
+	Timeout             time.Duration
 	// BaseURL is where the front end lives. Invitation and reset links, and
 	// links to incidents in alerts, are built from it.
 	BaseURL string
@@ -225,12 +228,13 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			QueueSize:     r.integer("AUDIT_QUEUE_SIZE", 1000),
 		},
 		Mail: Mail{
-			Provider:      strings.ToLower(r.str("MAIL_PROVIDER", "log")),
-			ResendAPIKey:  r.str("RESEND_API_KEY", ""),
-			From:          r.str("MAIL_FROM", ""),
-			RatePerSecond: r.integer("MAIL_RATE_PER_SECOND", 8),
-			Timeout:       r.duration("MAIL_TIMEOUT", 10*time.Second),
-			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
+			Provider:            strings.ToLower(r.str("MAIL_PROVIDER", "log")),
+			ResendAPIKey:        r.str("RESEND_API_KEY", ""),
+			ResendWebhookSecret: r.str("RESEND_WEBHOOK_SECRET", ""),
+			From:                r.str("MAIL_FROM", ""),
+			RatePerSecond:       r.integer("MAIL_RATE_PER_SECOND", 8),
+			Timeout:             r.duration("MAIL_TIMEOUT", 10*time.Second),
+			BaseURL:             strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
 		Fuel:      Fuel{LowHours: float64(r.integer("FUEL_LOW_HOURS", 24))},
 		Dashboard: Dashboard{CacheTTL: r.duration("DASHBOARD_CACHE_TTL", 10*time.Second)},

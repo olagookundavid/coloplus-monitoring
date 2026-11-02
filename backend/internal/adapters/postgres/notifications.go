@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -128,4 +129,19 @@ func (r *NotificationRepository) List(ctx context.Context, f ports.NotificationF
 		out = append(out, n)
 	}
 	return out, total, rows.Err()
+}
+
+func (r *NotificationRepository) MarkBounced(ctx context.Context, providerID, reason string) (string, bool, error) {
+	var id string
+	err := r.db.q(ctx).QueryRow(ctx,
+		`UPDATE notifications SET status = 'failed', last_error = $2
+		 WHERE provider_id = $1 AND provider_id <> '' AND status = 'sent' RETURNING id::text`,
+		providerID, reason).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", false, nil
+		}
+		return "", false, mapErr(err, "")
+	}
+	return id, true, nil
 }

@@ -158,6 +158,10 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}
 	audit := services.NewAuditService(auditStore, auditBatcher, clock, log)
 
+	mailEvents, err := newMailEvents(cfg)
+	if err != nil {
+		return err
+	}
 	mailer, err := newMailer(cfg, log)
 	if err != nil {
 		return err
@@ -165,7 +169,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	// Use cases.
 	alertRepo := postgres.NewAlertRepository(db)
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo)
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo).WithMailEvents(mailEvents)
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, txManager, notifications, audit, clock, cfg.Mail.BaseURL)
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)

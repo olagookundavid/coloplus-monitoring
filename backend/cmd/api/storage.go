@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"coloplus-backend/config"
+	"coloplus-backend/internal/adapters/mail"
 	"coloplus-backend/internal/adapters/r2"
 	"coloplus-backend/internal/platform"
 	"coloplus-backend/internal/ports"
@@ -142,4 +143,13 @@ func errIf(cond bool, msg string) error {
 		return errors.New(msg)
 	}
 	return nil
+}
+
+// newMailEvents builds the check for the email provider's bounce webhooks, or
+// returns nil when no signing secret is set.
+func newMailEvents(cfg config.Config) (ports.MailEventVerifier, error) {
+	if cfg.Mail.ResendWebhookSecret == "" {
+		return nil, nil
+	}
+	return mail.NewResendWebhook(cfg.Mail.ResendWebhookSecret)
 }

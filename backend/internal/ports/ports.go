@@ -398,6 +398,9 @@ type NotificationStore interface {
 	// Requeue puts a failed notification back with a fresh set of attempts.
 	// ErrNotFound when it is not failed.
 	Requeue(ctx context.Context, id string, at time.Time) error
+	// MarkBounced records that an email already sent was bounced or reported as
+	// spam, found by the provider's id for it. False when none matches.
+	MarkBounced(ctx context.Context, providerID, reason string) (id string, ok bool, err error)
 	GetByID(ctx context.Context, id string) (domain.Notification, error)
 	List(ctx context.Context, f NotificationFilter) (items []domain.Notification, total int, err error)
 }
@@ -548,4 +551,26 @@ type AlertRepository interface {
 	Acknowledge(ctx context.Context, userID, alertID string, at time.Time) (bool, error)
 	// AcknowledgeAll marks every open alert of the person and returns how many.
 	AcknowledgeAll(ctx context.Context, userID string, at time.Time) (int, error)
+}
+
+// MailEventKind is what the email provider reported about a sent email.
+type MailEventKind string
+
+const (
+	MailBounced    MailEventKind = "bounced"
+	MailComplained MailEventKind = "complained"
+	// MailIgnored is any event we do not act on (delivered, opened, ...).
+	MailIgnored MailEventKind = "ignored"
+)
+
+type MailEvent struct {
+	Kind       MailEventKind
+	ProviderID string
+	Reason     string
+}
+
+// MailEventVerifier checks that a provider's webhook is genuine and reads it.
+// headers are lower case. A forged or stale one is apperrors.ErrUnauthorized.
+type MailEventVerifier interface {
+	Verify(headers map[string]string, body []byte, now time.Time) (MailEvent, error)
 }

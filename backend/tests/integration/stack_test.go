@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"coloplus-backend/internal/adapters/mail"
 	"coloplus-backend/internal/adapters/postgres"
 	"coloplus-backend/internal/adapters/security"
 	"coloplus-backend/internal/domain"
@@ -88,7 +89,7 @@ func (m *fakeMailer) Send(_ context.Context, mail domain.Email, _ string) (strin
 		}
 	}
 	m.sent = append(m.sent, mail)
-	return "fake-id", nil
+	return fmt.Sprintf("fake-%d-%d", time.Now().UnixNano(), len(m.sent)), nil
 }
 
 // to returns the emails sent to an address.
@@ -159,7 +160,7 @@ func newStack(t *testing.T) *stack {
 
 	mailer := &fakeMailer{}
 	alertRepo := postgres.NewAlertRepository(db)
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo)
+	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo).WithMailEvents(mustWebhook(t))
 	auth, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(maker),
 		security.NewTOTP("Coloplus"), box, recoveryRepo, tx, notifications, audit, clock, time.Hour, log)
 	if err != nil {
@@ -441,4 +442,16 @@ func perfConns() int32 {
 func dashboardTTL() time.Duration {
 	d, _ := time.ParseDuration(os.Getenv("DASHBOARD_CACHE_TTL"))
 	return d
+}
+
+// webhookSecret is the signing secret the test stack accepts bounce webhooks with.
+const webhookSecret = "whsec_dGVzdC13ZWJob29rLXNlY3JldC0xMjM0NTY3ODkwMTI="
+
+func mustWebhook(t *testing.T) *mail.ResendWebhook {
+	t.Helper()
+	wh, err := mail.NewResendWebhook(webhookSecret)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return wh
 }
