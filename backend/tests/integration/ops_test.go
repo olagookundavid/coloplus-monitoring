@@ -200,3 +200,86 @@ func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
 		t.Fatalf("exports were not audited: %d", n)
 	}
 }
+
+// The incident register must not show Airtel an unpublished incident, must
+// not invent a duration before restoration is recorded, and stays inside the
+// caller's sites and region.
+func TestExport_IncidentRegisterHidesUnpublishedAndKeepsScope(t *testing.T) {
+	w := newWorkflow(t)
+	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elsewhere := w.login(elseEmail)
+	w.exec(`UPDATE sites SET region = 'Lagos Island', responsible_team = 'Island field team' WHERE id = $1`, w.site)
+
+	open := func(title string) string {
+		return w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
+			"category": "grid_loss", "severity": "major", "impact": "outage", "title": title,
+			"description": "internal: transformer", "started_at": ago(time.Hour),
+		}, w.supervisor), 201).str("id")
+	}
+	open("Internal only")
+	w.expect(w.call("POST", "/api/v1/incidents/"+open("Shared with Airtel")+"/publish", nil, w.supervisor), 200)
+
+	from, _ := w.reportDay(1)
+	to := time.Now().In(w.loc).Format("2006-01-02")
+	url := "/api/v1/exports/incidents.csv?from=" + from + "&to=" + to
+	rows := func(tok, q string) [][]string {
+		t.Helper()
+		r := w.expect(w.call("GET", url+q, nil, tok), 200)
+		recs, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(r.Raw, "\xef\xbb\xbf"))).ReadAll()
+		if err != nil {
+			t.Fatalf("not valid CSV: %v\n%s", err, r.Raw)
+		}
+		return recs
+	}
+
+	air := rows(w.airtel, "")
+	if len(air) != 2 || strings.Contains(strings.Join(air[1], "|"), "Internal only") || strings.Contains(strings.Join(air[1], "|"), "transformer") {
+		t.Fatalf("Airtel must get the published incident only: %v", air)
+	}
+	col := map[string]int{}
+	for i, h := range air[0] {
+		col[h] = i
+	}
+	if air[1][col["duration_minutes"]] != "" || air[1][col["restored_at_utc"]] != "" || air[1][col["responsible_team"]] != "Island field team" {
+		t.Fatalf("no restoration recorded, so no duration: %v", air[1])
+	}
+	if got := len(rows(w.supervisor, "")); got != 3 {
+		t.Fatalf("staff should see both incidents, got %d rows", got-1)
+	}
+	if got := len(rows(w.supervisor, "&region=abuja")); got != 1 {
+		t.Fatalf("a region with no sites must give no incidents, got %d rows", got-1)
+	}
+	if got := len(rows(elsewhere, "")); got != 1 {
+		t.Fatalf("export leaked an incident outside the caller's sites: %d rows", got-1)
+	}
+	w.expect(w.call("GET", url+"&site_id="+w.site, nil, elsewhere), 404)
+	w.expect(w.call("GET", url, nil, w.ot), 403)
+	if n := w.countAudit("export.incident_register", "incident_register:"+from+":"+to); n < 3 {
+		t.Fatalf("exports were not audited: %d", n)
+	}
+}
+
+// Management/auditor reads reports and the audit log inside its sites and can
+// change nothing: audit access is separate from editing rights.
+func TestAuditorRole_ReadsInScopeAndChangesNothing(t *testing.T) {
+	w := newWorkflow(t)
+	email, _ := w.seedUser(domain.RoleAuditor, w.site)
+	auditor := w.login(email)
+
+	id := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+
+	w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, auditor), 200)
+	w.expect(w.call("GET", "/api/v1/audit", nil, auditor), 200)
+	w.expect(w.call("GET", "/api/v1/sites/"+w.site, nil, auditor), 200)
+	w.expect(w.call("GET", "/api/v1/sites/"+w.newSite(w.admin), nil, auditor), 404)
+
+	_, body := w.goodDay(3)
+	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", body, auditor), 403)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/corrections", map[string]any{"reason": "x"}, auditor), 403)
+	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
+		"category": "low_fuel", "severity": "minor", "impact": "no_outage", "title": "x", "started_at": ago(time.Hour),
+	}, auditor), 403)
+	w.expect(w.call("GET", "/api/v1/users", nil, auditor), 403)
+}

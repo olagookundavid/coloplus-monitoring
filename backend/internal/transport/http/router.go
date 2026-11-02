@@ -45,6 +45,7 @@ type Deps struct {
 	Reports       *services.ReportService
 	Incidents     *services.IncidentService
 	Disputes      *services.DisputeService
+	Tickets       *services.TicketService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
@@ -66,6 +67,7 @@ type api struct {
 	reports       *services.ReportService
 	incidents     *services.IncidentService
 	disputes      *services.DisputeService
+	tickets       *services.TicketService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
@@ -109,7 +111,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, disputes: d.Disputes, tickets: d.Tickets, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -175,16 +177,26 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/disputes/:id/comments", h.commentDispute)
 	authed.POST("/disputes/:id/transition", h.transitionDispute)
 
+	authed.POST("/sites/:id/tickets", h.raiseTicket)
+	authed.GET("/tickets", h.listTickets)
+	authed.GET("/tickets/summary", h.ticketSummary)
+	authed.GET("/tickets/:id", h.getTicket)
+	authed.POST("/tickets/:id/comments", h.commentTicket)
+	authed.POST("/tickets/:id/transition", h.transitionTicket)
+	authed.POST("/tickets/:id/incident", h.linkTicketIncident)
+
 	authed.POST("/sites/:id/acceptance", h.requestAcceptance)
 	authed.GET("/sites/:id/acceptance", h.getAcceptance)
 	authed.POST("/sites/:id/acceptance/transition", h.transitionAcceptance)
 	authed.GET("/acceptances", h.listAcceptances)
 
 	authed.GET("/exports/daily-summaries.csv", h.exportDailySummaries)
+	authed.GET("/exports/incidents.csv", h.exportIncidents)
 
 	authed.GET("/audit", h.searchAudit)
 
 	authed.GET("/dashboard/overview", h.overview)
+	authed.GET("/dashboard/trend", h.trend)
 
 	r.NoRoute(func(c *gin.Context) {
 		respondError(c, d.Log, apperrors.ErrNotFound)

@@ -124,6 +124,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
+	ticketRepo := postgres.NewTicketRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
@@ -156,6 +157,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		notifications, loc, cfg.Mail.BaseURL)
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
+	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, txManager, audit, clock,
+		notifications, cfg.Mail.BaseURL)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
@@ -239,10 +242,11 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
 		Incidents:     incidents,
 		Disputes:      disputes,
+		Tickets:       tickets,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, txManager, audit, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	srv := &http.Server{

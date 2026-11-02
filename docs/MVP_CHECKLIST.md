@@ -15,7 +15,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Cron scheduler with four jobs (email dispatch, incident alerts, report alerts, acceptance alerts)
 - [x] Append-only audit log (database trigger), batched for low-risk events, written in the same transaction for approvals, corrections, publications, disputes
 - [x] Rate limiting (tighter on sign-in and recovery), CORS allow-list, security headers, JSON-only writes (CSRF guard)
-- [x] Swagger generated at build (`make swag`)
+- [x] Swagger generated at build (`make swag`); `make openapi` writes the committed contract `docs/api/swagger.json` for the front end (Swagger 2.0)
+- [x] Site has a responsible team (a team name, shown to Airtel; never a person)
 - [x] Dockerfile and a CI workflow exist (**not yet checked that CI is green on GitHub**)
 - [ ] Production Docker Compose, Caddy, Cloudflare setup. **needs input** (domain, server access). Ask before touching infrastructure
 - [ ] Deploy pipeline (ghcr.io, forced-command SSH, health-gated). **needs input**
@@ -33,7 +34,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] **Enforced** two-step sign-in for administrators, supervisors and all Airtel users: until enrolled they hold no permissions (DECISIONS 038). Confirm the role list with Airtel
 - [x] Recovery codes for a lost phone (one-time, hashed, emailed on use), regenerate, administrator or console reset of a lost second step
 - [ ] Model administrator role (drafts formulas; separate approver). Arrives with the formula engine
-- [ ] Management / auditor role (read-only portfolio and audit scope)
+- [x] Management / auditor role (`auditor`: sites, reports and audit log within assigned sites, nothing editable, two-step sign-in required; DECISIONS 044)
 
 ## 3. Sites (PRD 6)
 
@@ -75,7 +76,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Portfolio overview for a day: active, pending and suspended counts, sites reported, not reported, awaiting update, outage reported, pooled availability with coverage, per-site condition (available, outage reported, awaiting update) **FR**
 - [x] An overdue or missing entry never shows as current or available (AT03)
 - [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
-- [ ] Period dashboards (week, month, custom range), data-quality indicator, stale-submission count
+- [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 042)
+- [ ] Data-quality indicator and stale-submission count on the dashboard
 - [ ] Click-through from a card to its supporting sites and intervals
 
 ## 7. Incidents and actions (PRD 10)
@@ -88,6 +90,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
 - [ ] Link an incident to the outage intervals of daily reports without duplicating downtime. Also the automatic midnight split
 - [ ] Evidence attachments on incidents. **new dependency** (R2)
+- [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 045)
+- [ ] Ticket attachments. **new dependency** (R2)
 - [ ] Link planned maintenance and approval references
 
 ## 8. Disputes (PRD 9)
@@ -134,6 +138,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [ ] Daily site summaries, weekly exception report, monthly performance pack, incident register, maintenance log, commissioning backlog
 - [x] CSV export of daily summaries; gaps stay blank rows
+- [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 043)
 - [ ] XLSX export; printable or PDF. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
 - [ ] Immutable report snapshots with version history; "never overwrite an issued report"
@@ -143,7 +148,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [x] Authentication, approvals, corrections, publications, disputes, user changes recorded; append-only
 - [x] Audit search (`GET /audit`): by actor, action, entity, time; needs `audit.read`; site-scoped readers see only their sites
-- [x] Audit of exports (`export.daily_summaries`, in a transaction)
+- [x] Audit of exports (`export.daily_summaries`, `export.incident_register`, in a transaction)
 - [ ] 24-month online retention and a deletion policy. **needs input** (joint approval)
 
 ## 14. Non-functional targets (PRD 11) and AT11

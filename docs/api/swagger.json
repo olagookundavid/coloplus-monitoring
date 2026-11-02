@@ -1,0 +1,4610 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Backend for the Coloplus remote monitoring portal.",
+        "title": "Coloplus Remote Monitoring API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/",
+    "paths": {
+        "/api/v1/acceptances": {
+            "get": {
+                "description": "Sites still going through acceptance, the longest-waiting for inspection first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "acceptance"
+                ],
+                "summary": "The commissioning backlog",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "requested, built, ready_for_inspection, inspected, accepted, rejected or on_hold",
+                        "name": "stage",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Leave out accepted sites",
+                        "name": "open",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only those whose next action is overdue",
+                        "name": "overdue",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AcceptanceListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/audit": {
+            "get": {
+                "description": "Newest first. Needs audit access, which is separate from editing rights. A reader scoped to some sites sees only events about those sites.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "audit"
+                ],
+                "summary": "Search the audit log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Who acted",
+                        "name": "actor_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact action, such as report.approved",
+                        "name": "action",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "daily_report, incident, dispute, user, site...",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "One record's id",
+                        "name": "entity_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "From this time (RFC 3339), inclusive",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Until this time (RFC 3339), exclusive",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AuditListResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/forgot-password": {
+            "post": {
+                "description": "Always answers the same way, whether or not the address has an account, so it cannot be used to find out who does. The link works once and expires in an hour.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Ask for a password reset link",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ForgotPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/login": {
+            "post": {
+                "description": "Checks the password and, when two-step verification is on, the authenticator code. On success the access token is set as an HttpOnly cookie and also returned. When a code is needed the response status is \"mfa_required\" and no token is issued: send the request again with totp_code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Sign in",
+                "parameters": [
+                    {
+                        "description": "Credentials",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Sign out",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/me": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "The signed-in user, their permissions and site scope",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MeResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/mfa/enable": {
+            "post": {
+                "description": "Returns ten one-time recovery codes. They are shown this once; only their hashes are kept. People whose role needs two-step verification can do nothing else until this succeeds.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Confirm a code and turn on two-step verification",
+                "parameters": [
+                    {
+                        "description": "Code from the authenticator app",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EnableMFARequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RecoveryCodesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/mfa/recovery-codes": {
+            "post": {
+                "description": "Needs a current authenticator code. The old codes stop working at once. The new ones are shown this once.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Replace the recovery codes",
+                "parameters": [
+                    {
+                        "description": "Code from the authenticator app",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.EnableMFARequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RecoveryCodesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/mfa/setup": {
+            "post": {
+                "description": "Returns a secret and an otpauth:// link to show as a QR code. Two-step verification turns on only after /auth/mfa/enable confirms a code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Start two-step verification setup",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MFASetupResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/set-password": {
+            "post": {
+                "description": "The token comes from the emailed link and works once. Choosing a password signs out every earlier session.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Choose a password with an invitation or reset link",
+                "parameters": [
+                    {
+                        "description": "Token and new password",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "List daily reports in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First report date, 2026-12-01",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last report date",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "draft, submitted, approved, rejected or superseded",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports/{id}": {
+            "get": {
+                "description": "Airtel users receive the published view of approved reports only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "One report with its calculated summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Replaces the notes and intervals. Send the row_version you loaded; if someone else changed the report meanwhile you get a conflict. Saving a returned report makes it a draft again.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Save a draft",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Report",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SaveReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports/{id}/approve": {
+            "post": {
+                "description": "The approver cannot be the author. Approving a correction supersedes the report it corrects.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Approve and publish a submitted report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional comment",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports/{id}/corrections": {
+            "post": {
+                "description": "Creates a new draft revision linked to the approved one. The approved report is untouched until the correction is approved by someone other than its author.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Start a correction of an approved report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Approved report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports/{id}/reject": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Return a submitted report to its author",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RejectRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/daily-reports/{id}/submit": {
+            "post": {
+                "description": "Safe to repeat: submitting an already submitted report changes nothing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Submit a draft for approval",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Report id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/overview": {
+            "get": {
+                "description": "Availability pools active sites by eligible minutes over the period. A day with no approved report counts its window as unknown; it never appears as available. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Portfolio overview for a day or a period",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "One reporting day, defaults to today (Africa/Lagos)",
+                        "name": "date",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "First day of a period; give with to",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day of a period (not in the future)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OverviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/trend": {
+            "get": {
+                "description": "One point per reporting day for the active sites in scope, pooled by eligible minutes. A day on which nothing was reported has null availability: draw a gap, not a line at zero or 100. Daily is the finest grain the reports give.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "Portfolio availability day by day",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First day",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day (not in the future); at most 92 days",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TrendResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/disputes": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "List disputes in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only disputes about this report",
+                        "name": "report_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "open, under_review, awaiting_evidence, agreed_correction, resolved or closed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Leave out closed disputes",
+                        "name": "open",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/disputes/summary": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "Headline dispute counts for your scope",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeSummaryResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/disputes/{id}": {
+            "get": {
+                "description": "Both parties' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "One dispute with its history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dispute id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/disputes/{id}/comments": {
+            "post": {
+                "description": "Both parties can comment. Coloplus can mark a comment internal so Airtel never sees it. An Airtel comment on a dispute waiting for their evidence hands it back to Coloplus.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "Comment on a dispute",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dispute id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeEventDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/disputes/{id}/transition": {
+            "post": {
+                "description": "Coloplus: open to under_review, then awaiting_evidence, agreed_correction or resolved. Resolving needs an outcome; upheld needs the correction agreed first and, for a report, the corrected approved revision. Airtel: closed withdraws it, or acknowledges a resolution; under_review gives evidence or reopens a resolution. Repeating a step that already happened changes nothing. Coloplus's approval and Airtel's agreement are recorded separately.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "Move a dispute to its next status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Dispute id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Next status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TransitionDisputeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/exports/daily-summaries.csv": {
+            "get": {
+                "description": "One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures, never zero and never available. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Export daily summaries as CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First day, 2026-12-01",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day (not in the future); at most 92 days",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "One site; default every site in scope",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/exports/incidents.csv": {
+            "get": {
+                "description": "One row per reported fault that started in the period, with its site, severity, impact, status and observed times. Airtel gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "exports"
+                ],
+                "summary": "Export the incident register as CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First day, 2026-12-01",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day (not in the future); at most 92 days",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "One site; default every site in scope",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents": {
+            "get": {
+                "description": "Airtel users see only incidents that have been published to them.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "List incidents in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only incidents owned by this person",
+                        "name": "owner_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "reported, acknowledged, assigned, in_progress, restored, verified or closed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "critical, major or minor",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Leave out closed incidents",
+                        "name": "open",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only incidents whose promised update is overdue",
+                        "name": "overdue",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/summary": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Open, active, critical and overdue incident counts",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentSummaryResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}": {
+            "get": {
+                "description": "Staff get the full record and every update. Airtel gets the published view and the updates written for them.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "One incident with its history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/assign": {
+            "post": {
+                "description": "The owner must be an active person who can work on incidents at that site. Assigning a reported or acknowledged incident moves it to assigned. Optionally set the next action and when the next update is due.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Assign an owner",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Owner and plan",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AssignIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/publish": {
+            "post": {
+                "description": "Does not wait for the daily report to be approved, so a critical incident can be notified at once. Safe to repeat.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Share an incident with Airtel",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/transition": {
+            "post": {
+                "description": "Stages run reported, acknowledged, assigned, in_progress, restored, verified, closed. Restoration needs the time power was actually restored; a target does not count. Verification needs a new observation (what and when) from someone other than the person who recorded restoration. Closing needs a root cause. Repeating a step that already happened changes nothing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Move an incident to its next stage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Next stage",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TransitionIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/updates": {
+            "post": {
+                "description": "Anyone who can work on the incident may add a note. Supervisors can also set the plan (next action, next update time, restoration target) and mark an update for Airtel, which needs the incident to be published first.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Add an update to an incident",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentUpdateDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications": {
+            "get": {
+                "description": "Failed emails stay here until someone retries them. The message text is never returned.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Email delivery status (administrators)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pending, sent or failed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.NotificationListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}/retry": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Retry a failed email (administrators)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/ping": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "API ping",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PingResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "List sites in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search Airtel code, Coloplus code or name",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "State",
+                        "name": "state",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Region",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pending_acceptance, active or suspended",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Register a site",
+                "parameters": [
+                    {
+                        "description": "Site",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "One site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Replace a site's details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Site",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/acceptance": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "acceptance"
+                ],
+                "summary": "A site's acceptance with its history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AcceptanceDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Only for a site still pending acceptance, and only once per site.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "acceptance"
+                ],
+                "summary": "Start a site's commissioning and acceptance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Plan",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RequestAcceptanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AcceptanceDTO"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/acceptance/transition": {
+            "post": {
+                "description": "Coloplus: requested to built, then ready_for_inspection with the dossier; a rejected site goes back to built once fixed. Airtel: ready_for_inspection to inspected or rejected; inspected to accepted or rejected. Either side can put it on_hold with a reason and resume it by naming the stage it left. Only Airtel's accepted counts as acceptance, and it brings a pending site into service. Repeating a step changes nothing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "acceptance"
+                ],
+                "summary": "Move a site's acceptance to its next stage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Next stage",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TransitionAcceptanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AcceptanceDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/daily-reports": {
+            "post": {
+                "description": "Creates a draft for a site and reporting day. Intervals must stay within the day (Africa/Lagos), be whole minutes, and not end in the future. A served interval names its source; an outage has none. Served and outage intervals may not overlap.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "daily-reports"
+                ],
+                "summary": "Start a daily report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Report",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateReportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/disputes": {
+            "post": {
+                "description": "Disputes a site, a period, a published report, or one interval of it. Only an approved report can be disputed. The same thing cannot be disputed twice while the first dispute is open; that answers 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "disputes"
+                ],
+                "summary": "Raise a dispute (Airtel reviewer)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dispute",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RaiseDisputeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DisputeDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/incidents": {
+            "post": {
+                "description": "Records a fault. Use impact no_outage for a fault that interrupted nothing, so it stays apart from service interruptions. The start time is when the fault began; the detection time defaults to it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "Report an incident at a site",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Incident",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReportIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/overview": {
+            "get": {
+                "description": "Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; Airtel gets published incidents only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "The whole site screen in one call",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "How many reporting days to show (default 14, max 90)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteOverviewResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/tickets": {
+            "post": {
+                "description": "Asks Coloplus for help with a site: a fault, a refill, an access problem. The priority is the one you ask for; Coloplus decides the severity of any incident it opens. Send client_key and retry safely: the same key returns the same ticket. Attachments are not supported yet.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Raise a support ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Ticket",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RaiseTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "List support tickets in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "open, in_progress or resolved",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "power_outage, low_fuel, generator_fault, equipment_fault, access_restriction or other",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "low, medium, high or critical",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only tickets linked to this incident",
+                        "name": "incident_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Leave out resolved tickets",
+                        "name": "open",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/summary": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Headline ticket counts for your scope",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketSummaryResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}": {
+            "get": {
+                "description": "Both sides' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel, and so is a linked incident until it is published to them.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "One ticket with its history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketDetailResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/comments": {
+            "post": {
+                "description": "Both sides can comment, also after it is resolved. Coloplus can mark a comment internal so Airtel never sees it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Comment on a ticket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketEventDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/incident": {
+            "post": {
+                "description": "The incident must be at the same site. The link is noted internally; Airtel sees it on the ticket only once the incident has been published to them.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Link a ticket to the incident opened for it (Coloplus)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Incident",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LinkIncidentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tickets/{id}/transition": {
+            "post": {
+                "description": "Coloplus: open to in_progress or resolved, in_progress to resolved, and resolved back to in_progress. Resolving needs a note. Airtel: status open reopens a resolved ticket, with a note. Repeating a step that already happened changes nothing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Move a ticket to its next status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Next status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.TransitionTicketRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.TicketDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "List users (administrators)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Leave the password out and the person is emailed a link to choose their own.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a user (administrators)",
+                "parameters": [
+                    {
+                        "description": "New user",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserDetailDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "One user with site assignments (administrators)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserDetailDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Only the fields present are changed. site_ids replaces the whole assignment list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update a user (administrators)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Changes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UserDetailDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/invite": {
+            "post": {
+                "description": "For someone who has not chosen a password yet. The earlier link stops working.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Send a fresh invitation (administrators)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MessageResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/users/{id}/reset-mfa": {
+            "post": {
+                "description": "For someone who lost both their phone and their recovery codes. Turns it off, deletes their recovery codes, signs them out everywhere and emails them; they set it up again at their next sign-in. You cannot reset your own.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Reset a person's two-step verification",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/healthcheck": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Liveness and database check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.HealthResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.AcceptanceDTO": {
+            "type": "object",
+            "properties": {
+                "built_at": {
+                    "type": "string"
+                },
+                "decided_at": {
+                    "description": "DecidedAt is when Airtel accepted. Nothing else counts as acceptance.",
+                    "type": "string"
+                },
+                "dossier": {
+                    "description": "Dossier is what Coloplus submitted when it declared the site ready.",
+                    "type": "string"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "held_from": {
+                    "description": "HeldFrom is the stage a hold returns to.",
+                    "type": "string"
+                },
+                "hold_reason": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "inspected_at": {
+                    "type": "string"
+                },
+                "next_action": {
+                    "type": "string"
+                },
+                "overdue": {
+                    "type": "boolean"
+                },
+                "ready_age_hours": {
+                    "description": "ReadyAgeHours is how long the site has waited for inspection since it\nwas declared ready. It is not operational performance.",
+                    "type": "integer"
+                },
+                "ready_at": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "requested_at": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "waiting_on": {
+                    "description": "WaitingOn is coloplus or airtel: whose move it is.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AcceptanceDetailResponse": {
+            "type": "object",
+            "properties": {
+                "acceptance": {
+                    "$ref": "#/definitions/dto.AcceptanceDTO"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AcceptanceEventDTO"
+                    }
+                }
+            }
+        },
+        "dto.AcceptanceEventDTO": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "from_stage": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "party": {
+                    "type": "string"
+                },
+                "to_stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AcceptanceListResponse": {
+            "type": "object",
+            "properties": {
+                "acceptances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AcceptanceDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.AssignIncidentRequest": {
+            "type": "object",
+            "properties": {
+                "next_action": {
+                    "type": "string"
+                },
+                "next_update_due": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AuditEventDTO": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "report.approved"
+                },
+                "actor_id": {
+                    "type": "string"
+                },
+                "entity_id": {
+                    "type": "string"
+                },
+                "entity_type": {
+                    "type": "string",
+                    "example": "daily_report"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "occurred_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AuditListResponse": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AuditEventDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.CalculationDTO": {
+            "type": "object",
+            "properties": {
+                "basis": {
+                    "type": "string",
+                    "example": "calculation from reported inputs"
+                },
+                "computed_at": {
+                    "type": "string"
+                },
+                "explanation": {
+                    "type": "string"
+                },
+                "formula": {
+                    "type": "string",
+                    "example": "daily-availability"
+                },
+                "input_report_id": {
+                    "type": "string"
+                },
+                "input_revision": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string",
+                    "example": "Africa/Lagos"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "window_end": {
+                    "type": "string"
+                },
+                "window_start": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CorrectionRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateReportRequest": {
+            "type": "object",
+            "properties": {
+                "intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IntervalDTO"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "report_date": {
+                    "type": "string",
+                    "example": "2026-12-01"
+                }
+            }
+        },
+        "dto.CreateUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "description": "Password is optional. Leave it out and the person is emailed a link to\nchoose their own.",
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "reporter"
+                },
+                "site_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.DisputeCommentRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "Internal keeps the comment inside Coloplus; Airtel never sees it.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.DisputeDTO": {
+            "type": "object",
+            "properties": {
+                "acknowledged_at": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description is what Airtel wrote when raising it.",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "interval_id": {
+                    "type": "string"
+                },
+                "metric": {
+                    "type": "string"
+                },
+                "outcome": {
+                    "description": "Outcome is upheld or not_upheld once Coloplus resolves it, withdrawn if Airtel dropped it.",
+                    "type": "string"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "period_from": {
+                    "type": "string"
+                },
+                "period_to": {
+                    "type": "string"
+                },
+                "raised_by": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string",
+                    "example": "DSP-000123"
+                },
+                "reopen_count": {
+                    "type": "integer"
+                },
+                "report_id": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "type": "string"
+                },
+                "resolution_report_id": {
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "description": "ResolvedAt is Coloplus's decision; AcknowledgedAt is Airtel's agreement.",
+                    "type": "string"
+                },
+                "resolved_by": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "waiting_on": {
+                    "description": "WaitingOn is whose move it is: coloplus or airtel; empty once closed.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.DisputeDetailResponse": {
+            "type": "object",
+            "properties": {
+                "dispute": {
+                    "$ref": "#/definitions/dto.DisputeDTO"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DisputeEventDTO"
+                    }
+                }
+            }
+        },
+        "dto.DisputeEventDTO": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "from_status": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "Internal and AuthorID are only ever sent to Coloplus staff.",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "party": {
+                    "description": "Party is airtel or coloplus.",
+                    "type": "string"
+                },
+                "to_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.DisputeListResponse": {
+            "type": "object",
+            "properties": {
+                "disputes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DisputeDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.DisputeSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "open": {
+                    "description": "Open is every dispute not yet closed.",
+                    "type": "integer"
+                },
+                "with_airtel": {
+                    "type": "integer"
+                },
+                "with_coloplus": {
+                    "description": "WithColoplus are waiting on Coloplus; WithAirtel on Airtel (evidence or acknowledgement).",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.EnableMFARequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "123456"
+                }
+            }
+        },
+        "dto.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "we couldn't find what you were looking for"
+                },
+                "request_id": {
+                    "type": "string",
+                    "example": "9f8c2a41d3b7e605"
+                }
+            }
+        },
+        "dto.ForgotPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "ada@coloplus.example"
+                }
+            }
+        },
+        "dto.HealthResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "dto.IncidentDTO": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "closed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "detected_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "impact": {
+                    "type": "string"
+                },
+                "next_action": {
+                    "type": "string"
+                },
+                "next_update_due": {
+                    "type": "string"
+                },
+                "overdue": {
+                    "type": "boolean"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string",
+                    "example": "INC-000123"
+                },
+                "reporter_id": {
+                    "type": "string"
+                },
+                "restoration_target": {
+                    "type": "string"
+                },
+                "restored_at": {
+                    "type": "string"
+                },
+                "restored_by": {
+                    "type": "string"
+                },
+                "root_cause": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "verified_at": {
+                    "type": "string"
+                },
+                "verified_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IncidentDetailResponse": {
+            "type": "object",
+            "properties": {
+                "incident": {
+                    "$ref": "#/definitions/dto.IncidentDTO"
+                },
+                "published": {
+                    "$ref": "#/definitions/dto.PublishedIncidentDTO"
+                },
+                "updates": {
+                    "description": "Updates is the full history for staff; Airtel's updates are inside Published.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IncidentUpdateDTO"
+                    }
+                }
+            }
+        },
+        "dto.IncidentListResponse": {
+            "type": "object",
+            "properties": {
+                "incidents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IncidentDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "published": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PublishedIncidentDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.IncidentSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "integer"
+                },
+                "critical_open": {
+                    "type": "integer"
+                },
+                "open": {
+                    "description": "Open is every incident not yet closed; Active is those still awaiting restoration.",
+                    "type": "integer"
+                },
+                "overdue_updates": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.IncidentUpdateDTO": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "customer_visible": {
+                    "type": "boolean"
+                },
+                "from_status": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "observed_at": {
+                    "type": "string"
+                },
+                "to_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IncidentUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "customer_visible": {
+                    "description": "CustomerVisible shares this update with Airtel; the incident must be published.",
+                    "type": "boolean"
+                },
+                "next_action": {
+                    "description": "The plan fields are supervisor-only. A restoration target is a plan,\nnot a restoration.",
+                    "type": "string"
+                },
+                "next_update_due": {
+                    "type": "string"
+                },
+                "restoration_target": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IntervalDTO": {
+            "type": "object",
+            "properties": {
+                "basis": {
+                    "description": "Basis is observed (default) or declared. Only observed counts.",
+                    "type": "string",
+                    "example": "observed"
+                },
+                "end": {
+                    "type": "string",
+                    "example": "2026-12-01T18:30:00+01:00"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "source": {
+                    "description": "Source is required when served and must be empty for an outage.",
+                    "type": "string",
+                    "example": "grid"
+                },
+                "start": {
+                    "type": "string",
+                    "example": "2026-12-01T06:00:00+01:00"
+                },
+                "state": {
+                    "description": "State is served or outage.",
+                    "type": "string",
+                    "example": "served"
+                }
+            }
+        },
+        "dto.LinkIncidentRequest": {
+            "type": "object",
+            "properties": {
+                "incident_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "ada@coloplus.example"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "correct-horse-battery-9"
+                },
+                "totp_code": {
+                    "description": "TOTPCode is the six-digit authenticator code, or a recovery code, needed\nwhen two-step verification is on.",
+                    "type": "string",
+                    "example": "123456"
+                }
+            }
+        },
+        "dto.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "mfa_setup_required": {
+                    "description": "MFASetupRequired is true when the person is signed in but their role\nneeds two-step verification they have not set up: everything else is\nrefused until they have.",
+                    "type": "boolean"
+                },
+                "status": {
+                    "description": "Status is \"ok\" or \"mfa_required\". With mfa_required no token is issued;\nsend the same request again with totp_code.",
+                    "type": "string",
+                    "example": "ok"
+                },
+                "user": {
+                    "$ref": "#/definitions/dto.UserDTO"
+                }
+            }
+        },
+        "dto.MFASetupResponse": {
+            "type": "object",
+            "properties": {
+                "otpauth_url": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MeResponse": {
+            "type": "object",
+            "properties": {
+                "all_sites": {
+                    "type": "boolean"
+                },
+                "mfa_setup_required": {
+                    "description": "MFASetupRequired: the role needs two-step verification that is not on\nyet, so permissions are empty until it is.",
+                    "type": "boolean"
+                },
+                "permissions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "recovery_codes_left": {
+                    "description": "RecoveryCodesLeft is how many unused recovery codes remain.",
+                    "type": "integer"
+                },
+                "site_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "user": {
+                    "$ref": "#/definitions/dto.UserDTO"
+                }
+            }
+        },
+        "dto.MessageResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NotificationDTO": {
+            "type": "object",
+            "properties": {
+                "attempts": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "incident.overdue"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "recipient": {
+                    "type": "string"
+                },
+                "sent_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "failed"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.NotificationListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "notifications": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.NotificationDTO"
+                    }
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OverviewResponse": {
+            "type": "object",
+            "properties": {
+                "active_sites": {
+                    "type": "integer"
+                },
+                "date": {
+                    "description": "Date is the last day of the period, kept for clients that ask for one day.",
+                    "type": "string"
+                },
+                "days": {
+                    "type": "integer"
+                },
+                "from": {
+                    "description": "From and To are the first and last reporting day pooled into the figures.",
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "pending_acceptance_sites": {
+                    "type": "integer"
+                },
+                "portfolio": {
+                    "$ref": "#/definitions/dto.SummaryDTO"
+                },
+                "region": {
+                    "description": "Region is the filter applied, empty for every region; Regions lists the\nregions in the caller's scope for the filter to offer.",
+                    "type": "string"
+                },
+                "regions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "sites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SiteRowDTO"
+                    }
+                },
+                "sites_awaiting_update": {
+                    "type": "integer"
+                },
+                "sites_not_reported": {
+                    "type": "integer"
+                },
+                "sites_outage_reported": {
+                    "type": "integer"
+                },
+                "sites_reported": {
+                    "type": "integer"
+                },
+                "suspended_sites": {
+                    "type": "integer"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PingResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "pong"
+                }
+            }
+        },
+        "dto.PublishedIncidentDTO": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "closed_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "impact": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string"
+                },
+                "restoration_target": {
+                    "type": "string"
+                },
+                "restored_at": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PublishedUpdateDTO"
+                    }
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.PublishedReportDTO": {
+            "type": "object",
+            "properties": {
+                "approved_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IntervalDTO"
+                    }
+                },
+                "report_date": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PublishedUpdateDTO": {
+            "type": "object",
+            "properties": {
+                "at": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RaiseDisputeRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "Category is incorrect_outage, missing_outage, incorrect_served,\nwrong_duration, wrong_metric, missing_report or other.",
+                    "type": "string",
+                    "example": "incorrect_outage"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "interval_id": {
+                    "description": "IntervalID narrows it to one interval of that report.",
+                    "type": "string"
+                },
+                "metric": {
+                    "description": "Metric is availability, coverage, outage_minutes, served_minutes or other.",
+                    "type": "string",
+                    "example": "availability"
+                },
+                "period_from": {
+                    "description": "PeriodFrom and PeriodTo are dates (2026-12-01); give both or neither.",
+                    "type": "string",
+                    "example": "2026-12-01"
+                },
+                "period_to": {
+                    "type": "string",
+                    "example": "2026-12-31"
+                },
+                "report_id": {
+                    "description": "ReportID is the published report being disputed; leave empty to dispute\nthe site or a period as a whole.",
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Outage shown on a day power was on"
+                }
+            }
+        },
+        "dto.RaiseTicketRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "Category is power_outage, low_fuel, generator_fault, equipment_fault,\naccess_restriction or other.",
+                    "type": "string",
+                    "example": "low_fuel"
+                },
+                "client_key": {
+                    "description": "ClientKey is optional. Send the same value when retrying a request that\nmay have gone through, and you get the same ticket back, not a second one.",
+                    "type": "string"
+                },
+                "contact_email": {
+                    "description": "ContactEmail is where Coloplus can reach the requester; it defaults to\nyour own address. Coloplus replies by email to your account, not to this.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description says what happened.",
+                    "type": "string"
+                },
+                "priority": {
+                    "description": "Priority is the priority you ask for: low, medium, high or critical.",
+                    "type": "string",
+                    "example": "high"
+                },
+                "subject": {
+                    "type": "string",
+                    "example": "Diesel replenishment request"
+                }
+            }
+        },
+        "dto.RecoveryCodesResponse": {
+            "type": "object",
+            "properties": {
+                "recovery_codes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "K7QM-4XWP-92TD"
+                    ]
+                }
+            }
+        },
+        "dto.RejectRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ReportDTO": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "string"
+                },
+                "correction_reason": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IntervalDTO"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "report_date": {
+                    "type": "string"
+                },
+                "review_comment": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "reviewer_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "row_version": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "submitted_at": {
+                    "type": "string"
+                },
+                "supersedes_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ReportDetailResponse": {
+            "type": "object",
+            "properties": {
+                "calculation": {
+                    "$ref": "#/definitions/dto.CalculationDTO"
+                },
+                "open_disputes": {
+                    "description": "OpenDisputes counts the disputes about this report that have not closed.\nA disputed figure keeps showing it.",
+                    "type": "integer"
+                },
+                "published": {
+                    "$ref": "#/definitions/dto.PublishedReportDTO"
+                },
+                "report": {
+                    "$ref": "#/definitions/dto.ReportDTO"
+                },
+                "summary": {
+                    "$ref": "#/definitions/dto.SummaryDTO"
+                }
+            }
+        },
+        "dto.ReportIncidentRequest": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "description": "Category is grid_loss, building_supply_loss, generator_failure, low_fuel,\nbattery_failure, rectifier_fault, electrical_fault, access_restriction or other.",
+                    "type": "string",
+                    "example": "generator_failure"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "detected_at": {
+                    "description": "DetectedAt is when it was noticed; defaults to StartedAt.",
+                    "type": "string"
+                },
+                "impact": {
+                    "description": "Impact is outage for a service interruption, no_outage for a fault that caused none.",
+                    "type": "string",
+                    "example": "outage"
+                },
+                "severity": {
+                    "description": "Severity is critical, major or minor.",
+                    "type": "string",
+                    "example": "major"
+                },
+                "started_at": {
+                    "description": "StartedAt is when the fault began, as best known.",
+                    "type": "string",
+                    "example": "2026-12-01T06:40:00+01:00"
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Generator failed to start after grid loss"
+                }
+            }
+        },
+        "dto.ReportListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "open_disputes": {
+                    "description": "OpenDisputes maps a report id to its number of unclosed disputes;\nreports with none are left out.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "published": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PublishedReportDTO"
+                    }
+                },
+                "reports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ReportDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.RequestAcceptanceRequest": {
+            "type": "object",
+            "properties": {
+                "due_at": {
+                    "type": "string"
+                },
+                "next_action": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ReviewRequest": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SaveReportRequest": {
+            "type": "object",
+            "properties": {
+                "intervals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IntervalDTO"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "row_version": {
+                    "description": "RowVersion is the version this edit was based on. A stale one is\nrejected with a conflict.",
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SetPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "token": {
+                    "description": "Token is the value of the link's token parameter (invitation or reset).",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SiteDTO": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "airtel_code": {
+                    "type": "string"
+                },
+                "coloplus_code": {
+                    "type": "string"
+                },
+                "commissioning_date": {
+                    "type": "string",
+                    "example": "2026-09-01"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "freshness_hours": {
+                    "type": "integer",
+                    "example": 30
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "power_sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "grid",
+                        "generator"
+                    ]
+                },
+                "region": {
+                    "type": "string"
+                },
+                "responsible_team": {
+                    "type": "string",
+                    "example": "Lagos Island field team"
+                },
+                "service_end_minute": {
+                    "type": "integer",
+                    "example": 1440
+                },
+                "service_start_minute": {
+                    "type": "integer",
+                    "example": 0
+                },
+                "site_type": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "active"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SiteDayDTO": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string",
+                    "example": "2026-12-01"
+                },
+                "open_disputes": {
+                    "type": "integer"
+                },
+                "report_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "$ref": "#/definitions/dto.SummaryDTO"
+                }
+            }
+        },
+        "dto.SiteListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "sites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SiteDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SiteOverviewResponse": {
+            "type": "object",
+            "properties": {
+                "acceptance": {
+                    "$ref": "#/definitions/dto.AcceptanceDTO"
+                },
+                "as_of": {
+                    "type": "string"
+                },
+                "condition": {
+                    "description": "Condition is available, outage_reported or awaiting_update.",
+                    "type": "string"
+                },
+                "days": {
+                    "description": "Days runs newest first and includes days with no approved report.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SiteDayDTO"
+                    }
+                },
+                "disputes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DisputeDTO"
+                    }
+                },
+                "incidents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IncidentDTO"
+                    }
+                },
+                "open_disputes": {
+                    "type": "integer"
+                },
+                "open_incidents": {
+                    "type": "integer"
+                },
+                "published_incidents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PublishedIncidentDTO"
+                    }
+                },
+                "site": {
+                    "$ref": "#/definitions/dto.SiteDTO"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SiteRequest": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "airtel_code": {
+                    "type": "string"
+                },
+                "coloplus_code": {
+                    "type": "string"
+                },
+                "commissioning_date": {
+                    "type": "string",
+                    "example": "2026-09-01"
+                },
+                "freshness_hours": {
+                    "type": "integer"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "power_sources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "grid",
+                        "generator"
+                    ]
+                },
+                "region": {
+                    "type": "string"
+                },
+                "responsible_team": {
+                    "type": "string"
+                },
+                "service_end_minute": {
+                    "type": "integer"
+                },
+                "service_start_minute": {
+                    "type": "integer"
+                },
+                "site_type": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "pending_acceptance"
+                }
+            }
+        },
+        "dto.SiteRowDTO": {
+            "type": "object",
+            "properties": {
+                "airtel_code": {
+                    "type": "string"
+                },
+                "as_of": {
+                    "type": "string"
+                },
+                "coloplus_code": {
+                    "type": "string"
+                },
+                "condition": {
+                    "description": "Condition is available, outage_reported or awaiting_update.",
+                    "type": "string",
+                    "example": "available"
+                },
+                "current_source": {
+                    "description": "CurrentSource is what the site was last observed running on; absent when\nthe report is stale, the last interval was an outage or none was observed.",
+                    "type": "string",
+                    "example": "grid"
+                },
+                "days_reported": {
+                    "description": "DaysReported of the response's Days have an approved report.",
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "responsible_team": {
+                    "description": "ResponsibleTeam is the team accountable for the site.",
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "summary": {
+                    "description": "Summary pools the period; absent when no day of it has an approved report.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SummaryDTO"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.SummaryDTO": {
+            "type": "object",
+            "properties": {
+                "confirmed_served_share_pct": {
+                    "type": "number"
+                },
+                "coverage_pct": {
+                    "description": "The percentages are null when not applicable or unavailable, never 0.",
+                    "type": "number"
+                },
+                "eligible_minutes": {
+                    "type": "integer"
+                },
+                "outage_minutes": {
+                    "type": "integer"
+                },
+                "provisional": {
+                    "type": "boolean"
+                },
+                "reported_availability_pct": {
+                    "type": "number"
+                },
+                "served_minutes": {
+                    "type": "integer"
+                },
+                "unknown_minutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.TicketCommentRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "Internal keeps the comment inside Coloplus; Airtel never sees it.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.TicketDTO": {
+            "type": "object",
+            "properties": {
+                "assignee_id": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "contact_email": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "incident_id": {
+                    "type": "string"
+                },
+                "incident_ref": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "raised_by": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string",
+                    "example": "TKT-000123"
+                },
+                "reopen_count": {
+                    "type": "integer"
+                },
+                "resolution": {
+                    "description": "Resolution is how Coloplus resolved it.",
+                    "type": "string"
+                },
+                "resolved_at": {
+                    "type": "string"
+                },
+                "resolved_by": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is open, in_progress or resolved.",
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TicketDetailResponse": {
+            "type": "object",
+            "properties": {
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TicketEventDTO"
+                    }
+                },
+                "ticket": {
+                    "$ref": "#/definitions/dto.TicketDTO"
+                }
+            }
+        },
+        "dto.TicketEventDTO": {
+            "type": "object",
+            "properties": {
+                "author_id": {
+                    "type": "string"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "from_status": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "Internal and AuthorID are only ever sent to Coloplus staff.",
+                    "type": "boolean"
+                },
+                "kind": {
+                    "description": "Kind is comment, status or link (staff only).",
+                    "type": "string"
+                },
+                "party": {
+                    "description": "Party is airtel or coloplus.",
+                    "type": "string"
+                },
+                "to_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.TicketListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "tickets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TicketDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.TicketSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "critical_open": {
+                    "description": "CriticalOpen are unresolved tickets whose requester asked for critical priority.",
+                    "type": "integer"
+                },
+                "in_progress": {
+                    "type": "integer"
+                },
+                "open": {
+                    "type": "integer"
+                },
+                "resolved": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.TransitionAcceptanceRequest": {
+            "type": "object",
+            "properties": {
+                "due_at": {
+                    "type": "string"
+                },
+                "next_action": {
+                    "description": "NextAction and DueAt set the plan after this step.",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "Note is the dossier when declaring the site ready, the reason when\nrejecting or holding, and what was fixed when rework follows a rejection.",
+                    "type": "string"
+                },
+                "stage": {
+                    "description": "Stage is built, ready_for_inspection, inspected, accepted, rejected or\non_hold. To resume from a hold, name the stage it left.",
+                    "type": "string",
+                    "example": "ready_for_inspection"
+                }
+            }
+        },
+        "dto.TransitionDisputeRequest": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "description": "Note explains the step. Needed to ask for evidence, agree a correction,\nresolve, give evidence, reopen and withdraw.",
+                    "type": "string"
+                },
+                "outcome": {
+                    "description": "Outcome is upheld or not_upheld, required to resolve. Upheld needs the\ncorrection to have been agreed first.",
+                    "type": "string",
+                    "example": "upheld"
+                },
+                "resolution_report_id": {
+                    "description": "ResolutionReportID is the corrected, approved report revision that\nsettles an upheld dispute about a report.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is under_review, awaiting_evidence, agreed_correction, resolved\nor closed. Coloplus reviews and settles; Airtel withdraws, gives\nevidence or reopens (under_review), and acknowledges a resolution (closed).",
+                    "type": "string",
+                    "example": "under_review"
+                }
+            }
+        },
+        "dto.TransitionIncidentRequest": {
+            "type": "object",
+            "properties": {
+                "at": {
+                    "description": "At is when power was actually restored (restored) or when the\nconfirming observation was made (verified).",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "Note is required to verify (what was observed) and to reopen.",
+                    "type": "string"
+                },
+                "root_cause": {
+                    "description": "RootCause is required to close.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is acknowledged, in_progress, restored, verified or closed.",
+                    "type": "string",
+                    "example": "restored"
+                }
+            }
+        },
+        "dto.TransitionTicketRequest": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "description": "Note explains the step. Needed to resolve, to reopen, and to take a\nresolved ticket back into work.",
+                    "type": "string"
+                },
+                "status": {
+                    "description": "Status is in_progress or resolved for Coloplus, open to reopen a\nresolved ticket for Airtel.",
+                    "type": "string",
+                    "example": "in_progress"
+                }
+            }
+        },
+        "dto.TrendPoint": {
+            "type": "object",
+            "properties": {
+                "active_sites": {
+                    "type": "integer"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "sites_reported": {
+                    "type": "integer"
+                },
+                "summary": {
+                    "$ref": "#/definitions/dto.SummaryDTO"
+                }
+            }
+        },
+        "dto.TrendResponse": {
+            "type": "object",
+            "properties": {
+                "formula": {
+                    "type": "string",
+                    "example": "daily-availability"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.TrendPoint"
+                    }
+                },
+                "region": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string",
+                    "example": "1"
+                }
+            }
+        },
+        "dto.UpdateUserRequest": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "site_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.UserDTO": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invited": {
+                    "description": "Invited is true until the person has chosen a password.",
+                    "type": "boolean"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "last_login_at": {
+                    "type": "string"
+                },
+                "mfa_enabled": {
+                    "type": "boolean"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "reporter"
+                }
+            }
+        },
+        "dto.UserDetailDTO": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invited": {
+                    "description": "Invited is true until the person has chosen a password.",
+                    "type": "boolean"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "last_login_at": {
+                    "type": "string"
+                },
+                "mfa_enabled": {
+                    "type": "boolean"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "reporter"
+                },
+                "site_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dto.UserListResponse": {
+            "type": "object",
+            "properties": {
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.UserDTO"
+                    }
+                }
+            }
+        }
+    }
+}

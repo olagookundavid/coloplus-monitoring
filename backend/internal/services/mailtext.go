@@ -131,3 +131,23 @@ func acceptanceOverdueEmail(site domain.Site, a domain.Acceptance, due time.Time
 			"Stage: %s\nWith: %s\nNext action: %s\n\nOpen it: %s\n",
 			siteLabel(site), due.In(loc).Format(timeLayout), stageWord(a.Stage), a.Responsible, orDash(a.NextAction), link)
 }
+
+func ticketRef(n int64) string { return fmt.Sprintf("TKT-%06d", n) }
+
+func ticketStatusWord(s domain.TicketStatus) string { return strings.ReplaceAll(string(s), "_", " ") }
+
+// ticketEventEmail tells the other side that something happened on a ticket.
+// It only ever carries what was written for both sides: internal notes are
+// never emailed.
+func ticketEventEmail(t domain.Ticket, site domain.Site, e domain.TicketEvent, link string) (subject, body string) {
+	what := "A comment was added"
+	if e.Kind == domain.TicketEventStatus {
+		what = "The ticket is now " + ticketStatusWord(e.ToStatus)
+		if e.FromStatus == "" {
+			what = "A support ticket was raised"
+		}
+	}
+	return fmt.Sprintf("%s %s: %s", ticketRef(t.Number), t.Subject, strings.ToLower(what)),
+		fmt.Sprintf("%s on %s at %s.\n\n%s\n\nOpen it: %s\n",
+			what, ticketRef(t.Number), siteLabel(site), orDash(e.Body), link)
+}

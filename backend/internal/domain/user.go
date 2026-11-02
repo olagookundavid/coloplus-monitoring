@@ -18,12 +18,15 @@ const (
 	RoleAirtelViewer Role = "airtel_viewer"
 	// RoleAirtelReviewer is a viewer who may also raise and acknowledge disputes.
 	RoleAirtelReviewer Role = "airtel_reviewer"
+	// RoleAuditor is Coloplus management: reads reports and the audit log in
+	// its assigned scope and can change nothing.
+	RoleAuditor Role = "auditor"
 )
 
 // ValidRole reports whether r is a role the system knows.
 func ValidRole(r Role) bool {
 	switch r {
-	case RoleAdmin, RoleReporter, RoleSupervisor, RoleAirtelViewer, RoleAirtelReviewer:
+	case RoleAdmin, RoleReporter, RoleSupervisor, RoleAirtelViewer, RoleAirtelReviewer, RoleAuditor:
 		return true
 	}
 	return false
@@ -54,6 +57,10 @@ const (
 	PermDisputesRead   Permission = "disputes.read"
 	PermDisputesRaise  Permission = "disputes.raise"
 	PermDisputesManage Permission = "disputes.manage"
+
+	PermTicketsRead   Permission = "tickets.read"
+	PermTicketsRaise  Permission = "tickets.raise"
+	PermTicketsManage Permission = "tickets.manage"
 
 	PermAcceptanceRead   Permission = "acceptance.read"
 	PermAcceptanceManage Permission = "acceptance.manage"

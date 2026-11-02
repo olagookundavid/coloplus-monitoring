@@ -12,6 +12,7 @@ type SiteDTO struct {
 	State              string    `json:"state"`
 	SiteType           string    `json:"site_type"`
 	PowerSources       []string  `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam    string    `json:"responsible_team" example:"Lagos Island field team"`
 	ServiceStartMinute int       `json:"service_start_minute" example:"0"`
 	ServiceEndMinute   int       `json:"service_end_minute" example:"1440"`
 	FreshnessHours     int       `json:"freshness_hours" example:"30"`
@@ -34,6 +35,7 @@ type SiteRequest struct {
 	State              string   `json:"state"`
 	SiteType           string   `json:"site_type"`
 	PowerSources       []string `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam    string   `json:"responsible_team"`
 	ServiceStartMinute int      `json:"service_start_minute"`
 	ServiceEndMinute   int      `json:"service_end_minute"`
 	FreshnessHours     int      `json:"freshness_hours"`

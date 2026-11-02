@@ -335,6 +335,63 @@ func TestDashboard_MissingReportsAreUnknownNeverAvailable(t *testing.T) {
 	}
 }
 
+// Over a period the missing days stay unknown, a day nobody reported is a gap
+// in the trend rather than a line, a region narrows the sites, and the site
+// names a source only while its report is current.
+func TestDashboard_PeriodRegionAndTrendKeepGaps(t *testing.T) {
+	w := newWorkflow(t)
+	to, _ := w.goodDay(1)
+	from, _ := w.reportDay(2)
+
+	silent := w.newSite(w.admin)
+	w.expect(w.call("PATCH", "/api/v1/users/"+w.reporterID, map[string]any{"site_ids": []string{w.site, silent}}, w.admin), 200)
+	w.exec(`UPDATE sites SET region = 'Lagos Island' WHERE id = $1`, w.site)
+	w.exec(`UPDATE sites SET region = 'Abuja' WHERE id = $1`, silent)
+
+	id := w.draft(1)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+
+	ov := w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to="+to+"&region=lagos+island", nil, w.reporter), 200)
+	rows := ov.list("sites")
+	if len(rows) != 1 || ov.Body["days"] != float64(2) || len(ov.list("regions")) != 2 {
+		t.Fatalf("the region must narrow the sites and still list every region: %s", ov.Raw)
+	}
+	row := rows[0].(map[string]any)
+	sum, _ := row["summary"].(map[string]any)
+	// Two days of 1440 minutes; only yesterday was reported.
+	if row["days_reported"] != float64(1) || row["current_source"] != "generator" ||
+		sum["eligible_minutes"] != float64(2880) || sum["served_minutes"] != float64(1380) || sum["unknown_minutes"] != float64(1470) {
+		t.Fatalf("a period must pool the days and keep the unreported one unknown: %v", row)
+	}
+
+	all := w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to="+to, nil, w.reporter), 200)
+	for _, r := range all.list("sites") {
+		if m := r.(map[string]any); m["site_id"] == silent && (m["summary"] != nil || m["current_source"] != nil || m["days_reported"] != float64(0)) {
+			t.Fatalf("a site that never reported must have no figures and no source: %v", m)
+		}
+	}
+
+	tr := w.expect(w.call("GET", "/api/v1/dashboard/trend?from="+from+"&to="+to, nil, w.reporter), 200)
+	pts := tr.list("points")
+	if len(pts) != 2 {
+		t.Fatalf("one point per day: %s", tr.Raw)
+	}
+	first := pts[0].(map[string]any)["summary"].(map[string]any)
+	last := pts[1].(map[string]any)["summary"].(map[string]any)
+	if first["reported_availability_pct"] != nil || pts[0].(map[string]any)["sites_reported"] != float64(0) {
+		t.Fatalf("a day nobody reported must be a gap, not a figure: %v", pts[0])
+	}
+	if last["reported_availability_pct"] == nil || pts[1].(map[string]any)["sites_reported"] != float64(1) {
+		t.Fatalf("yesterday was reported: %v", pts[1])
+	}
+
+	w.expect(w.call("GET", "/api/v1/dashboard/trend?from="+from, nil, w.reporter), 400)
+	w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+to+"&from="+from+"&to="+to, nil, w.reporter), 400)
+	w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to=2999-01-01", nil, w.reporter), 400)
+	w.expect(w.call("GET", "/api/v1/dashboard/trend?from=2020-01-01&to="+to, nil, w.reporter), 400)
+}
+
 func TestSites_ScopeSearchAndDuplicates(t *testing.T) {
 	w := newWorkflow(t)
 

@@ -33,12 +33,13 @@ var dailySummaryHeader = []string{
 //	@Param			from	query		string	true	"First day, 2026-12-01"
 //	@Param			to		query		string	true	"Last day (not in the future); at most 92 days"
 //	@Param			site_id	query		string	false	"One site; default every site in scope"
+//	@Param			region	query		string	false	"Only sites in this region"
 //	@Success		200		{file}		file
 //	@Failure		400		{object}	dto.ErrorResponse
 //	@Failure		403		{object}	dto.ErrorResponse
 //	@Router			/api/v1/exports/daily-summaries.csv [get]
 func (a *api) exportDailySummaries(c *gin.Context) {
-	in := services.ExportDailySummariesInput{SiteID: c.Query("site_id")}
+	in := services.ExportDailySummariesInput{SiteID: c.Query("site_id"), Region: strings.TrimSpace(c.Query("region"))}
 	var err error
 	if in.From, err = services.ParseDate(c.Query("from")); err != nil {
 		a.fail(c, err)
@@ -90,6 +91,79 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			"observed intervals only", strconv.Itoa(r.DeclaredIgnored),
 			strconv.Itoa(r.Disputes.Open), strconv.Itoa(r.Disputes.Total),
 			exp.Formula, exp.Version, generated, services.ExportAssumptions,
+		})
+	}
+	w.Flush()
+}
+
+var incidentHeader = []string{
+	"incident_ref", "incident_id", "site_id", "airtel_code", "coloplus_code", "site_name", "region", "responsible_team",
+	"category", "severity", "impact", "title", "status", "customer_published",
+	"started_at_utc", "restoration_target_utc", "restored_at_utc", "restored_verified", "closed_at_utc",
+	"duration_minutes", "time_zone", "generated_at_utc", "assumptions",
+}
+
+// exportIncidents godoc
+//
+//	@Summary		Export the incident register as CSV
+//	@Description	One row per reported fault that started in the period, with its site, severity, impact, status and observed times. Airtel gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.
+//	@Tags			exports
+//	@Produce		text/csv
+//	@Param			from	query		string	true	"First day, 2026-12-01"
+//	@Param			to		query		string	true	"Last day (not in the future); at most 92 days"
+//	@Param			site_id	query		string	false	"One site; default every site in scope"
+//	@Param			region	query		string	false	"Only sites in this region"
+//	@Success		200		{file}		file
+//	@Failure		400		{object}	dto.ErrorResponse
+//	@Failure		403		{object}	dto.ErrorResponse
+//	@Router			/api/v1/exports/incidents.csv [get]
+func (a *api) exportIncidents(c *gin.Context) {
+	in := services.ExportIncidentsInput{SiteID: c.Query("site_id"), Region: strings.TrimSpace(c.Query("region"))}
+	var err error
+	if in.From, err = services.ParseDate(c.Query("from")); err != nil {
+		a.fail(c, err)
+		return
+	}
+	if in.To, err = services.ParseDate(c.Query("to")); err != nil {
+		a.fail(c, err)
+		return
+	}
+	exp, err := a.exports.IncidentRegister(c.Request.Context(), actorFrom(c), in)
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+
+	name := fmt.Sprintf("coloplus-incidents_%s_%s.csv", exp.From.Format("2006-01-02"), exp.To.Format("2006-01-02"))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", `attachment; filename="`+name+`"`)
+	c.Header("Cache-Control", "no-store")
+	c.Status(http.StatusOK)
+	_, _ = c.Writer.WriteString("\xef\xbb\xbf")
+	w := csv.NewWriter(c.Writer)
+	_ = w.Write(incidentHeader)
+
+	utc := func(t *time.Time) string {
+		if t == nil {
+			return ""
+		}
+		return t.UTC().Format(time.RFC3339)
+	}
+	generated := exp.GeneratedAt.UTC().Format(time.RFC3339)
+	for _, r := range exp.Rows {
+		i := r.Incident
+		// Restoration is an observed time; until it is recorded there is no
+		// duration, not a running clock and not zero.
+		duration := ""
+		if i.RestoredAt != nil {
+			duration = strconv.Itoa(int(i.RestoredAt.Sub(i.StartedAt).Minutes()))
+		}
+		_ = w.Write([]string{
+			incidentRef(i.Number), i.ID, r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name),
+			safeCell(r.Site.Region), safeCell(r.Site.ResponsibleTeam),
+			string(i.Category), string(i.Severity), string(i.Impact), safeCell(i.Title), string(i.Status), yesNo(i.PublishedAt != nil),
+			utc(&i.StartedAt), utc(i.RestorationTarget), utc(i.RestoredAt), yesNo(i.VerifiedAt != nil), utc(i.ClosedAt),
+			duration, exp.Timezone, generated, services.ExportIncidentRegisterAssumptions,
 		})
 	}
 	w.Flush()

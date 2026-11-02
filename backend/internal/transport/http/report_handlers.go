@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"coloplus-backend/internal/domain"
@@ -282,20 +283,24 @@ func optionalDate(v string) (*time.Time, error) {
 
 // overview godoc
 //
-//	@Summary		Portfolio overview for a day
-//	@Description	Availability pools active sites by eligible minutes. A site with no approved report for the day counts its window as unknown; it never appears as available.
+//	@Summary		Portfolio overview for a day or a period
+//	@Description	Availability pools active sites by eligible minutes over the period. A day with no approved report counts its window as unknown; it never appears as available. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.
 //	@Tags			dashboard
 //	@Produce		json
-//	@Param			date	query		string	false	"Reporting date, defaults to today (Africa/Lagos)"
+//	@Param			date	query		string	false	"One reporting day, defaults to today (Africa/Lagos)"
+//	@Param			from	query		string	false	"First day of a period; give with to"
+//	@Param			to		query		string	false	"Last day of a period (not in the future)"
+//	@Param			region	query		string	false	"Only sites in this region"
 //	@Success		200		{object}	dto.OverviewResponse
+//	@Failure		400		{object}	dto.ErrorResponse
 //	@Router			/api/v1/dashboard/overview [get]
 func (a *api) overview(c *gin.Context) {
-	date, err := a.dashboardDate(c.Query("date"))
+	p, err := a.dashboardPeriod(c, true)
 	if err != nil {
 		a.fail(c, err)
 		return
 	}
-	o, err := a.dashboard.Overview(c.Request.Context(), actorFrom(c), date)
+	o, err := a.dashboard.Overview(c.Request.Context(), actorFrom(c), p)
 	if err != nil {
 		a.fail(c, err)
 		return
@@ -303,10 +308,62 @@ func (a *api) overview(c *gin.Context) {
 	c.JSON(http.StatusOK, toOverviewResponse(o, a.loc))
 }
 
-func (a *api) dashboardDate(v string) (time.Time, error) {
-	if v != "" {
-		return services.ParseDate(v)
+// trend godoc
+//
+//	@Summary		Portfolio availability day by day
+//	@Description	One point per reporting day for the active sites in scope, pooled by eligible minutes. A day on which nothing was reported has null availability: draw a gap, not a line at zero or 100. Daily is the finest grain the reports give.
+//	@Tags			dashboard
+//	@Produce		json
+//	@Param			from	query		string	true	"First day"
+//	@Param			to		query		string	true	"Last day (not in the future); at most 92 days"
+//	@Param			region	query		string	false	"Only sites in this region"
+//	@Success		200		{object}	dto.TrendResponse
+//	@Failure		400		{object}	dto.ErrorResponse
+//	@Router			/api/v1/dashboard/trend [get]
+func (a *api) trend(c *gin.Context) {
+	p, err := a.dashboardPeriod(c, false)
+	if err != nil {
+		a.fail(c, err)
+		return
 	}
-	y, m, d := a.clock.Now().In(a.loc).Date()
-	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC), nil
+	t, err := a.dashboard.Trend(c.Request.Context(), actorFrom(c), p)
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toTrendResponse(t))
+}
+
+// dashboardPeriod reads date, or from and to, and the region. With
+// allowDefault the period is today when none is given.
+func (a *api) dashboardPeriod(c *gin.Context, allowDefault bool) (services.Period, error) {
+	p := services.Period{Region: strings.TrimSpace(c.Query("region"))}
+	date, from, to := c.Query("date"), c.Query("from"), c.Query("to")
+	var err error
+	switch {
+	case date != "" && (from != "" || to != ""):
+		return p, badRequest("give either date, or from and to")
+	case date != "":
+		if p.From, err = services.ParseDate(date); err != nil {
+			return p, err
+		}
+		p.To = p.From
+	case from != "" || to != "":
+		if from == "" || to == "" {
+			return p, badRequest("give both from and to")
+		}
+		if p.From, err = services.ParseDate(from); err != nil {
+			return p, err
+		}
+		if p.To, err = services.ParseDate(to); err != nil {
+			return p, err
+		}
+	case allowDefault:
+		y, m, d := a.clock.Now().In(a.loc).Date()
+		p.From = time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+		p.To = p.From
+	default:
+		return p, badRequest("give the first and last day")
+	}
+	return p, nil
 }

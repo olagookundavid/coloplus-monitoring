@@ -54,6 +54,9 @@ type Site struct {
 	State        string
 	SiteType     string
 	PowerSources []PowerSource
+	// ResponsibleTeam is the team accountable for the site, shown to Airtel.
+	// A team, not a person.
+	ResponsibleTeam string
 
 	// The contractual service window as minutes from local midnight. A site
 	// serviced around the clock is 0 to 1440.

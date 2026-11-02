@@ -314,6 +314,26 @@ func Condition(site Site, latest *DailyReport, now time.Time) SiteCondition {
 	return ConditionAvailable
 }
 
+// CurrentSource is the power source the site was last observed running on. It
+// is empty unless the latest observed interval is a served one, so a stale or
+// outage report never names a source.
+func CurrentSource(r *DailyReport) PowerSource {
+	if r == nil {
+		return ""
+	}
+	var last *PowerInterval
+	for i := range r.Intervals {
+		iv := &r.Intervals[i]
+		if iv.Basis == BasisObserved && (last == nil || iv.End.After(last.End)) {
+			last = iv
+		}
+	}
+	if last == nil || last.State != StateServed {
+		return ""
+	}
+	return last.Source
+}
+
 // lastKnownState is the state of the latest observed interval.
 func lastKnownState(r *DailyReport) IntervalState {
 	var last *PowerInterval

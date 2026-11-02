@@ -18,7 +18,7 @@ func NewSiteRepository(db *DB) *SiteRepository { return &SiteRepository{db: db} 
 
 const siteColumns = `id::text, airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
 	service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude,
-	created_at, updated_at`
+	created_at, updated_at, responsible_team`
 
 func scanSite(row pgx.Row) (domain.Site, error) {
 	var s domain.Site
@@ -26,7 +26,7 @@ func scanSite(row pgx.Row) (domain.Site, error) {
 	var status string
 	err := row.Scan(&s.ID, &s.AirtelCode, &s.ColoplusCode, &s.Name, &s.Address, &s.Region, &s.State, &s.SiteType, &sources,
 		&s.ServiceStartMinute, &s.ServiceEndMinute, &s.FreshnessHours, &status, &s.CommissioningDate, &s.Latitude, &s.Longitude,
-		&s.CreatedAt, &s.UpdatedAt)
+		&s.CreatedAt, &s.UpdatedAt, &s.ResponsibleTeam)
 	s.Status = domain.SiteStatus(status)
 	for _, p := range sources {
 		s.PowerSources = append(s.PowerSources, domain.PowerSource(p))
@@ -47,10 +47,10 @@ const siteConflictMsg = "a site with this Airtel code or Coloplus code already e
 func (r *SiteRepository) Create(ctx context.Context, s domain.Site) (domain.Site, error) {
 	row := r.db.q(ctx).QueryRow(ctx,
 		`INSERT INTO sites (airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
-		        service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING `+siteColumns,
+		        service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude, responsible_team)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING `+siteColumns,
 		s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
-		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude)
+		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude, s.ResponsibleTeam)
 	created, err := scanSite(row)
 	if err != nil {
 		return domain.Site{}, mapErr(err, siteConflictMsg)
@@ -67,10 +67,10 @@ func (r *SiteRepository) Update(ctx context.Context, s domain.Site) error {
 	_, err := r.db.q(ctx).Exec(ctx,
 		`UPDATE sites SET airtel_code=$2, coloplus_code=$3, name=$4, address=$5, region=$6, state=$7, site_type=$8,
 		        power_sources=$9, service_start_minute=$10, service_end_minute=$11, freshness_hours=$12, status=$13,
-		        commissioning_date=$14, latitude=$15, longitude=$16, updated_at=now()
+		        commissioning_date=$14, latitude=$15, longitude=$16, responsible_team=$17, updated_at=now()
 		 WHERE id = $1`,
 		s.ID, s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
-		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude)
+		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude, s.ResponsibleTeam)
 	return mapErr(err, siteConflictMsg)
 }
 

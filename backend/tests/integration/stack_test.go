@@ -132,6 +132,7 @@ func newStack(t *testing.T) *stack {
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
+	ticketRepo := postgres.NewTicketRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
@@ -159,6 +160,7 @@ func newStack(t *testing.T) *stack {
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, "https://app.test")
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
+	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, "https://app.test")
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
@@ -176,10 +178,11 @@ func newStack(t *testing.T) *stack {
 		Reports:       services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
 		Incidents:     incidents,
 		Disputes:      disputes,
+		Tickets:       tickets,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, tx, audit, clock, loc),
+		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc),
 		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,

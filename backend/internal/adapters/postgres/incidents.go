@@ -140,6 +140,12 @@ func incidentWhere(f ports.IncidentFilter) (string, []any) {
 	if f.PublishedOnly {
 		where = append(where, "published_at IS NOT NULL")
 	}
+	if f.StartedFrom != nil {
+		add("started_at >= ?", f.StartedFrom.UTC())
+	}
+	if f.StartedBefore != nil {
+		add("started_at < ?", f.StartedBefore.UTC())
+	}
 	if f.OverdueAt != nil {
 		add("(status <> 'closed' AND next_update_due < ?)", f.OverdueAt.UTC())
 	}

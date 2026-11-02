@@ -207,8 +207,11 @@ type IncidentFilter struct {
 	// OverdueAt, when set, keeps only open incidents whose next update was
 	// due before that time.
 	OverdueAt *time.Time
-	Limit     int
-	Offset    int
+	// StartedFrom and StartedBefore keep incidents that started in
+	// [StartedFrom, StartedBefore).
+	StartedFrom, StartedBefore *time.Time
+	Limit                      int
+	Offset                     int
 }
 
 // IncidentCounts is the headline numbers for a scope.
@@ -353,4 +356,44 @@ type UserTokenRepository interface {
 	RevokeOutstanding(ctx context.Context, userID string, purpose domain.TokenPurpose, at time.Time) error
 	// CountSince counts tokens of a purpose made for a user since a time.
 	CountSince(ctx context.Context, userID string, purpose domain.TokenPurpose, since time.Time) (int, error)
+}
+
+// TicketFilter narrows a ticket listing. Scope works as in SiteFilter.
+type TicketFilter struct {
+	AllSites   bool
+	SiteIDs    []string
+	SiteID     string
+	Statuses   []domain.TicketStatus
+	Category   domain.TicketCategory
+	Priority   domain.TicketPriority
+	IncidentID string
+	// OpenOnly leaves out resolved tickets.
+	OpenOnly bool
+	Limit    int
+	Offset   int
+}
+
+// TicketCounts is the headline numbers for a scope. CriticalOpen are
+// unresolved tickets whose requester asked for critical priority.
+type TicketCounts struct {
+	Open, InProgress, Resolved, CriticalOpen int
+}
+
+type TicketRepository interface {
+	Create(ctx context.Context, t domain.Ticket) (domain.Ticket, error)
+	// ByClientKey finds the ticket this person already made with the key;
+	// ErrNotFound when none.
+	ByClientKey(ctx context.Context, raisedBy, key string) (domain.Ticket, error)
+	// GetByID loads a ticket. forUpdate locks the row for the surrounding
+	// transaction.
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.Ticket, error)
+	// Save writes the mutable fields: status, assignee, resolution, incident link.
+	Save(ctx context.Context, t domain.Ticket) error
+	AddEvent(ctx context.Context, e domain.TicketEvent) (domain.TicketEvent, error)
+	// Events returns the history oldest first; publicOnly leaves out
+	// Coloplus's internal notes.
+	Events(ctx context.Context, ticketID string, publicOnly bool) ([]domain.TicketEvent, error)
+	// List returns tickets, newest first.
+	List(ctx context.Context, f TicketFilter) (tickets []domain.Ticket, total int, err error)
+	Counts(ctx context.Context, f TicketFilter) (TicketCounts, error)
 }

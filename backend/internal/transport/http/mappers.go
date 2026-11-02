@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"coloplus-backend/internal/domain"
@@ -23,7 +24,7 @@ func toSiteDTO(s domain.Site) dto.SiteDTO {
 	}
 	out := dto.SiteDTO{
 		ID: s.ID, AirtelCode: s.AirtelCode, ColoplusCode: s.ColoplusCode, Name: s.Name, Address: s.Address,
-		Region: s.Region, State: s.State, SiteType: s.SiteType, PowerSources: sources,
+		Region: s.Region, State: s.State, SiteType: s.SiteType, PowerSources: sources, ResponsibleTeam: s.ResponsibleTeam,
 		ServiceStartMinute: s.ServiceStartMinute, ServiceEndMinute: s.ServiceEndMinute,
 		FreshnessHours: s.FreshnessHours, Status: string(s.Status),
 		Latitude: s.Latitude, Longitude: s.Longitude, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
@@ -42,7 +43,7 @@ func fromSiteRequest(r dto.SiteRequest) (domain.Site, error) {
 	}
 	site := domain.Site{
 		AirtelCode: r.AirtelCode, ColoplusCode: r.ColoplusCode, Name: r.Name, Address: r.Address,
-		Region: r.Region, State: r.State, SiteType: r.SiteType, PowerSources: sources,
+		Region: r.Region, State: r.State, SiteType: r.SiteType, PowerSources: sources, ResponsibleTeam: strings.TrimSpace(r.ResponsibleTeam),
 		ServiceStartMinute: r.ServiceStartMinute, ServiceEndMinute: r.ServiceEndMinute,
 		FreshnessHours: r.FreshnessHours, Status: domain.SiteStatus(r.Status),
 		Latitude: r.Latitude, Longitude: r.Longitude,
@@ -143,6 +144,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		row := dto.SiteRowDTO{
 			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
+			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported,
 		}
 		if r.AsOf != nil {
 			t := r.AsOf.In(loc)
@@ -154,12 +156,32 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		}
 		rows[i] = row
 	}
+	regions := o.Regions
+	if regions == nil {
+		regions = []string{}
+	}
 	return dto.OverviewResponse{
-		Date: o.Date.Format("2006-01-02"), Timezone: o.Timezone, GeneratedAt: o.GeneratedAt,
+		Date: o.Period.To.Format("2006-01-02"), From: o.Period.From.Format("2006-01-02"), To: o.Period.To.Format("2006-01-02"),
+		Days: o.Period.Days(), Region: o.Period.Region, Regions: regions,
+		Timezone: o.Timezone, GeneratedAt: o.GeneratedAt,
 		ActiveSites: o.Counts.Active, PendingSites: o.Counts.PendingAcceptance, SuspendedSites: o.Counts.Suspended,
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
 		Portfolio: toSummaryDTO(o.Portfolio), Sites: rows,
+	}
+}
+
+func toTrendResponse(t services.Trend) dto.TrendResponse {
+	pts := make([]dto.TrendPoint, len(t.Points))
+	for i, p := range t.Points {
+		pts[i] = dto.TrendPoint{
+			Date: p.Date.Format("2006-01-02"), ActiveSites: p.ActiveSites, SitesReported: p.SitesReported,
+			Summary: toSummaryDTO(p.Summary),
+		}
+	}
+	return dto.TrendResponse{
+		From: t.Period.From.Format("2006-01-02"), To: t.Period.To.Format("2006-01-02"), Region: t.Period.Region,
+		Timezone: t.Timezone, Formula: t.Formula, Version: t.Version, GeneratedAt: t.GeneratedAt, Points: pts,
 	}
 }
 
@@ -236,6 +258,36 @@ func toDisputeEventDTO(e domain.DisputeEvent, staff bool) dto.DisputeEventDTO {
 	}
 	return out
 }
+
+func toTicketDTO(t domain.Ticket, staff bool) dto.TicketDTO {
+	out := dto.TicketDTO{
+		ID: t.ID, Ref: ticketRef(t.Number), SiteID: t.SiteID, Category: string(t.Category), Priority: string(t.Priority),
+		Subject: t.Subject, Description: t.Description, ContactEmail: t.ContactEmail, Status: string(t.Status),
+		Resolution: t.Resolution, ResolvedAt: t.ResolvedAt, ReopenCount: t.ReopenCount,
+		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt,
+	}
+	// Airtel is told about a linked incident only once it has been published to them.
+	if t.IncidentID != "" && (staff || t.IncidentPublished) {
+		out.IncidentID, out.IncidentRef = t.IncidentID, incidentRef(t.IncidentNumber)
+	}
+	if staff {
+		out.RaisedBy, out.AssigneeID, out.ResolvedBy = t.RaisedBy, t.AssigneeID, t.ResolvedBy
+	}
+	return out
+}
+
+func toTicketEventDTO(e domain.TicketEvent, staff bool) dto.TicketEventDTO {
+	out := dto.TicketEventDTO{
+		ID: e.ID, Party: string(e.Party), Kind: string(e.Kind), FromStatus: string(e.FromStatus),
+		ToStatus: string(e.ToStatus), Body: e.Body, CreatedAt: e.CreatedAt,
+	}
+	if staff {
+		out.Internal, out.AuthorID = e.Internal, e.AuthorID
+	}
+	return out
+}
+
+func ticketRef(n int64) string { return fmt.Sprintf("TKT-%06d", n) }
 
 func toAcceptanceDTO(a domain.Acceptance, now time.Time) dto.AcceptanceDTO {
 	return dto.AcceptanceDTO{

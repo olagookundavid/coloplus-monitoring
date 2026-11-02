@@ -123,7 +123,16 @@ type ReportListResponse struct {
 }
 
 type OverviewResponse struct {
-	Date                string       `json:"date"`
+	// Date is the last day of the period, kept for clients that ask for one day.
+	Date string `json:"date"`
+	// From and To are the first and last reporting day pooled into the figures.
+	From string `json:"from"`
+	To   string `json:"to"`
+	Days int    `json:"days"`
+	// Region is the filter applied, empty for every region; Regions lists the
+	// regions in the caller's scope for the filter to offer.
+	Region              string       `json:"region"`
+	Regions             []string     `json:"regions"`
 	Timezone            string       `json:"timezone"`
 	GeneratedAt         time.Time    `json:"generated_at"`
 	ActiveSites         int          `json:"active_sites"`
@@ -145,7 +154,37 @@ type SiteRowDTO struct {
 	State        string `json:"state"`
 	Status       string `json:"status"`
 	// Condition is available, outage_reported or awaiting_update.
-	Condition string      `json:"condition" example:"available"`
-	AsOf      *time.Time  `json:"as_of,omitempty"`
-	Summary   *SummaryDTO `json:"summary,omitempty"`
+	Condition string     `json:"condition" example:"available"`
+	AsOf      *time.Time `json:"as_of,omitempty"`
+	Region    string     `json:"region"`
+	// ResponsibleTeam is the team accountable for the site.
+	ResponsibleTeam string `json:"responsible_team"`
+	// CurrentSource is what the site was last observed running on; absent when
+	// the report is stale, the last interval was an outage or none was observed.
+	CurrentSource string `json:"current_source,omitempty" example:"grid"`
+	// Summary pools the period; absent when no day of it has an approved report.
+	Summary *SummaryDTO `json:"summary,omitempty"`
+	// DaysReported of the response's Days have an approved report.
+	DaysReported int `json:"days_reported"`
+}
+
+// TrendResponse is the portfolio day by day.
+type TrendResponse struct {
+	From        string       `json:"from"`
+	To          string       `json:"to"`
+	Region      string       `json:"region"`
+	Timezone    string       `json:"timezone"`
+	Formula     string       `json:"formula" example:"daily-availability"`
+	Version     string       `json:"version" example:"1"`
+	GeneratedAt time.Time    `json:"generated_at"`
+	Points      []TrendPoint `json:"points"`
+}
+
+// TrendPoint is the active portfolio on one reporting day. Its percentages are
+// null when nothing was reported, so a chart shows a gap, not a line.
+type TrendPoint struct {
+	Date          string     `json:"date"`
+	ActiveSites   int        `json:"active_sites"`
+	SitesReported int        `json:"sites_reported"`
+	Summary       SummaryDTO `json:"summary"`
 }
