@@ -56,7 +56,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Automatic splitting of events that cross midnight (DECISIONS 027). The reporter still splits by hand, but the error now names the exact two parts to enter. Automatic splitting writes into another day's report, which may already be approved: **needs input** (DECISIONS 049)
 - [ ] CSV/XLSX import: preview, row errors, duplicate detection, explicit commit, batch id and idempotency key. **new dependency** (an XLSX reader)
 - [ ] Source hours, maintenance and open-issue fields on the daily summary. **partial**
-- [ ] Load, generator, fuel and tank inputs (section 6 tables)
+- [x] Fuel the manual way: per-site agreed litres per hour and tank size, engineers record deliveries and tank readings, the level is estimated from reported generator hours and labelled an estimate (DECISIONS 050)
+- [ ] Load and generator-asset inputs beyond runtime hours (section 6 tables)
 - [ ] Controlled reopening of a closed reporting period. There is no "closed period" yet: an approved day is changed only by a linked correction. **needs input**: does a month close, and who may reopen it?
 - [ ] Provisional view of unapproved entries (only if Airtel and Coloplus jointly enable it). **needs input**
 

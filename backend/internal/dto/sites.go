@@ -3,16 +3,20 @@ package dto
 import "time"
 
 type SiteDTO struct {
-	ID                 string    `json:"id"`
-	AirtelCode         string    `json:"airtel_code"`
-	ColoplusCode       string    `json:"coloplus_code"`
-	Name               string    `json:"name"`
-	Address            string    `json:"address"`
-	Region             string    `json:"region"`
-	State              string    `json:"state"`
-	SiteType           string    `json:"site_type"`
-	PowerSources       []string  `json:"power_sources" example:"grid,generator"`
-	ResponsibleTeam    string    `json:"responsible_team" example:"Lagos Island field team"`
+	ID              string   `json:"id"`
+	AirtelCode      string   `json:"airtel_code"`
+	ColoplusCode    string   `json:"coloplus_code"`
+	Name            string   `json:"name"`
+	Address         string   `json:"address"`
+	Region          string   `json:"region"`
+	State           string   `json:"state"`
+	SiteType        string   `json:"site_type"`
+	PowerSources    []string `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam string   `json:"responsible_team" example:"Lagos Island field team"`
+	// ConsumptionLPH is the generator's agreed fuel use in litres per running
+	// hour; null until agreed. TankCapacityLitres is the tank size; null if unknown.
+	ConsumptionLPH     *float64  `json:"consumption_lph" example:"4.5"`
+	TankCapacityLitres *float64  `json:"tank_capacity_litres" example:"1000"`
 	ServiceStartMinute int       `json:"service_start_minute" example:"0"`
 	ServiceEndMinute   int       `json:"service_end_minute" example:"1440"`
 	FreshnessHours     int       `json:"freshness_hours" example:"30"`
@@ -40,6 +44,8 @@ type SiteRequest struct {
 	SiteType           string   `json:"site_type"`
 	PowerSources       []string `json:"power_sources" example:"grid,generator"`
 	ResponsibleTeam    string   `json:"responsible_team"`
+	ConsumptionLPH     *float64 `json:"consumption_lph,omitempty"`
+	TankCapacityLitres *float64 `json:"tank_capacity_litres,omitempty"`
 	ServiceStartMinute int      `json:"service_start_minute"`
 	ServiceEndMinute   int      `json:"service_end_minute"`
 	FreshnessHours     int      `json:"freshness_hours"`

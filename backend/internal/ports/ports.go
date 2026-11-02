@@ -514,3 +514,16 @@ type AttachmentRepository interface {
 	// StalePending returns uploads started before the given time and never confirmed.
 	StalePending(ctx context.Context, before time.Time, limit int) ([]domain.Attachment, error)
 }
+
+type FuelRepository interface {
+	// Create stores an entry. ErrConflict when the same person already sent it
+	// with the same client key.
+	Create(ctx context.Context, e domain.FuelEntry) (domain.FuelEntry, error)
+	ByClientKey(ctx context.Context, recordedBy, key string) (domain.FuelEntry, error)
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.FuelEntry, error)
+	// Void marks an entry mistaken, once; false when it was already void.
+	Void(ctx context.Context, id, by, reason string, at time.Time) (bool, error)
+	// List returns a site's entries, newest first, voided ones included only
+	// when asked for.
+	List(ctx context.Context, siteID string, includeVoided bool, limit int) ([]domain.FuelEntry, error)
+}

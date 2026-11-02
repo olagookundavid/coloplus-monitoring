@@ -125,6 +125,24 @@ func DayLevelInterval(site Site, date time.Time, state IntervalState, now time.T
 	return iv
 }
 
+// GeneratorHoursOf is how long the generator ran according to an approved
+// report: the figure the reporter gave for the day, otherwise the time the
+// report shows the site served from the generator. A day reported as served
+// from the grid therefore counts as no generator running, which is what that
+// report says.
+func GeneratorHoursOf(r DailyReport) float64 {
+	if r.GeneratorHours != nil {
+		return *r.GeneratorHours
+	}
+	var d time.Duration
+	for _, iv := range r.Intervals {
+		if iv.Basis == BasisObserved && iv.State == StateServed && iv.Source == SourceGenerator {
+			d += iv.End.Sub(iv.Start)
+		}
+	}
+	return d.Hours()
+}
+
 // ValidateGeneratorHours checks the reporter's generator runtime entry.
 // Required only when the day had an outage; always within one day's hours.
 // No numeric cap is specified in the PRD beyond "runtime against the

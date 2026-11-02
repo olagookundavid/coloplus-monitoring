@@ -138,6 +138,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	ticketRepo := postgres.NewTicketRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	attachmentRepo := postgres.NewAttachmentRepository(db)
+	fuelRepo := postgres.NewFuelRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
 	recoveryRepo := postgres.NewRecoveryCodeRepository(db)
@@ -280,6 +281,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Disputes:      disputes,
 		Tickets:       tickets,
 		Attachments:   attachments,
+		Fuel:          services.NewFuelService(fuelRepo, siteRepo, reportRepo, txManager, audit, clock, loc),
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),

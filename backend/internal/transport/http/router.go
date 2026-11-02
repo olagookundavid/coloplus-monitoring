@@ -48,6 +48,7 @@ type Deps struct {
 	Disputes      *services.DisputeService
 	Tickets       *services.TicketService
 	Attachments   *services.AttachmentService
+	Fuel          *services.FuelService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
@@ -72,6 +73,7 @@ type api struct {
 	disputes      *services.DisputeService
 	tickets       *services.TicketService
 	attachments   *services.AttachmentService
+	fuel          *services.FuelService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
@@ -115,7 +117,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -193,6 +195,10 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/tickets/:id/comments", h.commentTicket)
 	authed.POST("/tickets/:id/transition", h.transitionTicket)
 	authed.POST("/tickets/:id/incident", h.linkTicketIncident)
+
+	authed.POST("/sites/:id/fuel", h.recordFuel)
+	authed.GET("/sites/:id/fuel", h.fuelStatus)
+	authed.POST("/fuel/:id/void", h.voidFuel)
 
 	authed.POST("/attachments", h.requestUpload)
 	authed.GET("/attachments", h.listAttachments)

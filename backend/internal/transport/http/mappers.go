@@ -25,6 +25,7 @@ func toSiteDTO(s domain.Site) dto.SiteDTO {
 	out := dto.SiteDTO{
 		ID: s.ID, AirtelCode: s.AirtelCode, ColoplusCode: s.ColoplusCode, Name: s.Name, Address: s.Address,
 		Region: s.Region, State: s.State, SiteType: s.SiteType, PowerSources: sources, ResponsibleTeam: s.ResponsibleTeam,
+		ConsumptionLPH: s.ConsumptionLPH, TankCapacityLitres: s.TankCapacityLitres,
 		ServiceStartMinute: s.ServiceStartMinute, ServiceEndMinute: s.ServiceEndMinute,
 		FreshnessHours: s.FreshnessHours, Status: string(s.Status),
 		Latitude: s.Latitude, Longitude: s.Longitude, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
@@ -46,6 +47,7 @@ func fromSiteRequest(r dto.SiteRequest) (domain.Site, error) {
 	site := domain.Site{
 		AirtelCode: r.AirtelCode, ColoplusCode: r.ColoplusCode, Name: r.Name, Address: r.Address,
 		Region: r.Region, State: r.State, SiteType: r.SiteType, PowerSources: sources, ResponsibleTeam: strings.TrimSpace(r.ResponsibleTeam),
+		ConsumptionLPH: r.ConsumptionLPH, TankCapacityLitres: r.TankCapacityLitres,
 		ServiceStartMinute: r.ServiceStartMinute, ServiceEndMinute: r.ServiceEndMinute,
 		FreshnessHours: r.FreshnessHours, Status: domain.SiteStatus(r.Status),
 		Latitude: r.Latitude, Longitude: r.Longitude,

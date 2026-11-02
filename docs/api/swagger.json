@@ -1323,6 +1323,47 @@
                 }
             }
         },
+        "/api/v1/fuel/{id}/void": {
+            "post": {
+                "description": "The entry stays in the record with the reason and no longer counts. Repeating it changes nothing.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fuel"
+                ],
+                "summary": "Void a mistaken fuel entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fuel entry id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.VoidFuelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.FuelEntryDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/incident-corrections": {
             "get": {
                 "produces": [
@@ -2349,6 +2390,86 @@
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/fuel": {
+            "get": {
+                "description": "The estimate is labelled as one and says how it was reached. With no agreed rate, or nothing recorded, available is false and reason says why; there is never a made-up number. Notes and who recorded an entry are for Coloplus only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fuel"
+                ],
+                "summary": "A site's fuel: estimated level and entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.FuelStatusResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "delivery adds litres to the tank (\"1,000 litres delivered\"). reading says what the tank held when someone looked and replaces the estimate. The estimate is then worked out from the site's agreed litres per hour and the generator hours reported each day. Send client_key and retry safely.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "fuel"
+                ],
+                "summary": "Record a fuel delivery or a tank reading",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Entry",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RecordFuelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.FuelEntryDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3588,6 +3709,134 @@
                 }
             }
         },
+        "dto.FuelEntryDTO": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "litres": {
+                    "type": "number"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "occurred_at": {
+                    "type": "string"
+                },
+                "recorded_by": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "void_reason": {
+                    "type": "string"
+                },
+                "voided": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.FuelEstimateDTO": {
+            "type": "object",
+            "properties": {
+                "anchor_at": {
+                    "type": "string"
+                },
+                "anchor_kind": {
+                    "description": "The estimate starts from the latest reading, or the first delivery.",
+                    "type": "string"
+                },
+                "as_of": {
+                    "type": "string"
+                },
+                "assumed_empty_start": {
+                    "type": "boolean"
+                },
+                "available": {
+                    "type": "boolean"
+                },
+                "basis": {
+                    "description": "Basis is always \"estimate\": the level comes from what people entered and\nthe agreed litres per hour.",
+                    "type": "string",
+                    "example": "estimate"
+                },
+                "consumed_litres": {
+                    "type": "number"
+                },
+                "consumption_lph": {
+                    "description": "ConsumptionLPH is the agreed litres per running hour used.",
+                    "type": "number"
+                },
+                "estimated_empty": {
+                    "type": "boolean"
+                },
+                "explanation": {
+                    "type": "string"
+                },
+                "formula": {
+                    "type": "string",
+                    "example": "fuel-estimate"
+                },
+                "formula_version": {
+                    "type": "string",
+                    "example": "1"
+                },
+                "hours_remaining": {
+                    "type": "number"
+                },
+                "hours_run": {
+                    "description": "HoursRun and ConsumedLitres cover the reported days since then.",
+                    "type": "number"
+                },
+                "litres": {
+                    "description": "Litres is the estimated level. While UnreportedDays is above 0 it is the\nmost the tank could hold, because those days' use is unknown.",
+                    "type": "number"
+                },
+                "over_capacity": {
+                    "description": "OverCapacity means the estimate exceeds the tank, so an entry is probably wrong.",
+                    "type": "boolean"
+                },
+                "provisional": {
+                    "type": "boolean"
+                },
+                "reason": {
+                    "description": "Reason says why there is no estimate, when there is none.",
+                    "type": "string"
+                },
+                "tank_capacity_litres": {
+                    "type": "number"
+                },
+                "unreported_days": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.FuelStatusResponse": {
+            "type": "object",
+            "properties": {
+                "entries": {
+                    "description": "Entries are newest first.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FuelEntryDTO"
+                    }
+                },
+                "estimate": {
+                    "$ref": "#/definitions/dto.FuelEstimateDTO"
+                },
+                "site_id": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.HealthResponse": {
             "type": "object",
             "properties": {
@@ -4373,6 +4622,32 @@
                 }
             }
         },
+        "dto.RecordFuelRequest": {
+            "type": "object",
+            "properties": {
+                "client_key": {
+                    "description": "ClientKey is optional. Send the same value when retrying a request that\nmay have gone through, and you get the same entry back, not a second one.",
+                    "type": "string"
+                },
+                "kind": {
+                    "description": "Kind is delivery (litres added to the tank) or reading (litres the tank\nheld when someone looked, which replaces the estimate).",
+                    "type": "string",
+                    "example": "delivery"
+                },
+                "litres": {
+                    "type": "number",
+                    "example": 1000
+                },
+                "note": {
+                    "description": "Note is for Coloplus only; the customer never sees it.",
+                    "type": "string"
+                },
+                "occurred_at": {
+                    "description": "OccurredAt is when it happened (RFC 3339); it cannot be in the future.",
+                    "type": "string"
+                }
+            }
+        },
         "dto.RecoveryCodesResponse": {
             "type": "object",
             "properties": {
@@ -4718,6 +4993,11 @@
                     "type": "string",
                     "example": "2026-09-01"
                 },
+                "consumption_lph": {
+                    "description": "ConsumptionLPH is the generator's agreed fuel use in litres per running\nhour; null until agreed. TankCapacityLitres is the tank size; null if unknown.",
+                    "type": "number",
+                    "example": 4.5
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -4778,6 +5058,10 @@
                 },
                 "supervisor_name": {
                     "type": "string"
+                },
+                "tank_capacity_litres": {
+                    "type": "number",
+                    "example": 1000
                 },
                 "updated_at": {
                     "type": "string"
@@ -4899,6 +5183,9 @@
                     "type": "string",
                     "example": "2026-09-01"
                 },
+                "consumption_lph": {
+                    "type": "number"
+                },
                 "freshness_hours": {
                     "type": "integer"
                 },
@@ -4949,6 +5236,9 @@
                 },
                 "supervisor_name": {
                     "type": "string"
+                },
+                "tank_capacity_litres": {
+                    "type": "number"
                 }
             }
         },
@@ -5475,6 +5765,14 @@
                     "items": {
                         "$ref": "#/definitions/dto.UserDetailDTO"
                     }
+                }
+            }
+        },
+        "dto.VoidFuelRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
                 }
             }
         }

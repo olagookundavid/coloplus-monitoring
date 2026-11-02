@@ -140,6 +140,7 @@ func newStack(t *testing.T) *stack {
 	disputeRepo := postgres.NewDisputeRepository(db)
 	ticketRepo := postgres.NewTicketRepository(db)
 	attachmentRepo := postgres.NewAttachmentRepository(db)
+	fuelRepo := postgres.NewFuelRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
@@ -194,6 +195,7 @@ func newStack(t *testing.T) *stack {
 		Disputes:      disputes,
 		Tickets:       tickets,
 		Attachments:   attachments,
+		Fuel:          services.NewFuelService(fuelRepo, siteRepo, reportRepo, tx, audit, clock, loc),
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),

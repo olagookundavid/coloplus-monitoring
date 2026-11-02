@@ -57,6 +57,11 @@ type Site struct {
 	// ResponsibleTeam is the team accountable for the site, shown to Airtel.
 	// A team, not a person.
 	ResponsibleTeam string
+	// ConsumptionLPH is the generator's agreed fuel use in litres per running
+	// hour; TankCapacityLitres the size of the tank. Both are nil until agreed,
+	// and a fuel estimate is unavailable without the first.
+	ConsumptionLPH     *float64
+	TankCapacityLitres *float64
 
 	// Free-text site profile fields shown on the reporter's site details
 	// panel. Optional; no validation rule beyond being plain text.
@@ -119,6 +124,12 @@ func (s Site) Validate() error {
 	}
 	if !ValidSiteStatus(s.Status) {
 		add(fmt.Sprintf("%q is not a known site status", s.Status))
+	}
+	if s.ConsumptionLPH != nil && (*s.ConsumptionLPH <= 0 || *s.ConsumptionLPH > 1000) {
+		add("the consumption rate must be more than 0 and at most 1,000 litres per hour")
+	}
+	if s.TankCapacityLitres != nil && (*s.TankCapacityLitres <= 0 || *s.TankCapacityLitres > 1_000_000) {
+		add("the tank capacity must be more than 0 litres")
 	}
 	if (s.Latitude == nil) != (s.Longitude == nil) {
 		add("latitude and longitude must be given together")

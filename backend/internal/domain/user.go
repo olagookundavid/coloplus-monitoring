@@ -62,6 +62,10 @@ const (
 	PermTicketsRaise  Permission = "tickets.raise"
 	PermTicketsManage Permission = "tickets.manage"
 
+	PermFuelRead   Permission = "fuel.read"
+	PermFuelRecord Permission = "fuel.record"
+	PermFuelManage Permission = "fuel.manage"
+
 	PermAcceptanceRead   Permission = "acceptance.read"
 	PermAcceptanceManage Permission = "acceptance.manage"
 	PermAcceptanceReview Permission = "acceptance.review"
