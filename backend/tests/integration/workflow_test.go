@@ -572,3 +572,32 @@ func TestAuth_AccountLocksAfterRepeatedFailures(t *testing.T) {
 		t.Fatalf("error = %s", locked.str("error"))
 	}
 }
+
+// A kept dashboard answer must never reach someone whose sites differ: the
+// cache is keyed by the exact set of sites a person may see.
+func TestDashboard_KeptAnswersNeverCrossSiteScopes(t *testing.T) {
+	t.Setenv("DASHBOARD_CACHE_TTL", "1m")
+	w := newWorkflow(t)
+	otherSite := w.newSite(w.admin)
+	email, _ := w.seedUser(domain.RoleAirtelViewer, otherSite)
+	other := w.login(email)
+	date, _ := w.reportDay(1)
+	url := "/api/v1/dashboard/overview?date=" + date
+
+	siteIDs := func(tok string) string {
+		var ids []string
+		for _, r := range w.expect(w.call("GET", url, nil, tok), 200).list("sites") {
+			ids = append(ids, r.(map[string]any)["site_id"].(string))
+		}
+		return strings.Join(ids, ",")
+	}
+	// Ask in both orders and twice, so each answer is served from the cache.
+	for i := 0; i < 2; i++ {
+		if got := siteIDs(w.airtel); got != w.site {
+			t.Fatalf("round %d: the first Airtel user should see only %s, got %s", i, w.site, got)
+		}
+		if got := siteIDs(other); got != otherSite {
+			t.Fatalf("round %d: the second Airtel user should see only %s, got %s", i, otherSite, got)
+		}
+	}
+}

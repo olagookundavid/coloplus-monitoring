@@ -29,6 +29,7 @@ type Config struct {
 	Audit     Audit
 	Mail      Mail
 	Storage   Storage
+	Dashboard Dashboard
 	Jobs      Jobs
 	Swagger   Swagger
 }
@@ -105,6 +106,14 @@ type Mail struct {
 	// BaseURL is where the front end lives. Invitation and reset links, and
 	// links to incidents in alerts, are built from it.
 	BaseURL string
+}
+
+// Dashboard tunes the portfolio view.
+type Dashboard struct {
+	// CacheTTL is how long a computed dashboard answer is reused for the same
+	// site scope, period and region. 0 switches it off. It adds to the delay
+	// before an approved entry shows, so keep it well under 60 seconds.
+	CacheTTL time.Duration
 }
 
 // Storage configures private file storage (Cloudflare R2). It is optional:
@@ -214,6 +223,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			Timeout:       r.duration("MAIL_TIMEOUT", 10*time.Second),
 			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
+		Dashboard: Dashboard{CacheTTL: r.duration("DASHBOARD_CACHE_TTL", 10*time.Second)},
 		Storage: Storage{
 			AccountID:       r.str("R2_ACCOUNT_ID", ""),
 			AccessKeyID:     r.str("R2_ACCESS_KEY_ID", ""),
@@ -311,6 +321,9 @@ func (c Config) validate() []error {
 		if c.IsProduction() && s.Endpoint != "" && !strings.HasPrefix(s.Endpoint, "https://") {
 			bad("R2_ENDPOINT must be https in production")
 		}
+	}
+	if c.Dashboard.CacheTTL < 0 || c.Dashboard.CacheTTL > 30*time.Second {
+		bad("DASHBOARD_CACHE_TTL must be between 0 and 30s so approved entries still show within a minute")
 	}
 	if c.Storage.MaxUploadBytes < 1<<20 || c.Storage.MaxUploadBytes > 100<<20 {
 		bad("ATTACHMENT_MAX_MB must be between 1 and 100")

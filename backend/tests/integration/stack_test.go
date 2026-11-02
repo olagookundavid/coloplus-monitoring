@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -114,7 +115,7 @@ func newStack(t *testing.T) *stack {
 	if err := postgres.Migrate(ctx, url, migrations.FS, log); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{URL: url, MaxConns: 6, Timezone: "Africa/Lagos"})
+	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{URL: url, MaxConns: perfConns(), Timezone: "Africa/Lagos"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func newStack(t *testing.T) *stack {
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc, dashboardTTL()),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
@@ -419,4 +420,19 @@ func (f *fakeStore) Delete(_ context.Context, key string) error {
 	delete(f.objects, key)
 	f.deleted = append(f.deleted, key)
 	return nil
+}
+
+// perfConns sizes the test pool; a speed test can widen it with PERF_CONNS.
+func perfConns() int32 {
+	if n, err := strconv.Atoi(os.Getenv("PERF_CONNS")); err == nil && n > 0 {
+		return int32(n)
+	}
+	return 6
+}
+
+// dashboardTTL keeps the dashboard uncached so every test sees its own data at
+// once; a speed test sets DASHBOARD_CACHE_TTL to measure the cached path.
+func dashboardTTL() time.Duration {
+	d, _ := time.ParseDuration(os.Getenv("DASHBOARD_CACHE_TTL"))
+	return d
 }

@@ -2,11 +2,16 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"sort"
 	"strings"
 	"time"
 
 	"coloplus-backend/internal/domain"
 	apperrors "coloplus-backend/internal/errors"
+	"coloplus-backend/internal/platform"
 	"coloplus-backend/internal/ports"
 )
 
@@ -17,13 +22,44 @@ type DashboardService struct {
 	incidents ports.IncidentRepository
 	clock     ports.Clock
 	loc       *time.Location
+
+	// Identical questions asked at the same moment are computed once, and an
+	// answer is kept for a few seconds. The key is the caller's exact site
+	// scope, the period and the region, so one scope never sees another's.
+	memo *platform.Memo
 }
 
+const (
+	dashboardCacheMax       = 256
+	dashboardComputeTimeout = 20 * time.Second
+)
+
+// NewDashboardService builds the portfolio view. cacheTTL is how long an
+// answer is reused; it must stay well under the 60-second target for an
+// approved entry to show on the dashboard.
 func NewDashboardService(
 	sites ports.SiteRepository, reports ports.ReportRepository, incidents ports.IncidentRepository,
-	clock ports.Clock, loc *time.Location,
+	clock ports.Clock, loc *time.Location, cacheTTL time.Duration,
 ) *DashboardService {
-	return &DashboardService{sites: sites, reports: reports, incidents: incidents, clock: clock, loc: loc}
+	return &DashboardService{
+		sites: sites, reports: reports, incidents: incidents, clock: clock, loc: loc,
+		memo: platform.NewMemo(clock, cacheTTL, dashboardComputeTimeout, dashboardCacheMax),
+	}
+}
+
+// scopeKey identifies exactly which sites a caller may see.
+func scopeKey(a domain.Actor) string {
+	if a.AllSites {
+		return "all"
+	}
+	ids := a.SiteIDList()
+	sort.Strings(ids)
+	sum := sha256.Sum256([]byte(strings.Join(ids, ",")))
+	return "sites:" + hex.EncodeToString(sum[:16])
+}
+
+func (p Period) key() string {
+	return fmt.Sprintf("%s|%s|%s", p.From.Format("2006-01-02"), p.To.Format("2006-01-02"), strings.ToLower(p.Region))
 }
 
 // SiteRow is one site's line on the dashboard.
@@ -187,6 +223,17 @@ func (s *DashboardService) daySummary(sc scope, site domain.Site, date time.Time
 
 // Overview summarises every site in the caller's scope for a period.
 func (s *DashboardService) Overview(ctx context.Context, actor domain.Actor, p Period) (Overview, error) {
+	// The permission is checked before anything is looked up, so a kept answer
+	// is never handed to someone who may not see it.
+	if !actor.Can(domain.PermSitesRead) {
+		return Overview{}, apperrors.ErrForbidden
+	}
+	return platform.Do(ctx, s.memo, "overview|"+scopeKey(actor)+"|"+p.key(), func(ctx context.Context) (Overview, error) {
+		return s.overview(ctx, actor, p)
+	})
+}
+
+func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p Period) (Overview, error) {
 	sc, err := s.load(ctx, actor, p)
 	if err != nil {
 		return Overview{}, err
@@ -282,6 +329,15 @@ func (s *DashboardService) Overview(ctx context.Context, actor domain.Actor, p P
 // A day on which nothing was reported has no availability, so a chart shows a
 // gap there rather than a line at zero or at 100.
 func (s *DashboardService) Trend(ctx context.Context, actor domain.Actor, p Period) (Trend, error) {
+	if !actor.Can(domain.PermSitesRead) {
+		return Trend{}, apperrors.ErrForbidden
+	}
+	return platform.Do(ctx, s.memo, "trend|"+scopeKey(actor)+"|"+p.key(), func(ctx context.Context) (Trend, error) {
+		return s.trend(ctx, actor, p)
+	})
+}
+
+func (s *DashboardService) trend(ctx context.Context, actor domain.Actor, p Period) (Trend, error) {
 	sc, err := s.load(ctx, actor, p)
 	if err != nil {
 		return Trend{}, err

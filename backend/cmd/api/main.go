@@ -284,7 +284,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc, cfg.Dashboard.CacheTTL),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,

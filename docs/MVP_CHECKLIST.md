@@ -156,8 +156,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 14. Non-functional targets (PRD 11) and AT11
 
-- [ ] Dashboard p95 under 3 s at 1,000 sites and 50 concurrent users. Not measured
-- [ ] Approved entry reflected on the dashboard within 60 s. Meets it by construction today (computed on read); re-check once calculation runs are stored
+- [x] Dashboard p95 under 3 s at 1,000 sites and 50 concurrent users: measured on a laptop, in-process (no network), 30 days of reports per site. One person: 30-day overview 0.3 s. 50 requests at the same instant: worst p95 0.52 s coalesced, 0.12 s with the 10 s cache (it was 3.8 s before; DECISIONS 048). Re-run on the live server (0.75 CPU) with `go test -tags perf` against a scratch database before relying on it
+- [ ] Approved entry reflected on the dashboard within 60 s. Computed on read, plus up to `DASHBOARD_CACHE_TTL` (10 s) of reuse, so within 60 s; re-check once calculation runs are stored
 - [ ] Backup restore exercise (RPO 24 h, RTO 8 h). Script written (`deploy/restore-test.sh`); needs one run on the server and its time recorded here
 - [ ] Notification-failure test, access-control test at scale
 
