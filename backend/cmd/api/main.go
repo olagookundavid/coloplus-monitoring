@@ -185,6 +185,8 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 			MaxBytes: cfg.Storage.MaxUploadBytes, UploadTTL: cfg.Storage.UploadTTL,
 			DownloadTTL: cfg.Storage.DownloadTTL, PendingTTL: cfg.Storage.PendingTTL,
 		})
+	fuelService := services.NewFuelService(fuelRepo, siteRepo, reportRepo, userRepo, txManager, audit, clock,
+		notifications, loc, cfg.Mail.BaseURL, cfg.Fuel.LowHours)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
@@ -227,6 +229,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		n, err := acceptance.AlertOverdue(ctx)
 		if n > 0 {
 			log.Info("overdue acceptance alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("fuel-alerts", cfg.Jobs.FuelAlertsCron, func(ctx context.Context) error {
+		n, err := fuelService.AlertLow(ctx)
+		if n > 0 {
+			log.Info("low fuel alerts queued", "emails", n)
 		}
 		return err
 	}); err != nil {
@@ -281,12 +292,12 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Disputes:      disputes,
 		Tickets:       tickets,
 		Attachments:   attachments,
-		Fuel:          services.NewFuelService(fuelRepo, siteRepo, reportRepo, txManager, audit, clock, loc),
+		Fuel:          fuelService,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc, cfg.Dashboard.CacheTTL),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours),
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,

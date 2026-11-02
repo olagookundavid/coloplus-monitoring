@@ -89,3 +89,54 @@ func TestEstimateFuel_FollowsTheAgreedRateAndNeverGuessesMissingDays(t *testing.
 		t.Fatalf("no agreed rate must be unavailable, with a reason: %+v", got)
 	}
 }
+
+// A reading is checked against what the estimate expected, and a large gap is
+// flagged for review. It is a check, never a correction.
+func TestCompareReading_FlagsOnlyGapsTooBigToBeRounding(t *testing.T) {
+	site := fuelSite(1)
+	prior := []domain.FuelEntry{{ID: "d", Kind: domain.FuelDelivery, Litres: 200, OccurredAt: fuelAt(1, 9)}}
+	hrs := hours(map[string]float64{"2026-11-01": 0, "2026-11-02": 10, "2026-11-03": 10})
+	reading := func(l float64) domain.FuelEntry {
+		return domain.FuelEntry{ID: "r", Kind: domain.FuelReading, Litres: l, OccurredAt: fuelAt(4, 9)}
+	}
+
+	// 200 delivered, 20 hours used: 180 expected.
+	small := domain.CompareReading(site, prior, hrs, reading(175), lagos)
+	if small == nil || small.EstimatedBefore != 180 || small.Difference != -5 || small.ReviewWarning {
+		t.Fatalf("5 L short of 180 is not worth a review: %+v", small)
+	}
+	big := domain.CompareReading(site, prior, hrs, reading(100), lagos)
+	if big == nil || big.Difference != -80 || !big.ReviewWarning {
+		t.Fatalf("80 L short of 180 must be flagged: %+v", big)
+	}
+	// With nothing earlier there is nothing to compare with.
+	if v := domain.CompareReading(site, nil, hrs, reading(100), lagos); v != nil {
+		t.Fatalf("a first reading has no estimate to compare with: %+v", v)
+	}
+	// A delivery is not a reading.
+	if v := domain.CompareReading(site, prior, hrs, domain.FuelEntry{Kind: domain.FuelDelivery, Litres: 50, OccurredAt: fuelAt(4, 9)}, lagos); v != nil {
+		t.Fatal("only a tank reading is compared")
+	}
+}
+
+// Quality is built only from what is on record: how many days were reported,
+// how many reports were late, and how much of the time nobody confirmed.
+func TestAssessQuality(t *testing.T) {
+	rep := func(late, supersedes string) domain.DailyReport {
+		return domain.DailyReport{LateReason: late, SupersedesID: supersedes}
+	}
+	sum := domain.DailySummary{EligibleMinutes: 1000, UnknownMinutes: 250}
+
+	good := domain.AssessQuality(20, []domain.DailyReport{rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""),
+		rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", "x")}, sum)
+	if good.Level != domain.QualityGood || good.Completeness != 100 || good.Corrections != 1 || good.UnconfirmedShare != 25 {
+		t.Fatalf("every day reported is good: %+v", good)
+	}
+	mostlyLate := domain.AssessQuality(10, []domain.DailyReport{rep("r", ""), rep("r", ""), rep("r", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", ""), rep("", "")}, sum)
+	if mostlyLate.Level != domain.QualityFair || mostlyLate.LateReports != 3 {
+		t.Fatalf("complete but 30%% late is only fair: %+v", mostlyLate)
+	}
+	if none := domain.AssessQuality(7, nil, sum); none.Level != domain.QualityPoor || none.Completeness != 0 {
+		t.Fatalf("nothing reported is poor: %+v", none)
+	}
+}

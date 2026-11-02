@@ -33,6 +33,25 @@ type FuelEntryDTO struct {
 	Voided     bool      `json:"voided,omitempty"`
 	VoidReason string    `json:"void_reason,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
+	// Variance, on a tank reading, compares what it found with what the
+	// estimate expected just before it.
+	Variance *FuelVarianceDTO `json:"variance,omitempty"`
+}
+
+// FuelVarianceDTO compares a tank reading with the estimate that preceded it.
+// It checks the agreed rate and the entries; it corrects nothing. The reading
+// wins and the estimate restarts from it.
+type FuelVarianceDTO struct {
+	EstimatedBefore float64 `json:"estimated_before_litres"`
+	Reading         float64 `json:"reading_litres"`
+	// Difference is reading minus estimate; negative means less than expected.
+	Difference float64 `json:"difference_litres"`
+	// Provisional: the estimate had days with no approved hours, so it was an
+	// upper bound and a negative difference is to be expected.
+	Provisional bool `json:"provisional"`
+	// ReviewWarning: the gap is too large to be rounding; check the rate, the
+	// hours reported, or the entries.
+	ReviewWarning bool `json:"review_warning"`
 }
 
 // FuelEstimateDTO is the estimated tank level and exactly how it was reached.
@@ -67,6 +86,10 @@ type FuelEstimateDTO struct {
 	Formula            string    `json:"formula" example:"fuel-estimate"`
 	FormulaVersion     string    `json:"formula_version" example:"1"`
 	Explanation        string    `json:"explanation"`
+	// LowFuelHours is the run time at or under which the tank counts as low.
+	LowFuelHours float64 `json:"low_fuel_hours"`
+	// Low is true when the estimate is at or under that, or has run out.
+	Low bool `json:"low"`
 }
 
 type FuelStatusResponse struct {

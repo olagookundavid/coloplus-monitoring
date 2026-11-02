@@ -203,6 +203,11 @@ type ReportRepository interface {
 	// LatestApproved returns, per site, the approved report with the latest
 	// report date, with intervals.
 	LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error)
+	// GeneratorHoursByDay gives, per site and reporting day ("2006-01-02"), the
+	// hours the generator ran according to the approved report: the figure the
+	// reporter gave, otherwise the time shown served from the generator. A day
+	// without an approved report is simply absent.
+	GeneratorHoursByDay(ctx context.Context, siteIDs []string, from, to time.Time) (map[string]map[string]float64, error)
 	// StatusForSitesOnDates returns, for each site and date, the report that
 	// best represents that day's live status: the in-progress one (draft,
 	// submitted or rejected) when there is one, otherwise the approved one.
@@ -526,4 +531,7 @@ type FuelRepository interface {
 	// List returns a site's entries, newest first, voided ones included only
 	// when asked for.
 	List(ctx context.Context, siteID string, includeVoided bool, limit int) ([]domain.FuelEntry, error)
+	// ListLive returns the entries that count (not voided) for several sites,
+	// oldest first, at most the latest 500 per site. Sites with none are absent.
+	ListLive(ctx context.Context, siteIDs []string) (map[string][]domain.FuelEntry, error)
 }

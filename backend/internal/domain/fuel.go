@@ -219,3 +219,66 @@ func EstimateFuel(site Site, entries []FuelEntry, hoursByDay map[string]*float64
 	out.HoursRun = math.Round(out.HoursRun*10) / 10
 	return out
 }
+
+// Low reports whether the estimate says the tank is nearly out: it ran out, or
+// would run the generator for no more than lowHours. An estimate that is
+// unavailable is never "low" (nor fine): there is nothing to say.
+func (e FuelEstimate) Low(lowHours float64) bool {
+	if !e.Available || e.Litres == nil {
+		return false
+	}
+	if e.EstimatedEmpty || *e.Litres == 0 {
+		return true
+	}
+	return e.HoursRemaining != nil && *e.HoursRemaining <= lowHours
+}
+
+// FuelVariance compares what a tank reading found with what the estimate
+// expected just before it. It is a check on the agreed rate and on the
+// entries, not a correction: the reading wins and the estimate restarts from it.
+type FuelVariance struct {
+	// EstimatedBefore is the level the estimate gave at the time of the reading.
+	EstimatedBefore float64
+	Reading         float64
+	// Difference is reading minus estimate: negative when the tank held less
+	// than expected (more fuel used, or fuel taken).
+	Difference float64
+	// Provisional is true when the estimate had days with no approved hours, so
+	// it was only an upper bound.
+	Provisional bool
+	// ReviewWarning is set when the gap is too large to be rounding; someone
+	// should look at the rate, the hours reported, or the entries.
+	ReviewWarning bool
+}
+
+const (
+	// fuelVarianceShare of the larger figure, and at least fuelVarianceFloor
+	// litres, is what counts as a gap worth a look. Proposed defaults, to be
+	// agreed with the customer.
+	fuelVarianceShare = 0.10
+	fuelVarianceFloor = 20.0
+)
+
+// CompareReading works out the variance for a tank reading, from the entries
+// made before it. It is nil when there was nothing earlier to compare with.
+func CompareReading(site Site, entries []FuelEntry, hoursByDay map[string]*float64, reading FuelEntry, loc *time.Location) *FuelVariance {
+	if reading.Kind != FuelReading || reading.Voided() {
+		return nil
+	}
+	var before []FuelEntry
+	for _, e := range entries {
+		if e.ID != reading.ID && !e.Voided() && e.OccurredAt.Before(reading.OccurredAt) {
+			before = append(before, e)
+		}
+	}
+	est := EstimateFuel(site, before, hoursByDay, reading.OccurredAt, loc)
+	if !est.Available || est.Litres == nil {
+		return nil
+	}
+	diff := math.Round((reading.Litres-*est.Litres)*10) / 10
+	limit := math.Max(fuelVarianceFloor, fuelVarianceShare*math.Max(reading.Litres, *est.Litres))
+	return &FuelVariance{
+		EstimatedBefore: *est.Litres, Reading: reading.Litres, Difference: diff,
+		Provisional: est.Provisional, ReviewWarning: math.Abs(diff) > limit,
+	}
+}

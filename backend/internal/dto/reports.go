@@ -185,6 +185,8 @@ type OverviewResponse struct {
 	SitesOutageReported int       `json:"sites_outage_reported"`
 	// SiteDaysWithoutReport counts site-days in the period with no approved report.
 	SiteDaysWithoutReport int `json:"site_days_without_report"`
+	// DataQuality is the indicator for the active sites together.
+	DataQuality DataQualityDTO `json:"data_quality"`
 	// OutagesThisWeek counts distinct site/day pairs in the trailing 7 days
 	// (inclusive of the requested date) whose current report has an outage.
 	// An approximation, not a full weekly aggregation.
@@ -217,6 +219,11 @@ type SiteRowDTO struct {
 	// DaysWithoutReport are the days of the period nobody reported. For a site
 	// that is available by default they are counted as available (assumed).
 	DaysWithoutReport int `json:"days_without_report"`
+	// DataQuality says how much of the figure rests on reports.
+	DataQuality DataQualityDTO `json:"data_quality"`
+	// Fuel is the site's estimated diesel; absent when you may not see fuel, or
+	// the site has no agreed rate or nothing recorded.
+	Fuel *FuelBriefDTO `json:"fuel,omitempty"`
 
 	// TodayStatus/YesterdayStatus are the report that best represents that
 	// day's live status (in-progress if there is one, else the approved
@@ -286,4 +293,37 @@ type MySitesResponse struct {
 	Timezone    string         `json:"timezone"`
 	GeneratedAt time.Time      `json:"generated_at"`
 	Sites       []MySiteRowDTO `json:"sites"`
+}
+
+// DataQualityDTO says how much of a figure rests on reports. The level is a
+// plain summary of the numbers beside it; its thresholds are proposed defaults
+// (good: at least 95% of days reported and at most a fifth of reports late;
+// fair: at least 80% of days; otherwise poor).
+type DataQualityDTO struct {
+	// Level is good, fair or poor.
+	Level string `json:"level" example:"good"`
+	Days  int    `json:"days"`
+	// ReportedDays have an approved report; Completeness is that as a percent.
+	ReportedDays int     `json:"reported_days"`
+	Completeness float64 `json:"completeness_pct"`
+	// LateReports were submitted late (and say why); Corrections are approved
+	// corrections of earlier reports.
+	LateReports int `json:"late_reports"`
+	Corrections int `json:"corrections"`
+	// UnconfirmedSharePct is the share of eligible time no report confirmed.
+	UnconfirmedSharePct float64 `json:"unconfirmed_share_pct"`
+}
+
+// FuelBriefDTO is a site's estimated diesel on one line. An estimate, never a
+// meter reading; GET /sites/{id}/fuel says how it was reached.
+type FuelBriefDTO struct {
+	Basis          string   `json:"basis" example:"estimate"`
+	Litres         *float64 `json:"litres"`
+	HoursRemaining *float64 `json:"hours_remaining"`
+	// Low is true at or under the low-fuel threshold; Empty when the estimate ran out.
+	Low   bool `json:"low"`
+	Empty bool `json:"empty"`
+	// Provisional: days since the last reading have no approved hours, so the
+	// level is the most the tank could hold.
+	Provisional bool `json:"provisional"`
 }

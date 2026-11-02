@@ -81,3 +81,27 @@ func (r *FuelRepository) List(ctx context.Context, siteID string, includeVoided 
 	}
 	return out, rows.Err()
 }
+
+func (r *FuelRepository) ListLive(ctx context.Context, siteIDs []string) (map[string][]domain.FuelEntry, error) {
+	out := map[string][]domain.FuelEntry{}
+	if len(siteIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT `+fuelColumns+` FROM (
+		     SELECT *, row_number() OVER (PARTITION BY site_id ORDER BY occurred_at DESC, seq DESC) AS n
+		     FROM fuel_entries WHERE site_id = ANY($1::uuid[]) AND voided_at IS NULL
+		 ) e WHERE n <= 500 ORDER BY site_id, occurred_at, seq`, siteIDs)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		e, err := scanFuel(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning fuel entry: %w", err)
+		}
+		out[e.SiteID] = append(out[e.SiteID], e)
+	}
+	return out, rows.Err()
+}

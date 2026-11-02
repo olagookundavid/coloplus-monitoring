@@ -151,3 +151,28 @@ func ticketEventEmail(t domain.Ticket, site domain.Site, e domain.TicketEvent, l
 		fmt.Sprintf("%s on %s at %s.\n\n%s\n\nOpen it: %s\n",
 			what, ticketRef(t.Number), siteLabel(site), orDash(e.Body), link)
 }
+
+// fuelLowEmail warns the site's fuel recorders that the estimated tank is low.
+// The kind is part of the dedupe key, so "low" and "empty" are separate alerts.
+func fuelLowEmail(site domain.Site, e domain.FuelEstimate, lowHours float64, link string) (kind, subject, body string) {
+	litres := 0.0
+	if e.Litres != nil {
+		litres = *e.Litres
+	}
+	basis := fmt.Sprintf("This is an estimate, not a reading: it starts from the %s entered on %s and takes off %.1f litres an hour for each hour the generator was reported running.",
+		e.AnchorKind, e.AnchorAt.Format("2 Jan 2006"), e.ConsumptionLPH)
+	if e.Provisional {
+		basis += fmt.Sprintf(" %d day(s) since then have no approved report, so the real level may be lower.", e.UnreportedDays)
+	}
+	if e.EstimatedEmpty {
+		return "fuel-empty", "Fuel probably empty: " + siteLabel(site),
+			fmt.Sprintf("The estimated diesel at %s has run out.\n\n%s\n\nPlease check the tank and record a reading or a delivery.\n\nOpen the site: %s\n", siteLabel(site), basis, link)
+	}
+	hours := 0.0
+	if e.HoursRemaining != nil {
+		hours = *e.HoursRemaining
+	}
+	return "fuel-low", "Fuel running low: " + siteLabel(site),
+		fmt.Sprintf("The estimated diesel at %s is about %.0f litres, enough for about %.0f hours at the agreed rate (alert at %.0f hours or less).\n\n%s\n\nPlease arrange a delivery, or record a tank reading if the level is different.\n\nOpen the site: %s\n",
+			siteLabel(site), litres, hours, lowHours, basis, link)
+}

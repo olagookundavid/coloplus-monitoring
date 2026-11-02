@@ -373,3 +373,36 @@ func (r *ReportRepository) OutageDayCount(ctx context.Context, siteIDs []string,
 		nonNil(siteIDs), from, to).Scan(&n)
 	return n, mapErr(err, "")
 }
+
+func (r *ReportRepository) GeneratorHoursByDay(ctx context.Context, siteIDs []string, from, to time.Time) (map[string]map[string]float64, error) {
+	out := map[string]map[string]float64{}
+	if len(siteIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT r.site_id::text, r.report_date,
+		        COALESCE(r.generator_hours::float8,
+		                 (SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (pi.end_at - pi.start_at)) / 3600.0), 0)
+		                    FROM power_intervals pi
+		                   WHERE pi.report_id = r.id AND pi.state = 'served' AND pi.source = 'generator' AND pi.basis = 'observed'))::float8
+		 FROM daily_reports r
+		 WHERE r.site_id = ANY($1::uuid[]) AND r.status = 'approved' AND r.report_date BETWEEN $2 AND $3`,
+		siteIDs, from, to)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var siteID string
+		var date time.Time
+		var hours float64
+		if err := rows.Scan(&siteID, &date, &hours); err != nil {
+			return nil, fmt.Errorf("scanning generator hours: %w", err)
+		}
+		if out[siteID] == nil {
+			out[siteID] = map[string]float64{}
+		}
+		out[siteID][date.Format("2006-01-02")] = hours
+	}
+	return out, rows.Err()
+}

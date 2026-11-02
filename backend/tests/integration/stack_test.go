@@ -68,6 +68,7 @@ type stack struct {
 	reportAlerts  *services.ReportAlertService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
+	fuel          *services.FuelService
 }
 
 // fakeMailer records what would have been sent, and fails on demand.
@@ -175,6 +176,7 @@ func newStack(t *testing.T) *stack {
 		tx, audit, clock, services.AttachmentConfig{
 			MaxBytes: 10 << 20, UploadTTL: 15 * time.Minute, DownloadTTL: 2 * time.Minute, PendingTTL: 24 * time.Hour,
 		})
+	fuel := services.NewFuelService(fuelRepo, siteRepo, reportRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test", 24)
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
@@ -195,16 +197,16 @@ func newStack(t *testing.T) *stack {
 		Disputes:      disputes,
 		Tickets:       tickets,
 		Attachments:   attachments,
-		Fuel:          services.NewFuelService(fuelRepo, siteRepo, reportRepo, tx, audit, clock, loc),
+		Fuel:          fuel,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc, dashboardTTL()),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
-		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
+		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance, fuel: fuel}
 }
 
 // reply is a decoded response.

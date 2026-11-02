@@ -25,7 +25,17 @@ func toFuelEntryDTO(e domain.FuelEntry, staff bool) dto.FuelEntryDTO {
 	return out
 }
 
-func toFuelEstimateDTO(e domain.FuelEstimate, site domain.Site) dto.FuelEstimateDTO {
+func toFuelVarianceDTO(v *domain.FuelVariance) *dto.FuelVarianceDTO {
+	if v == nil {
+		return nil
+	}
+	return &dto.FuelVarianceDTO{
+		EstimatedBefore: v.EstimatedBefore, Reading: v.Reading, Difference: v.Difference,
+		Provisional: v.Provisional, ReviewWarning: v.ReviewWarning,
+	}
+}
+
+func toFuelEstimateDTO(e domain.FuelEstimate, site domain.Site, lowHours float64) dto.FuelEstimateDTO {
 	return dto.FuelEstimateDTO{
 		Basis: "estimate", Available: e.Available, Reason: e.Reason, Litres: e.Litres, HoursRemaining: e.HoursRemaining,
 		ConsumptionLPH: e.ConsumptionLPH, AnchorKind: string(e.AnchorKind), AnchorAt: e.AnchorAt,
@@ -33,13 +43,14 @@ func toFuelEstimateDTO(e domain.FuelEstimate, site domain.Site) dto.FuelEstimate
 		UnreportedDays: e.UnreportedDays, Provisional: e.Provisional, EstimatedEmpty: e.EstimatedEmpty,
 		OverCapacity: e.OverCapacity, TankCapacityLitres: site.TankCapacityLitres, AsOf: e.AsOf,
 		Formula: e.Formula, FormulaVersion: e.Version, Explanation: fuelExplanation,
+		LowFuelHours: lowHours, Low: e.Low(lowHours),
 	}
 }
 
 // recordFuel godoc
 //
 //	@Summary		Record a fuel delivery or a tank reading
-//	@Description	delivery adds litres to the tank ("1,000 litres delivered"). reading says what the tank held when someone looked and replaces the estimate. The estimate is then worked out from the site's agreed litres per hour and the generator hours reported each day. Send client_key and retry safely.
+//	@Description	delivery adds litres to the tank ("1,000 litres delivered"). reading says what the tank held when someone looked and replaces the estimate; the answer then includes variance, which compares the reading with what the estimate expected, and flags a gap too large to be rounding. The estimate is then worked out from the site's agreed litres per hour and the generator hours reported each day. Send client_key and retry safely.
 //	@Tags			fuel
 //	@Accept			json
 //	@Produce		json
@@ -62,7 +73,9 @@ func (a *api) recordFuel(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toFuelEntryDTO(e, a.fuel.IsStaff(actor)))
+	out := toFuelEntryDTO(e.Entry, a.fuel.IsStaff(actor))
+	out.Variance = toFuelVarianceDTO(e.Variance)
+	c.JSON(http.StatusCreated, out)
 }
 
 // fuelStatus godoc
@@ -83,9 +96,11 @@ func (a *api) fuelStatus(c *gin.Context) {
 		return
 	}
 	staff := a.fuel.IsStaff(actor)
-	resp := dto.FuelStatusResponse{SiteID: v.Site.ID, Estimate: toFuelEstimateDTO(v.Estimate, v.Site), Entries: make([]dto.FuelEntryDTO, 0, len(v.Entries))}
+	resp := dto.FuelStatusResponse{SiteID: v.Site.ID, Estimate: toFuelEstimateDTO(v.Estimate, v.Site, v.LowHours), Entries: make([]dto.FuelEntryDTO, 0, len(v.Entries))}
 	for _, e := range v.Entries {
-		resp.Entries = append(resp.Entries, toFuelEntryDTO(e, staff))
+		ed := toFuelEntryDTO(e, staff)
+		ed.Variance = toFuelVarianceDTO(v.Variances[e.ID])
+		resp.Entries = append(resp.Entries, ed)
 	}
 	c.JSON(http.StatusOK, resp)
 }

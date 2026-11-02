@@ -163,6 +163,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			SiteType: r.Site.SiteType, State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
 			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported, DaysWithoutReport: r.DaysWithoutReport,
+			DataQuality: toDataQualityDTO(r.Quality),
 			TodayStatus: toReportStatusDTO(r.TodayReport), YesterdayStatus: toReportStatusDTO(r.YesterdayReport),
 		}
 		if r.AsOf != nil {
@@ -172,6 +173,12 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		if r.Summary != nil {
 			sum := toSummaryDTO(*r.Summary)
 			row.Summary = &sum
+		}
+		if r.Fuel != nil {
+			row.Fuel = &dto.FuelBriefDTO{
+				Basis: "estimate", Litres: r.Fuel.Litres, HoursRemaining: r.Fuel.HoursRemaining,
+				Low: r.Fuel.Low, Empty: r.Fuel.Empty, Provisional: r.Fuel.Provisional,
+			}
 		}
 		rows[i] = row
 	}
@@ -186,9 +193,9 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		ActiveSites: o.Counts.Active, PendingSites: o.Counts.PendingAcceptance, SuspendedSites: o.Counts.Suspended,
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
-		SiteDaysWithoutReport: o.SiteDaysWithoutReport,
-		OutagesThisWeek:       o.OutagesThisWeek,
-		Portfolio:             toSummaryDTO(o.Portfolio), Sites: rows,
+		SiteDaysWithoutReport: o.SiteDaysWithoutReport, DataQuality: toDataQualityDTO(o.Quality),
+		OutagesThisWeek: o.OutagesThisWeek,
+		Portfolio:       toSummaryDTO(o.Portfolio), Sites: rows,
 	}
 }
 
@@ -382,3 +389,12 @@ func calculationExplanation(defaultAvailable bool) string {
 	return calculationCommon + " Unknown minutes are what remains: they are neither confirmed uptime nor confirmed downtime. " +
 		"Reported availability is served / (served + outage)."
 }
+
+func toDataQualityDTO(q domain.DataQuality) dto.DataQualityDTO {
+	return dto.DataQualityDTO{
+		Level: string(q.Level), Days: q.Days, ReportedDays: q.ReportedDays, Completeness: round1(q.Completeness),
+		LateReports: q.LateReports, Corrections: q.Corrections, UnconfirmedSharePct: round1(q.UnconfirmedShare),
+	}
+}
+
+func round1(v float64) float64 { return float64(int64(v*10+0.5)) / 10 }

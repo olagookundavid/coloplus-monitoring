@@ -2432,7 +2432,7 @@
                 }
             },
             "post": {
-                "description": "delivery adds litres to the tank (\"1,000 litres delivered\"). reading says what the tank held when someone looked and replaces the estimate. The estimate is then worked out from the site's agreed litres per hour and the generator hours reported each day. Send client_key and retry safely.",
+                "description": "delivery adds litres to the tank (\"1,000 litres delivered\"). reading says what the tank held when someone looked and replaces the estimate; the answer then includes variance, which compares the reading with what the estimate expected, and flags a gap too large to be rounding. The estimate is then worked out from the site's agreed litres per hour and the generator hours reported each day. Send client_key and retry safely.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3476,6 +3476,37 @@
                 }
             }
         },
+        "dto.DataQualityDTO": {
+            "type": "object",
+            "properties": {
+                "completeness_pct": {
+                    "type": "number"
+                },
+                "corrections": {
+                    "type": "integer"
+                },
+                "days": {
+                    "type": "integer"
+                },
+                "late_reports": {
+                    "description": "LateReports were submitted late (and say why); Corrections are approved\ncorrections of earlier reports.",
+                    "type": "integer"
+                },
+                "level": {
+                    "description": "Level is good, fair or poor.",
+                    "type": "string",
+                    "example": "good"
+                },
+                "reported_days": {
+                    "description": "ReportedDays have an approved report; Completeness is that as a percent.",
+                    "type": "integer"
+                },
+                "unconfirmed_share_pct": {
+                    "description": "UnconfirmedSharePct is the share of eligible time no report confirmed.",
+                    "type": "number"
+                }
+            }
+        },
         "dto.DayBarDTO": {
             "type": "object",
             "properties": {
@@ -3714,6 +3745,32 @@
                 }
             }
         },
+        "dto.FuelBriefDTO": {
+            "type": "object",
+            "properties": {
+                "basis": {
+                    "type": "string",
+                    "example": "estimate"
+                },
+                "empty": {
+                    "type": "boolean"
+                },
+                "hours_remaining": {
+                    "type": "number"
+                },
+                "litres": {
+                    "type": "number"
+                },
+                "low": {
+                    "description": "Low is true at or under the low-fuel threshold; Empty when the estimate ran out.",
+                    "type": "boolean"
+                },
+                "provisional": {
+                    "description": "Provisional: days since the last reading have no approved hours, so the\nlevel is the most the tank could hold.",
+                    "type": "boolean"
+                }
+            }
+        },
         "dto.FuelEntryDTO": {
             "type": "object",
             "properties": {
@@ -3740,6 +3797,14 @@
                 },
                 "site_id": {
                     "type": "string"
+                },
+                "variance": {
+                    "description": "Variance, on a tank reading, compares what it found with what the\nestimate expected just before it.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.FuelVarianceDTO"
+                        }
+                    ]
                 },
                 "void_reason": {
                     "type": "string"
@@ -3805,6 +3870,14 @@
                     "description": "Litres is the estimated level. While UnreportedDays is above 0 it is the\nmost the tank could hold, because those days' use is unknown.",
                     "type": "number"
                 },
+                "low": {
+                    "description": "Low is true when the estimate is at or under that, or has run out.",
+                    "type": "boolean"
+                },
+                "low_fuel_hours": {
+                    "description": "LowFuelHours is the run time at or under which the tank counts as low.",
+                    "type": "number"
+                },
                 "over_capacity": {
                     "description": "OverCapacity means the estimate exceeds the tank, so an entry is probably wrong.",
                     "type": "boolean"
@@ -3839,6 +3912,29 @@
                 },
                 "site_id": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.FuelVarianceDTO": {
+            "type": "object",
+            "properties": {
+                "difference_litres": {
+                    "description": "Difference is reading minus estimate; negative means less than expected.",
+                    "type": "number"
+                },
+                "estimated_before_litres": {
+                    "type": "number"
+                },
+                "provisional": {
+                    "description": "Provisional: the estimate had days with no approved hours, so it was an\nupper bound and a negative difference is to be expected.",
+                    "type": "boolean"
+                },
+                "reading_litres": {
+                    "type": "number"
+                },
+                "review_warning": {
+                    "description": "ReviewWarning: the gap is too large to be rounding; check the rate, the\nhours reported, or the entries.",
+                    "type": "boolean"
                 }
             }
         },
@@ -4391,6 +4487,14 @@
             "properties": {
                 "active_sites": {
                     "type": "integer"
+                },
+                "data_quality": {
+                    "description": "DataQuality is the indicator for the active sites together.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.DataQualityDTO"
+                        }
+                    ]
                 },
                 "date": {
                     "description": "Date is the last day of the period, kept for clients that ask for one day.",
@@ -5289,6 +5393,14 @@
                     "type": "string",
                     "example": "grid"
                 },
+                "data_quality": {
+                    "description": "DataQuality says how much of the figure rests on reports.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.DataQualityDTO"
+                        }
+                    ]
+                },
                 "days_reported": {
                     "description": "DaysReported of the response's Days have an approved report.",
                     "type": "integer"
@@ -5296,6 +5408,14 @@
                 "days_without_report": {
                     "description": "DaysWithoutReport are the days of the period nobody reported. For a site\nthat is available by default they are counted as available (assumed).",
                     "type": "integer"
+                },
+                "fuel": {
+                    "description": "Fuel is the site's estimated diesel; absent when you may not see fuel, or\nthe site has no agreed rate or nothing recorded.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.FuelBriefDTO"
+                        }
+                    ]
                 },
                 "name": {
                     "type": "string"

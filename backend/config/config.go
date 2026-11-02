@@ -30,6 +30,7 @@ type Config struct {
 	Mail      Mail
 	Storage   Storage
 	Dashboard Dashboard
+	Fuel      Fuel
 	Jobs      Jobs
 	Swagger   Swagger
 }
@@ -116,6 +117,13 @@ type Dashboard struct {
 	CacheTTL time.Duration
 }
 
+// Fuel tunes the low-fuel alert and the "low" flag on the dashboard.
+type Fuel struct {
+	// LowHours is the estimated run time left, at or under which a tank counts
+	// as low. The default is a proposal, not an agreed figure.
+	LowHours float64
+}
+
 // Storage configures private file storage (Cloudflare R2). It is optional:
 // without it the evidence endpoints answer "not set up yet" and everything else
 // works. Giving any of the four credentials means giving all of them.
@@ -151,6 +159,7 @@ type Jobs struct {
 	ReportAlertsCron     string
 	AcceptanceAlertsCron string
 	AttachmentGCCron     string
+	FuelAlertsCron       string
 }
 
 type Swagger struct {
@@ -223,6 +232,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			Timeout:       r.duration("MAIL_TIMEOUT", 10*time.Second),
 			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
+		Fuel:      Fuel{LowHours: float64(r.integer("FUEL_LOW_HOURS", 24))},
 		Dashboard: Dashboard{CacheTTL: r.duration("DASHBOARD_CACHE_TTL", 10*time.Second)},
 		Storage: Storage{
 			AccountID:       r.str("R2_ACCOUNT_ID", ""),
@@ -243,6 +253,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			ReportAlertsCron:     r.str("JOB_REPORT_ALERTS_CRON", "*/30 * * * *"),
 			AcceptanceAlertsCron: r.str("JOB_ACCEPTANCE_ALERTS_CRON", "*/30 * * * *"),
 			AttachmentGCCron:     r.str("JOB_ATTACHMENT_GC_CRON", "17 3 * * *"),
+			FuelAlertsCron:       r.str("JOB_FUEL_ALERTS_CRON", "*/30 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}
@@ -334,6 +345,9 @@ func (c Config) validate() []error {
 		if c.IsProduction() && s.Endpoint != "" && !strings.HasPrefix(s.Endpoint, "https://") {
 			bad("R2_ENDPOINT must be https in production")
 		}
+	}
+	if c.Fuel.LowHours < 1 || c.Fuel.LowHours > 720 {
+		bad("FUEL_LOW_HOURS must be between 1 and 720")
 	}
 	if c.Dashboard.CacheTTL < 0 || c.Dashboard.CacheTTL > 30*time.Second {
 		bad("DASHBOARD_CACHE_TTL must be between 0 and 30s so approved entries still show within a minute")

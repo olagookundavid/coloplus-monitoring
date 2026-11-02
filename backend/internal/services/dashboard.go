@@ -20,8 +20,11 @@ type DashboardService struct {
 	sites     ports.SiteRepository
 	reports   ports.ReportRepository
 	incidents ports.IncidentRepository
-	clock     ports.Clock
-	loc       *time.Location
+	fuel      ports.FuelRepository
+	// fuelLowHours is the run time left at or under which a tank counts as low.
+	fuelLowHours float64
+	clock        ports.Clock
+	loc          *time.Location
 
 	// Identical questions asked at the same moment are computed once, and an
 	// answer is kept for a few seconds. The key is the caller's exact site
@@ -39,10 +42,10 @@ const (
 // approved entry to show on the dashboard.
 func NewDashboardService(
 	sites ports.SiteRepository, reports ports.ReportRepository, incidents ports.IncidentRepository,
-	clock ports.Clock, loc *time.Location, cacheTTL time.Duration,
+	fuel ports.FuelRepository, clock ports.Clock, loc *time.Location, cacheTTL time.Duration, fuelLowHours float64,
 ) *DashboardService {
 	return &DashboardService{
-		sites: sites, reports: reports, incidents: incidents, clock: clock, loc: loc,
+		sites: sites, reports: reports, incidents: incidents, fuel: fuel, fuelLowHours: fuelLowHours, clock: clock, loc: loc,
 		memo: platform.NewMemo(clock, cacheTTL, dashboardComputeTimeout, dashboardCacheMax),
 	}
 }
@@ -79,12 +82,28 @@ type SiteRow struct {
 	// DaysWithoutReport the rest, shown beside the figure so an assumed day is never hidden.
 	DaysReported      int
 	DaysWithoutReport int
+	// Fuel is the estimated tank level for the site; nil when the caller may
+	// not see fuel, or the site has no agreed rate or nothing recorded.
+	Fuel *FuelBrief
+	// Quality says how much of the figure rests on reports.
+	Quality domain.DataQuality
 	// TodayReport/YesterdayReport are the report that best represents the
 	// period's last day and the day before (in-progress if there is one, else
 	// approved); nil when nothing has ever been filed. This is the reporter's
 	// own "did I report today" view and must not be confused with Summary
 	// above: a submitted-but-not-yet-approved report shows here but not there.
 	TodayReport, YesterdayReport *domain.DailyReport
+}
+
+// FuelBrief is a site's fuel on one line. It is an estimate; see domain.FuelEstimate.
+type FuelBrief struct {
+	Litres         *float64
+	HoursRemaining *float64
+	Low            bool
+	Empty          bool
+	// Provisional means days since the last reading have no approved hours, so
+	// the level is the most the tank could hold.
+	Provisional bool
 }
 
 type StatusCounts struct {
@@ -118,6 +137,8 @@ type Overview struct {
 	// SiteDaysWithoutReport counts, over the active sites, the days in the period
 	// with no approved report.
 	SiteDaysWithoutReport int
+	// Quality is the indicator for the active sites together.
+	Quality domain.DataQuality
 	// OutagesThisWeek counts distinct site/day pairs in the 7 days ending on
 	// the period's last day whose current report has an outage. An
 	// approximation, not a full weekly aggregation.
@@ -233,7 +254,7 @@ func (s *DashboardService) Overview(ctx context.Context, actor domain.Actor, p P
 	if !actor.Can(domain.PermSitesRead) {
 		return Overview{}, apperrors.ErrForbidden
 	}
-	return platform.Do(ctx, s.memo, "overview|"+scopeKey(actor)+"|"+p.key(), func(ctx context.Context) (Overview, error) {
+	return platform.Do(ctx, s.memo, "overview|"+scopeKey(actor)+"|"+fmt.Sprint(actor.Can(domain.PermFuelRead))+"|"+p.key(), func(ctx context.Context) (Overview, error) {
 		return s.overview(ctx, actor, p)
 	})
 }
@@ -267,6 +288,21 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 	}
 	var kpi []domain.DailySummary
 
+	// Fuel, only for those who may see it, for the sites that have a rate.
+	var fuels map[string]siteFuel
+	if actor.Can(domain.PermFuelRead) {
+		if fuels, err = fuelEstimates(ctx, s.fuel, s.reports, sc.sites, sc.now, s.loc); err != nil {
+			return Overview{}, err
+		}
+	}
+	// The approved reports of each site in the period, for the quality indicator.
+	reportsBySite := map[string][]domain.DailyReport{}
+	for _, r := range sc.byDay {
+		reportsBySite[r.SiteID] = append(reportsBySite[r.SiteID], r)
+	}
+	var activeReports []domain.DailyReport
+	activeDays := 0
+
 	for _, site := range sc.sites {
 		row := SiteRow{Site: site}
 		if r, ok := statusByDay[ports.DayKey(site.ID, p.To)]; ok {
@@ -299,6 +335,13 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 		}
 		pooled := domain.PortfolioSummary(days)
 		row.DaysWithoutReport = p.Days() - row.DaysReported
+		row.Quality = domain.AssessQuality(p.Days(), reportsBySite[site.ID], pooled)
+		if f, ok := fuels[site.ID]; ok && f.Estimate.Available {
+			row.Fuel = &FuelBrief{
+				Litres: f.Estimate.Litres, HoursRemaining: f.Estimate.HoursRemaining, Low: f.Estimate.Low(s.fuelLowHours),
+				Empty: f.Estimate.EstimatedEmpty, Provisional: f.Estimate.Provisional,
+			}
+		}
 		// A site that is available by default has a figure even if nobody
 		// reported; the days without a report are still counted and shown beside it.
 		if row.DaysReported > 0 || site.DefaultAvailable() {
@@ -312,6 +355,8 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 			// visible separately.
 			kpi = append(kpi, pooled)
 			out.SiteDaysWithoutReport += row.DaysWithoutReport
+			activeReports = append(activeReports, reportsBySite[site.ID]...)
+			activeDays += p.Days()
 			if row.DaysReported > 0 {
 				out.SitesReported++
 			} else {
@@ -331,6 +376,7 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 		out.Sites = append(out.Sites, row)
 	}
 	out.Portfolio = domain.PortfolioSummary(kpi)
+	out.Quality = domain.AssessQuality(activeDays, activeReports, out.Portfolio)
 	return out, nil
 }
 

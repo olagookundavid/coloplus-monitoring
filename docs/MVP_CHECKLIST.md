@@ -42,7 +42,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Site directory with search by either code and name, filters on state, region, status
 - [ ] Asset capacities, reporting cadence, load profile, formula profile, effective dates on the site record. **partial**
 - [x] Directory filters on power source, acceptance stage and assigned person (staff only)
-- [ ] Directory filter on data quality: no agreed definition yet
+- [ ] Directory filter on data quality: the indicator is on the dashboard for the chosen period; a filter on the site list needs the thresholds agreed first
 
 ## 4. Daily reporting and approval (PRD 6, 9)
 
@@ -80,7 +80,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
 - [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 043)
 - [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
-- [ ] Data-quality indicator: needs a definition of "quality" from Coloplus and Airtel. **needs input**
+- [x] Data-quality indicator on the dashboard (reported days, late reports, corrections, unconfirmed share; level good/fair/poor with proposed thresholds, DECISIONS 052)
+- [ ] Agree the data-quality thresholds with the customer. **needs input**
 - [ ] Click-through from a card to its supporting sites and intervals
 
 ## 7. Incidents and actions (PRD 10)
@@ -130,7 +131,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] In-app alert centre with acknowledgement
 - [x] Overdue-report alert to the site's reporters and supervisors, once a day while late; says "stale or missing", never "outage"
 - [ ] Daily and weekly digests; repeat reminders; approved recipient lists; per-user preferences
-- [ ] Fuel and runtime anomaly alerts, low fuel / autonomy alerts. Wait for the fuel model
+- [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
+- [ ] Runtime anomaly alerts
 - [ ] Bounce handling (Resend webhooks)
 
 ## 11. Evidence and files (PRD 6)
