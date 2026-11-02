@@ -135,7 +135,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 11. Evidence and files (PRD 6)
 
-- [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Not yet tested against the live bucket
+- [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Tested against the live bucket on 2 November: upload with the signed link, checksum enforced, signed download and delete all passed
 - [x] Abandoned-upload cleanup, off by default (`ATTACHMENT_GC_ENABLED`), reports what it would delete
 - [x] No virus scanner, by decision: only an allow-list of file types is accepted (photos, PDF, text, CSV, Word, Excel), the name's extension must match the type, and files are always downloaded, never displayed (DECISIONS 047)
 - [ ] Attach to daily reports
