@@ -4,10 +4,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +20,7 @@ var dailySummaryHeader = []string{
 	"date", "time_zone", "service_window",
 	"report_status", "report_id", "report_revision", "approved_at_utc", "is_correction",
 	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes",
-	"coverage_percent", "reported_availability_percent", "confirmed_served_share_percent", "assumed_available_minutes", "provisional",
+	"coverage_percent", "reported_availability_percent", "confirmed_served_share_percent", "assumed_available_minutes", "source_minutes", "provisional",
 	"basis", "declared_intervals_ignored",
 	"open_disputes", "total_disputes",
 	"formula", "formula_version", "generated_at_utc", "assumptions",
@@ -91,7 +93,7 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			fmt.Sprintf("%02d:%02d-%02d:%02d", r.Site.ServiceStartMinute/60, r.Site.ServiceStartMinute%60, r.Site.ServiceEndMinute/60, r.Site.ServiceEndMinute%60),
 			status, reportID, revision, approvedAt, correction,
 			strconv.Itoa(sum.EligibleMinutes), served, outage, strconv.Itoa(sum.UnknownMinutes),
-			coverage, availability, confirmed, strconv.Itoa(sum.AssumedMinutes), yesNo(sum.Provisional()),
+			coverage, availability, confirmed, strconv.Itoa(sum.AssumedMinutes), sourceMinutesCell(sum.SourceMinutes), yesNo(sum.Provisional()),
 			"observed intervals only", strconv.Itoa(r.DeclaredIgnored),
 			strconv.Itoa(r.Disputes.Open), strconv.Itoa(r.Disputes.Total),
 			exp.Formula, exp.Version, generated, services.ExportAssumptions,
@@ -194,4 +196,18 @@ func safeCell(v string) string {
 		return "'" + v
 	}
 	return v
+}
+
+// sourceMinutesCell writes "generator:600;grid:700", sorted, or nothing.
+func sourceMinutesCell(m map[domain.PowerSource]int) string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, string(k))
+	}
+	sort.Strings(keys)
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = k + ":" + strconv.Itoa(m[domain.PowerSource(k)])
+	}
+	return strings.Join(parts, ";")
 }

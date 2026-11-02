@@ -70,6 +70,24 @@ func TestSummarise_PRDWorkedExample(t *testing.T) {
 	}
 }
 
+// Hours by source are what the report says each source served, each counted once.
+func TestSummarise_SourceMinutes(t *testing.T) {
+	ivs := []domain.PowerInterval{
+		served(at(0, 0), at(11, 30), domain.SourceGrid),
+		outage(at(11, 30), at(12, 0)),
+		served(at(12, 0), at(23, 30), domain.SourceGenerator),
+		served(at(13, 0), at(14, 0), domain.SourceGenerator), // inside the other: counts once
+	}
+	sum := domain.Summarise(testSite(), day, ivs, lagos)
+	if sum.SourceMinutes[domain.SourceGrid] != 690 || sum.SourceMinutes[domain.SourceGenerator] != 690 {
+		t.Fatalf("source minutes = %v, want grid 690 and generator 690", sum.SourceMinutes)
+	}
+	pooled := domain.PortfolioSummary([]domain.DailySummary{sum, sum})
+	if pooled.SourceMinutes[domain.SourceGenerator] != 1380 {
+		t.Fatalf("pooled generator minutes = %v, want 1380", pooled.SourceMinutes)
+	}
+}
+
 func TestSummarise_OverlapsAndDuplicatesCountOnce(t *testing.T) {
 	ivs := []domain.PowerInterval{
 		served(at(0, 0), at(6, 0), domain.SourceGrid),

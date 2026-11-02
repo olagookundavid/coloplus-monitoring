@@ -277,6 +277,10 @@ type DailySummary struct {
 	// site is available by default (X, for such a site; 0 otherwise). It is
 	// never confirmed: ConfirmedServedShare still counts only observed time.
 	AssumedMinutes int
+	// SourceMinutes is how long each source was reported serving the site, each
+	// counted once however its intervals overlap. Sources can overlap each
+	// other, so the figures need not add up to ServedMinutes.
+	SourceMinutes map[PowerSource]int
 
 	// The numerator and denominator of ReportedAvailability, kept so sites
 	// that count unreported time differently can still be pooled.
@@ -305,6 +309,7 @@ func Summarise(site Site, date time.Time, intervals []PowerInterval, loc *time.L
 
 func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable bool) DailySummary {
 	var served, outage []Span
+	bySource := map[PowerSource][]Span{}
 	for _, iv := range intervals {
 		if iv.Basis != BasisObserved {
 			continue
@@ -312,6 +317,9 @@ func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable b
 		switch iv.State {
 		case StateServed:
 			served = append(served, Span{iv.Start, iv.End})
+			if iv.Source != "" {
+				bySource[iv.Source] = append(bySource[iv.Source], Span{iv.Start, iv.End})
+			}
 		case StateOutage:
 			outage = append(outage, Span{iv.Start, iv.End})
 		}
@@ -321,6 +329,14 @@ func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable b
 	u := clipMinutes(served, from, to)
 	d := clipMinutes(outage, from, to)
 	sum := DailySummary{EligibleMinutes: s, ServedMinutes: u, OutageMinutes: d, UnknownMinutes: s - u - d}
+	for src, spans := range bySource {
+		if m := clipMinutes(spans, from, to); m > 0 {
+			if sum.SourceMinutes == nil {
+				sum.SourceMinutes = map[PowerSource]int{}
+			}
+			sum.SourceMinutes[src] = m
+		}
+	}
 
 	if s > 0 {
 		sum.Coverage = pct(u+d, s)
@@ -353,6 +369,12 @@ func PortfolioSummary(sites []DailySummary) DailySummary {
 		total.OutageMinutes += s.OutageMinutes
 		total.UnknownMinutes += s.UnknownMinutes
 		total.AssumedMinutes += s.AssumedMinutes
+		for src, m := range s.SourceMinutes {
+			if total.SourceMinutes == nil {
+				total.SourceMinutes = map[PowerSource]int{}
+			}
+			total.SourceMinutes[src] += m
+		}
 		total.availNum += s.availNum
 		total.availDen += s.availDen
 	}
@@ -485,3 +507,34 @@ func (r DailyReport) HasObservedOutage() bool {
 	}
 	return false
 }
+
+// OutageSpans are a report's observed outages, merged so none is counted
+// twice, and clipped to the site's service window on the reporting day.
+func OutageSpans(site Site, date time.Time, intervals []PowerInterval, loc *time.Location) []Span {
+	dayStart, _ := DayBounds(date, loc)
+	from := dayStart.Add(time.Duration(site.ServiceStartMinute) * time.Minute)
+	to := dayStart.Add(time.Duration(site.ServiceEndMinute) * time.Minute)
+	var spans []Span
+	for _, iv := range intervals {
+		if iv.Basis == BasisObserved && iv.State == StateOutage {
+			spans = append(spans, Span{iv.Start, iv.End})
+		}
+	}
+	var out []Span
+	for _, s := range mergeSpans(spans) {
+		if s.Start.Before(from) {
+			s.Start = from
+		}
+		if s.End.After(to) {
+			s.End = to
+		}
+		if s.End.After(s.Start) {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// SpanMinutes is the time the spans cover inside from..to, in whole minutes,
+// with overlaps counted once.
+func SpanMinutes(spans []Span, from, to time.Time) int { return clipMinutes(spans, from, to) }

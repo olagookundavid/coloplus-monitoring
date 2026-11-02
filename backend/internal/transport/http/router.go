@@ -217,6 +217,8 @@ func NewRouter(d Deps) *gin.Engine {
 
 	authed.GET("/dashboard/overview", h.overview)
 	authed.GET("/dashboard/trend", h.trend)
+	authed.GET("/dashboard/outages", h.listOutages)
+	authed.GET("/incidents/:id/outages", h.incidentOutages)
 	authed.GET("/dashboard/my-sites", h.mySites)
 
 	r.NoRoute(func(c *gin.Context) {

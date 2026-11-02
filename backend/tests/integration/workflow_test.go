@@ -503,6 +503,21 @@ func TestDashboard_PeriodRegionAndTrendKeepGaps(t *testing.T) {
 		t.Fatalf("yesterday was reported: %v", pts[1])
 	}
 
+	// Weekly and monthly points pool the same days: none lost, none counted twice.
+	for _, grain := range []string{"week", "month"} {
+		g := w.expect(w.call("GET", "/api/v1/dashboard/trend?from="+from+"&to="+to+"&grain="+grain, nil, w.reporter), 200)
+		days, reported, minutes := 0.0, 0.0, 0.0
+		for _, p := range g.list("points") {
+			pt := p.(map[string]any)
+			days += pt["days"].(float64)
+			reported += pt["site_days_reported"].(float64)
+			minutes += pt["summary"].(map[string]any)["eligible_minutes"].(float64)
+		}
+		if g.str("grain") != grain || days != 2 || reported != 1 || minutes != 2*2*1440 {
+			t.Fatalf("%s points must cover the 2 days and 2 sites exactly once: days=%v reported=%v minutes=%v: %s", grain, days, reported, minutes, g.Raw)
+		}
+	}
+	w.expect(w.call("GET", "/api/v1/dashboard/trend?from="+from+"&to="+to+"&grain=year", nil, w.reporter), 400)
 	w.expect(w.call("GET", "/api/v1/dashboard/trend?from="+from, nil, w.reporter), 400)
 	w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+to+"&from="+from+"&to="+to, nil, w.reporter), 400)
 	w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to=2999-01-01", nil, w.reporter), 400)

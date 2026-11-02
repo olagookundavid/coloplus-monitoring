@@ -55,7 +55,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Explanation required for late submissions (a correction already requires its reason) (DECISIONS 049)
 - [ ] Automatic splitting of events that cross midnight (DECISIONS 027). The reporter still splits by hand, but the error now names the exact two parts to enter. Automatic splitting writes into another day's report, which may already be approved: **needs input** (DECISIONS 049)
 - [ ] CSV/XLSX import: preview, row errors, duplicate detection, explicit commit, batch id and idempotency key. **new dependency** (an XLSX reader)
-- [ ] Source hours, maintenance and open-issue fields on the daily summary. **partial**
+- [x] Source hours on the daily summary (`source_minutes`, in the API and the CSV export)
+- [ ] Maintenance and open-issue fields on the daily summary. **partial** (open issues are on the incident register; planned maintenance has no record yet)
 - [x] Fuel the manual way: per-site agreed litres per hour and tank size, engineers record deliveries and tank readings, the level is estimated from reported generator hours and labelled an estimate (DECISIONS 050)
 - [ ] Load and generator-asset inputs beyond runtime hours (section 6 tables)
 - [ ] Controlled reopening of a closed reporting period. There is no "closed period" yet: an approved day is changed only by a linked correction. **needs input**: does a month close, and who may reopen it?
@@ -69,7 +70,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Store calculation runs with their inputs, so a result can be reproduced and queued/failed/superseded runs shown (DECISIONS 028). **partial** (returned on read, not stored)
 - [ ] Formula versions, parameter sets, draft, test, independent approval, effective-dated activation (AT07)
 - [ ] Source runtime; estimated energy; modelled fuel use; fuel balance and variance; battery autonomy (AT02, AT08). Each labelled as an estimate
-- [ ] Weekly and monthly aggregation of the daily figures
+- [x] Weekly and monthly aggregation: `GET /dashboard/trend?grain=week|month`, pooled by eligible minutes (DECISIONS 053)
 - [ ] Planned-maintenance exclusions where the contract allows. **needs input** (contract)
 - [ ] An SLA compliance figure. **needs input**: the PRD says to show operational metrics only until Airtel and Coloplus agree the treatment of unknown time
 
@@ -82,7 +83,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
 - [x] Data-quality indicator on the dashboard (reported days, late reports, corrections, unconfirmed share; level good/fair/poor with proposed thresholds, DECISIONS 052)
 - [ ] Agree the data-quality thresholds with the customer. **needs input**
-- [ ] Click-through from a card to its supporting sites and intervals
+- [x] Click-through: `GET /dashboard/outages` lists the outage intervals behind the figures, traced to their reports (DECISIONS 053)
 
 ## 7. Incidents and actions (PRD 10)
 
@@ -92,7 +93,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Every incident has an owner (to work it), next action and a next-update time
 - [x] Publication to Airtel does not wait for the daily report; Airtel sees published facts and customer updates only **FR**
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
-- [ ] Link an incident to the outage intervals of daily reports without duplicating downtime. Also the automatic midnight split
+- [x] Link an incident to the outage intervals of daily reports without duplicating downtime: `GET /incidents/:id/outages` (DECISIONS 053)
+- [ ] Automatic midnight split (needs the neighbouring-day policy)
 - [x] Evidence attachments on incidents (DECISIONS 047)
 - [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
 - [x] Ticket attachments (DECISIONS 047)

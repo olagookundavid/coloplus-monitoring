@@ -287,3 +287,43 @@ func TestAuditorRole_ReadsInScopeAndChangesNothing(t *testing.T) {
 	}, auditor), 403)
 	w.expect(w.call("GET", "/api/v1/users", nil, auditor), 403)
 }
+
+// The drill-down behind an outage card lists each reported outage once, traced
+// to its report; the reason is Coloplus's; an incident links to the outage
+// during it without double counting; and "Airtel" cannot reach an unpublished
+// incident's outage.
+func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
+	w := newWorkflow(t)
+	id := w.draft(1) // an outage of 30 minutes at 11:30
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+	day, at := w.reportDay(1)
+
+	url := "/api/v1/dashboard/outages?from=" + day + "&to=" + day
+	staff := w.expect(w.call("GET", url, nil, w.supervisor), 200)
+	list := staff.list("outages")
+	if len(list) != 1 || staff.Body["total_minutes"] != 30.0 {
+		t.Fatalf("one 30-minute outage expected: %s", staff.Raw)
+	}
+	first := list[0].(map[string]any)
+	if first["report_id"] != id || first["minutes"] != 30.0 || first["reason"] == nil {
+		t.Fatalf("an outage must trace to its report and carry its reason for staff: %v", first)
+	}
+	if cust := w.expect(w.call("GET", url, nil, w.airtel), 200); strings.Contains(cust.Raw, "Grid failure") || strings.Contains(cust.Raw, `"reason"`) {
+		t.Fatalf("the reason is Coloplus's own: %s", cust.Raw)
+	}
+	w.expect(w.call("GET", url+"&site_id="+w.newSite(w.admin), nil, w.airtel), 404)
+
+	// An incident that started before the outage links to it, once.
+	inc := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
+		"category": "grid_loss", "severity": "major", "impact": "outage", "title": "Grid loss", "started_at": at(11, 0),
+	}, w.supervisor), 201).str("id")
+	o := w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.supervisor), 200)
+	if o.Body["total_minutes"] != 30.0 || o.Body["open"] != true || len(o.list("outages")) != 1 {
+		t.Fatalf("the incident should link to the 30 minutes of outage during it: %s", o.Raw)
+	}
+	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.airtel), 404) // not published
+	w.expect(w.call("POST", "/api/v1/incidents/"+inc+"/publish", nil, w.supervisor), 200)
+	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.airtel), 200)
+	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.ot), 404)
+}

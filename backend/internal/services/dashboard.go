@@ -149,14 +149,56 @@ type Overview struct {
 
 // TrendPoint is the portfolio on one reporting day.
 type TrendPoint struct {
-	Date time.Time
+	// Date is the first day of the bucket (the day itself, the Monday of the
+	// week, or the first of the month); From and To are the days of the bucket
+	// that fall inside the requested period, so a part-bucket is plain.
+	Date     time.Time
+	From, To time.Time
+	Days     int
 	// ActiveSites is how many active sites were expected to report;
-	// SitesReported how many have an approved report for the day.
+	// SitesReported how many had an approved report on at least one day of the
+	// bucket.
 	ActiveSites, SitesReported int
+	// SiteDays are the active sites times the days in the bucket, and
+	// SiteDaysReported how many of those have an approved report.
+	SiteDays, SiteDaysReported int
 	Summary                    domain.DailySummary
 }
 
+// Grain is the width of a trend point.
+type Grain string
+
+const (
+	GrainDay   Grain = "day"
+	GrainWeek  Grain = "week"
+	GrainMonth Grain = "month"
+)
+
+// ParseGrain reads day (the default), week or month.
+func ParseGrain(v string) (Grain, error) {
+	switch Grain(v) {
+	case "", GrainDay:
+		return GrainDay, nil
+	case GrainWeek, GrainMonth:
+		return Grain(v), nil
+	}
+	return "", invalid("grain must be day, week or month")
+}
+
+// bucketStart is the first day of the bucket a date falls in. Weeks start on Monday.
+func bucketStart(date time.Time, g Grain) time.Time {
+	switch g {
+	case GrainWeek:
+		return date.AddDate(0, 0, -((int(date.Weekday()) + 6) % 7))
+	case GrainMonth:
+		return time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+	}
+	return date
+}
+
 type Trend struct {
+	// Grain is the width of each point: day, week or month.
+	Grain       Grain
 	Period      Period
 	Timezone    string
 	Formula     string
@@ -383,40 +425,66 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 // Trend is the active portfolio's pooled figures for each day of the period.
 // A day on which nothing was reported has no availability, so a chart shows a
 // gap there rather than a line at zero or at 100.
-func (s *DashboardService) Trend(ctx context.Context, actor domain.Actor, p Period) (Trend, error) {
+func (s *DashboardService) Trend(ctx context.Context, actor domain.Actor, p Period, grain Grain) (Trend, error) {
 	if !actor.Can(domain.PermSitesRead) {
 		return Trend{}, apperrors.ErrForbidden
 	}
-	return platform.Do(ctx, s.memo, "trend|"+scopeKey(actor)+"|"+p.key(), func(ctx context.Context) (Trend, error) {
-		return s.trend(ctx, actor, p)
+	return platform.Do(ctx, s.memo, "trend|"+scopeKey(actor)+"|"+string(grain)+"|"+p.key(), func(ctx context.Context) (Trend, error) {
+		return s.trend(ctx, actor, p, grain)
 	})
 }
 
-func (s *DashboardService) trend(ctx context.Context, actor domain.Actor, p Period) (Trend, error) {
+func (s *DashboardService) trend(ctx context.Context, actor domain.Actor, p Period, grain Grain) (Trend, error) {
 	sc, err := s.load(ctx, actor, p)
 	if err != nil {
 		return Trend{}, err
 	}
 	out := Trend{
 		Period: p, Timezone: s.loc.String(), Formula: formulaDailyAvailability, Version: formulaVersion,
-		GeneratedAt: sc.now, Points: make([]TrendPoint, 0, p.Days()),
+		GeneratedAt: sc.now, Grain: grain,
 	}
+	active := 0
+	for _, site := range sc.sites {
+		if site.Status == domain.SiteActive {
+			active++
+		}
+	}
+
+	type bucket struct {
+		pt       TrendPoint
+		sums     []domain.DailySummary
+		reported map[string]bool
+	}
+	var order []*bucket
+	byStart := map[time.Time]*bucket{}
 	for date := p.From; !date.After(p.To); date = date.AddDate(0, 0, 1) {
-		pt := TrendPoint{Date: date}
-		var sums []domain.DailySummary
+		start := bucketStart(date, grain)
+		b := byStart[start]
+		if b == nil {
+			b = &bucket{pt: TrendPoint{Date: start, From: date, ActiveSites: active}, reported: map[string]bool{}}
+			byStart[start] = b
+			order = append(order, b)
+		}
+		b.pt.To = date
+		b.pt.Days++
 		for _, site := range sc.sites {
 			if site.Status != domain.SiteActive {
 				continue
 			}
 			sum, reported := s.daySummary(sc, site, date)
-			sums = append(sums, sum)
-			pt.ActiveSites++
+			b.sums = append(b.sums, sum)
+			b.pt.SiteDays++
 			if reported {
-				pt.SitesReported++
+				b.pt.SiteDaysReported++
+				b.reported[site.ID] = true
 			}
 		}
-		pt.Summary = domain.PortfolioSummary(sums)
-		out.Points = append(out.Points, pt)
+	}
+	out.Points = make([]TrendPoint, 0, len(order))
+	for _, b := range order {
+		b.pt.SitesReported = len(b.reported)
+		b.pt.Summary = domain.PortfolioSummary(b.sums)
+		out.Points = append(out.Points, b.pt)
 	}
 	return out, nil
 }

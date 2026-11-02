@@ -128,7 +128,7 @@ func toSummaryDTO(s domain.DailySummary) dto.SummaryDTO {
 		EligibleMinutes: s.EligibleMinutes, ServedMinutes: s.ServedMinutes,
 		OutageMinutes: s.OutageMinutes, UnknownMinutes: s.UnknownMinutes,
 		CoveragePct: round2(s.Coverage), ReportedAvailabilityPct: round2(s.ReportedAvailability),
-		AssumedAvailableMinutes: s.AssumedMinutes,
+		AssumedAvailableMinutes: s.AssumedMinutes, SourceMinutes: sourceMinutesDTO(s.SourceMinutes),
 		ConfirmedServedSharePct: round2(s.ConfirmedServedShare), Provisional: s.Provisional(),
 	}
 }
@@ -224,12 +224,13 @@ func toTrendResponse(t services.Trend) dto.TrendResponse {
 	pts := make([]dto.TrendPoint, len(t.Points))
 	for i, p := range t.Points {
 		pts[i] = dto.TrendPoint{
-			Date: p.Date.Format("2006-01-02"), ActiveSites: p.ActiveSites, SitesReported: p.SitesReported,
+			Date: p.Date.Format("2006-01-02"), From: p.From.Format("2006-01-02"), To: p.To.Format("2006-01-02"), Days: p.Days,
+			ActiveSites: p.ActiveSites, SitesReported: p.SitesReported, SiteDays: p.SiteDays, SiteDaysReported: p.SiteDaysReported,
 			Summary: toSummaryDTO(p.Summary),
 		}
 	}
 	return dto.TrendResponse{
-		From: t.Period.From.Format("2006-01-02"), To: t.Period.To.Format("2006-01-02"), Region: t.Period.Region,
+		Grain: string(t.Grain), From: t.Period.From.Format("2006-01-02"), To: t.Period.To.Format("2006-01-02"), Region: t.Period.Region,
 		Timezone: t.Timezone, Formula: t.Formula, Version: t.Version, GeneratedAt: t.GeneratedAt, Points: pts,
 	}
 }
@@ -398,3 +399,14 @@ func toDataQualityDTO(q domain.DataQuality) dto.DataQualityDTO {
 }
 
 func round1(v float64) float64 { return float64(int64(v*10+0.5)) / 10 }
+
+func sourceMinutesDTO(in map[domain.PowerSource]int) map[string]int {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(in))
+	for k, v := range in {
+		out[string(k)] = v
+	}
+	return out
+}

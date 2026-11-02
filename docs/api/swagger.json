@@ -898,6 +898,72 @@
                 }
             }
         },
+        "/api/v1/dashboard/outages": {
+            "get": {
+                "description": "Every reported outage in the period from the approved reports, newest first, each merged so no minute is counted twice, with the report it came from. This is what a click on an outage card opens. The reason is for Coloplus staff only. Give from and to (at most 92 days, none in the future); region and site_id narrow it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "The outages behind the dashboard figures",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First day",
+                        "name": "from",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last day",
+                        "name": "to",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only sites in this region",
+                        "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 100, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.OutageListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/dashboard/overview": {
             "get": {
                 "description": "Availability pools active sites by eligible minutes over the period. A site is available by default: time nobody reported as an outage counts as available, shown as assumed_available_minutes and never as confirmed (confirmed_served_share_pct counts only reported time). days_without_report and site_days_without_report say how many days nobody reported. A site set to unreported_time \"unknown\" keeps the stricter reading, with no figure for unreported time. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.",
@@ -979,6 +1045,12 @@
                         "type": "string",
                         "description": "Only sites in this region",
                         "name": "region",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "day (default), week (Monday to Sunday) or month: the width of each point, pooled by eligible minutes",
+                        "name": "grain",
                         "in": "query"
                     }
                 ],
@@ -1747,6 +1819,41 @@
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/outages": {
+            "get": {
+                "description": "Links the incident to the outage the approved daily reports show between its start and its restoration (or now, while it is open), each minute counted once. Nothing is added to the daily figures. An \"Airtel\" user sees this only for a published incident.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "incidents"
+                ],
+                "summary": "The reported outage during an incident",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentOutagesResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -4146,6 +4253,58 @@
                 }
             }
         },
+        "dto.IncidentOutageDTO": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "minutes": {
+                    "description": "Minutes is the part of it inside the incident's window.",
+                    "type": "integer"
+                },
+                "report_date": {
+                    "type": "string"
+                },
+                "report_id": {
+                    "type": "string"
+                },
+                "report_revision": {
+                    "type": "integer"
+                },
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IncidentOutagesResponse": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string"
+                },
+                "incident_id": {
+                    "type": "string"
+                },
+                "open": {
+                    "description": "Open: the incident is not restored yet, so the window runs to now.",
+                    "type": "boolean"
+                },
+                "outages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IncidentOutageDTO"
+                    }
+                },
+                "to": {
+                    "type": "string"
+                },
+                "total_minutes": {
+                    "description": "TotalMinutes is the outage inside the window, each minute counted once.",
+                    "type": "integer"
+                }
+            }
+        },
         "dto.IncidentSummaryResponse": {
             "type": "object",
             "properties": {
@@ -4478,6 +4637,85 @@
                     "type": "integer"
                 },
                 "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.OutageItemDTO": {
+            "type": "object",
+            "properties": {
+                "airtel_code": {
+                    "type": "string"
+                },
+                "coloplus_code": {
+                    "type": "string"
+                },
+                "end": {
+                    "type": "string"
+                },
+                "minutes": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "description": "Reason is why the site was unavailable; sent to Coloplus staff only.",
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "report_date": {
+                    "type": "string"
+                },
+                "report_id": {
+                    "description": "The approved report it came from, so the figure can be traced.",
+                    "type": "string"
+                },
+                "report_revision": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.OutageListResponse": {
+            "type": "object",
+            "properties": {
+                "from": {
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "outages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.OutageItemDTO"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_minutes": {
+                    "description": "TotalMinutes and Total cover every outage in the period, not just this page.",
                     "type": "integer"
                 }
             }
@@ -5498,6 +5736,13 @@
                 "served_minutes": {
                     "type": "integer"
                 },
+                "source_minutes": {
+                    "description": "SourceMinutes is how long each power source was reported serving the site\n(grid, generator, battery, ...), each counted once. Sources can overlap,\nso they need not add up to served_minutes. Absent when none was reported.",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
                 "unknown_minutes": {
                     "type": "integer"
                 }
@@ -5751,16 +5996,34 @@
             "type": "object",
             "properties": {
                 "active_sites": {
+                    "description": "SitesReported had an approved report on at least one day of the bucket.",
                     "type": "integer"
                 },
                 "date": {
+                    "description": "Date is the first day of the bucket: the day, the Monday of the week, or\nthe first of the month. From and To are the days of it inside the\nrequested period, so a partial first or last bucket is plain.",
                     "type": "string"
+                },
+                "days": {
+                    "type": "integer"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "site_days": {
+                    "description": "SiteDays are active sites times days; SiteDaysReported how many of them\nhave an approved report.",
+                    "type": "integer"
+                },
+                "site_days_reported": {
+                    "type": "integer"
                 },
                 "sites_reported": {
                     "type": "integer"
                 },
                 "summary": {
                     "$ref": "#/definitions/dto.SummaryDTO"
+                },
+                "to": {
+                    "type": "string"
                 }
             }
         },
@@ -5776,6 +6039,11 @@
                 },
                 "generated_at": {
                     "type": "string"
+                },
+                "grain": {
+                    "description": "Grain is day, week or month: the width of each point.",
+                    "type": "string",
+                    "example": "week"
                 },
                 "points": {
                     "type": "array",

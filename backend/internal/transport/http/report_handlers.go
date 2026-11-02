@@ -364,6 +364,7 @@ func (a *api) mySites(c *gin.Context) {
 //	@Param			from	query		string	true	"First day"
 //	@Param			to		query		string	true	"Last day (not in the future); at most 92 days"
 //	@Param			region	query		string	false	"Only sites in this region"
+//	@Param			grain	query		string	false	"day (default), week (Monday to Sunday) or month: the width of each point, pooled by eligible minutes"
 //	@Success		200		{object}	dto.TrendResponse
 //	@Failure		400		{object}	dto.ErrorResponse
 //	@Router			/api/v1/dashboard/trend [get]
@@ -373,7 +374,12 @@ func (a *api) trend(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	t, err := a.dashboard.Trend(c.Request.Context(), actorFrom(c), p)
+	grain, err := services.ParseGrain(c.Query("grain"))
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	t, err := a.dashboard.Trend(c.Request.Context(), actorFrom(c), p, grain)
 	if err != nil {
 		a.fail(c, err)
 		return

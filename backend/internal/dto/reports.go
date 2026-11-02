@@ -121,9 +121,13 @@ type SummaryDTO struct {
 	// reported otherwise (a site is available by default). It is part of
 	// reported_availability_pct but never of confirmed_served_share_pct, so the
 	// confirmed and the assumed parts can always be told apart.
-	AssumedAvailableMinutes int      `json:"assumed_available_minutes"`
-	ConfirmedServedSharePct *float64 `json:"confirmed_served_share_pct"`
-	Provisional             bool     `json:"provisional"`
+	AssumedAvailableMinutes int `json:"assumed_available_minutes"`
+	// SourceMinutes is how long each power source was reported serving the site
+	// (grid, generator, battery, ...), each counted once. Sources can overlap,
+	// so they need not add up to served_minutes. Absent when none was reported.
+	SourceMinutes           map[string]int `json:"source_minutes,omitempty"`
+	ConfirmedServedSharePct *float64       `json:"confirmed_served_share_pct"`
+	Provisional             bool           `json:"provisional"`
 }
 
 // CalculationDTO powers the "How calculated" panel.
@@ -235,6 +239,8 @@ type SiteRowDTO struct {
 
 // TrendResponse is the portfolio day by day.
 type TrendResponse struct {
+	// Grain is day, week or month: the width of each point.
+	Grain       string       `json:"grain" example:"week"`
 	From        string       `json:"from"`
 	To          string       `json:"to"`
 	Region      string       `json:"region"`
@@ -248,10 +254,21 @@ type TrendResponse struct {
 // TrendPoint is the active portfolio on one reporting day. Its percentages are
 // null when nothing was reported, so a chart shows a gap, not a line.
 type TrendPoint struct {
-	Date          string     `json:"date"`
-	ActiveSites   int        `json:"active_sites"`
-	SitesReported int        `json:"sites_reported"`
-	Summary       SummaryDTO `json:"summary"`
+	// Date is the first day of the bucket: the day, the Monday of the week, or
+	// the first of the month. From and To are the days of it inside the
+	// requested period, so a partial first or last bucket is plain.
+	Date string `json:"date"`
+	From string `json:"from"`
+	To   string `json:"to"`
+	Days int    `json:"days"`
+	// SitesReported had an approved report on at least one day of the bucket.
+	ActiveSites   int `json:"active_sites"`
+	SitesReported int `json:"sites_reported"`
+	// SiteDays are active sites times days; SiteDaysReported how many of them
+	// have an approved report.
+	SiteDays         int        `json:"site_days"`
+	SiteDaysReported int        `json:"site_days_reported"`
+	Summary          SummaryDTO `json:"summary"`
 }
 
 // DayBarDTO is one day of the reporter's "my sites" trailing-days strip.
