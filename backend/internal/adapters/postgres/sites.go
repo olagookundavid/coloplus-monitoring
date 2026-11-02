@@ -104,6 +104,15 @@ func (r *SiteRepository) List(ctx context.Context, f ports.SiteFilter) ([]domain
 	if f.Status != "" {
 		add("status = ?", string(f.Status))
 	}
+	if f.Source != "" {
+		add("? = ANY(power_sources)", string(f.Source))
+	}
+	if f.AcceptanceStage != "" {
+		add("EXISTS (SELECT 1 FROM acceptances a WHERE a.site_id = sites.id AND a.stage = ?)", string(f.AcceptanceStage))
+	}
+	if f.AssignedTo != "" {
+		add("EXISTS (SELECT 1 FROM user_sites us WHERE us.site_id = sites.id AND us.user_id = ?::uuid)", f.AssignedTo)
+	}
 	clause := ""
 	if len(where) > 0 {
 		clause = " WHERE " + strings.Join(where, " AND ")

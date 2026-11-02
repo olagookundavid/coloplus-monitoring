@@ -136,8 +136,14 @@ type SiteFilter struct {
 	State    string
 	Region   string
 	Status   domain.SiteStatus
-	Limit    int
-	Offset   int
+	// Source keeps sites with that power source installed; AcceptanceStage
+	// those whose acceptance is at that stage; AssignedTo those a given
+	// person is assigned to.
+	Source          domain.PowerSource
+	AcceptanceStage domain.AcceptanceStage
+	AssignedTo      string
+	Limit           int
+	Offset          int
 }
 
 type SiteRepository interface {

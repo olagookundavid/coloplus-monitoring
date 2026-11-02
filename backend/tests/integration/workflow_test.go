@@ -469,6 +469,20 @@ func TestSites_ScopeSearchAndDuplicates(t *testing.T) {
 	w.expect(w.call("GET", "/api/v1/sites/"+other, nil, w.reporter), 404)
 	w.expect(w.call("GET", "/api/v1/sites/not-a-uuid", nil, w.reporter), 404)
 
+	// Directory filters narrow the list; who is assigned where stays Coloplus's own.
+	if got := w.expect(w.call("GET", "/api/v1/sites?source=solar", nil, w.admin), 200).list("sites"); len(got) != 0 {
+		for _, g := range got {
+			if g.(map[string]any)["id"] == w.site {
+				t.Fatalf("a grid and generator site matched the solar filter")
+			}
+		}
+	}
+	if got := w.expect(w.call("GET", "/api/v1/sites?source=grid&assigned_to="+w.reporterID, nil, w.supervisor), 200).list("sites"); len(got) != 1 {
+		t.Fatalf("the reporter's one site should match, got %d", len(got))
+	}
+	w.expect(w.call("GET", "/api/v1/sites?source=wind", nil, w.admin), 400)
+	w.expect(w.call("GET", "/api/v1/sites?assigned_to="+w.reporterID, nil, w.airtel), 403)
+
 	// Only administrators write to the register.
 	w.expect(w.call("POST", "/api/v1/sites", map[string]any{"airtel_code": "X"}, w.reporter), 403)
 	w.expect(w.call("PUT", "/api/v1/sites/"+w.site, map[string]any{"airtel_code": "X"}, w.supervisor), 403)

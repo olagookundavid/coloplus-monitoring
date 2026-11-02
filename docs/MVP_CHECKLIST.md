@@ -41,7 +41,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Site master record: immutable id, Airtel and Coloplus codes (duplicates refused), name, address, region and state, type, installed power sources, service window, freshness threshold, status (pending acceptance, active, suspended), commissioning date, coordinates
 - [x] Site directory with search by either code and name, filters on state, region, status
 - [ ] Asset capacities, reporting cadence, load profile, formula profile, effective dates on the site record. **partial**
-- [ ] Directory filters on source, data quality, acceptance state, assigned owner. **partial**
+- [x] Directory filters on power source, acceptance stage and assigned person (staff only)
+- [ ] Directory filter on data quality: no agreed definition yet
 
 ## 4. Daily reporting and approval (PRD 6, 9)
 
@@ -56,7 +57,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] CSV/XLSX import: preview, row errors, duplicate detection, explicit commit, batch id and idempotency key. **new dependency** (an XLSX reader)
 - [ ] Source hours, maintenance and open-issue fields on the daily summary. **partial**
 - [ ] Load, generator, fuel and tank inputs (section 6 tables)
-- [ ] Controlled reopening of a closed reporting period
+- [ ] Controlled reopening of a closed reporting period. There is no "closed period" yet: an approved day is changed only by a linked correction. **needs input**: does a month close, and who may reopen it?
 - [ ] Provisional view of unapproved entries (only if Airtel and Coloplus jointly enable it). **needs input**
 
 ## 5. Calculations (PRD 7, 8)
@@ -77,7 +78,8 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] An overdue or missing entry never shows as current or available (AT03)
 - [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
 - [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 043)
-- [ ] Data-quality indicator and stale-submission count on the dashboard
+- [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
+- [ ] Data-quality indicator: needs a definition of "quality" from Coloplus and Airtel. **needs input**
 - [ ] Click-through from a card to its supporting sites and intervals
 
 ## 7. Incidents and actions (PRD 10)

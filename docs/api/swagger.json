@@ -1964,6 +1964,24 @@
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Installed power source: grid, generator, battery, solar or building_supply",
+                        "name": "source",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "requested, built, ready_for_inspection, inspected, accepted, rejected or on_hold",
+                        "name": "acceptance_stage",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "User id; Coloplus staff only",
+                        "name": "assigned_to",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page size (default 50, max 200)",
                         "name": "limit",

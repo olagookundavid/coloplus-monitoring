@@ -55,6 +55,9 @@ func (a *api) createSite(c *gin.Context) {
 //	@Param		state	query		string	false	"State"
 //	@Param		region	query		string	false	"Region"
 //	@Param		status	query		string	false	"pending_acceptance, active or suspended"
+//	@Param		source	query		string	false	"Installed power source: grid, generator, battery, solar or building_supply"
+//	@Param		acceptance_stage	query	string	false	"requested, built, ready_for_inspection, inspected, accepted, rejected or on_hold"
+//	@Param		assigned_to	query		string	false	"User id; Coloplus staff only"
 //	@Param		limit	query		int		false	"Page size (default 50, max 200)"
 //	@Param		offset	query		int		false	"Offset"
 //	@Success	200		{object}	dto.SiteListResponse
@@ -62,7 +65,9 @@ func (a *api) createSite(c *gin.Context) {
 func (a *api) listSites(c *gin.Context) {
 	in := services.ListSitesInput{
 		Query: c.Query("q"), State: c.Query("state"), Region: c.Query("region"),
-		Status: domain.SiteStatus(c.Query("status")), Limit: intQuery(c, "limit"), Offset: intQuery(c, "offset"),
+		Status: domain.SiteStatus(c.Query("status")), Source: domain.PowerSource(c.Query("source")),
+		AcceptanceStage: domain.AcceptanceStage(c.Query("acceptance_stage")), AssignedTo: c.Query("assigned_to"),
+		Limit: intQuery(c, "limit"), Offset: intQuery(c, "offset"),
 	}
 	sites, total, err := a.sites.List(c.Request.Context(), actorFrom(c), in)
 	if err != nil {

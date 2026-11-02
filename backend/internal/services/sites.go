@@ -73,6 +73,9 @@ func (s *SiteService) Get(ctx context.Context, actor domain.Actor, id string) (d
 type ListSitesInput struct {
 	Query, State, Region string
 	Status               domain.SiteStatus
+	Source               domain.PowerSource
+	AcceptanceStage      domain.AcceptanceStage
+	AssignedTo           string
 	Limit, Offset        int
 }
 
@@ -83,10 +86,22 @@ func (s *SiteService) List(ctx context.Context, actor domain.Actor, in ListSites
 	if in.Status != "" && !domain.ValidSiteStatus(in.Status) {
 		return nil, 0, invalid("%q is not a known site status", in.Status)
 	}
+	if in.Source != "" && !domain.ValidPowerSource(in.Source) {
+		return nil, 0, invalid("%q is not a known power source", in.Source)
+	}
+	if in.AcceptanceStage != "" && !domain.ValidAcceptanceStage(in.AcceptanceStage) {
+		return nil, 0, invalid("%q is not a known acceptance stage", in.AcceptanceStage)
+	}
+	// Who is assigned to which site is Coloplus's own information; Airtel
+	// cannot use it to look people up.
+	if in.AssignedTo != "" && actor.Can(domain.PermPublishedRead) {
+		return nil, 0, apperrors.ErrForbidden
+	}
 	limit, offset := Page(in.Limit, in.Offset)
 	return s.sites.List(ctx, ports.SiteFilter{
 		AllSites: actor.AllSites, SiteIDs: actor.SiteIDList(),
 		Query: in.Query, State: in.State, Region: in.Region, Status: in.Status,
+		Source: in.Source, AcceptanceStage: in.AcceptanceStage, AssignedTo: in.AssignedTo,
 		Limit: limit, Offset: offset,
 	})
 }
