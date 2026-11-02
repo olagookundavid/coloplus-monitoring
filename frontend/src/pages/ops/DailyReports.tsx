@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader } from '../../components/dashboard'
+import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
 import {
   AlertBanner,
   Button,
@@ -156,7 +157,10 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
               </p>
               <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-text">
                 {generatorHours.trim() ? (
-                  <CheckCircleIcon className="h-4 w-4 shrink-0 text-primary-600" aria-hidden="true" />
+                  <CheckCircleIcon
+                    className="h-4 w-4 shrink-0 text-primary-600"
+                    aria-hidden="true"
+                  />
                 ) : (
                   <ExclamationTriangleIcon
                     className="h-4 w-4 shrink-0 text-warning-700"
@@ -218,9 +222,7 @@ export function DailyReports() {
           </h2>
           <ul className="flex flex-col gap-2">
             {mySitesQuery.isLoading ? (
-              <li className="rounded-lg border border-border bg-surface p-4 text-center">
-                <Spinner className="mx-auto h-5 w-5" />
-              </li>
+              <SkeletonListItems count={5} />
             ) : sites.length === 0 ? (
               <li className="rounded-lg border border-border bg-surface p-4 text-sm text-text-muted">
                 No sites are assigned to you yet.
@@ -257,15 +259,17 @@ export function DailyReports() {
 
         <div className="min-w-0 lg:col-span-3">
           {mySitesQuery.isLoading ? (
-            <div className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-surface p-8">
-              <Spinner className="h-6 w-6" />
-            </div>
+            <SkeletonDetailPane />
           ) : !selectedSite ? (
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-muted">
               No sites are assigned to you yet.
             </div>
           ) : (
-            <DailyReportDetailPane key={selectedSite.siteId} site={selectedSite} reportDate={today} />
+            <DailyReportDetailPane
+              key={selectedSite.siteId}
+              site={selectedSite}
+              reportDate={today}
+            />
           )}
         </div>
       </div>

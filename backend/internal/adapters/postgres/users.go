@@ -159,6 +159,33 @@ func (r *UserRepository) SiteIDsForUser(ctx context.Context, userID string) ([]s
 	return ids, rows.Err()
 }
 
+// SiteIDsForUsers batch-loads every given user's site assignments in one
+// query, keyed by user id. Users with no assignments are simply absent from
+// the map -- callers index it, never iterate it, so there is nothing to
+// zero-fill.
+func (r *UserRepository) SiteIDsForUsers(ctx context.Context, userIDs []string) (map[string][]string, error) {
+	out := map[string][]string{}
+	if len(userIDs) == 0 {
+		return out, nil
+	}
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT user_id::text, site_id::text FROM user_sites WHERE user_id = ANY($1::uuid[]) ORDER BY user_id, site_id`,
+		nonNil(userIDs))
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var userID, siteID string
+		if err := rows.Scan(&userID, &siteID); err != nil {
+			return nil, fmt.Errorf("scanning user site assignment: %w", err)
+		}
+		out[userID] = append(out[userID], siteID)
+	}
+	return out, rows.Err()
+}
+
 // SetUserSites replaces a user's assignments in one statement pair. Call it
 // inside a transaction so a failure leaves the old assignments intact.
 func (r *UserRepository) SetUserSites(ctx context.Context, userID string, siteIDs []string) error {

@@ -49,7 +49,9 @@ export function CorrectionListCard({ item, site, selected, onSelect }: Correctio
       type="button"
       onClick={onSelect}
       className={`w-full min-w-0 rounded-lg border p-4 text-left transition-colors ${
-        selected ? 'border-primary bg-primary-soft' : 'border-border bg-surface hover:bg-surface-subtle'
+        selected
+          ? 'border-primary bg-primary-soft'
+          : 'border-border bg-surface hover:bg-surface-subtle'
       }`}
     >
       <div className="flex items-center justify-between gap-2">

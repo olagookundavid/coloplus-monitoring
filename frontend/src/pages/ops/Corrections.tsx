@@ -8,14 +8,24 @@ import {
   DashboardPageHeader,
   RequestCorrectionModal,
 } from '../../components/dashboard'
-import type { PendingCorrectionRequest, RequestCorrectionModalInitial } from '../../components/dashboard'
-import { Button, ConfirmDialog, ConfirmSummary, Spinner, Tabs, type TabItem } from '../../components/ui'
+import type {
+  PendingCorrectionRequest,
+  RequestCorrectionModalInitial,
+} from '../../components/dashboard'
+import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
+import { Button, ConfirmDialog, ConfirmSummary, Tabs, type TabItem } from '../../components/ui'
 import {
   useCorrections,
   useRequestIncidentCorrectionMutation,
   useRequestReportCorrectionMutation,
 } from '../../hooks'
-import type { CorrectionListItem, CorrectionTab, DailyReport, IncidentCorrection, SiteReportRow } from '../../types'
+import type {
+  CorrectionListItem,
+  CorrectionTab,
+  DailyReport,
+  IncidentCorrection,
+  SiteReportRow,
+} from '../../types'
 import { correctionTabInfo, toast } from '../../utils'
 
 interface PanelTarget {
@@ -31,7 +41,8 @@ export function Corrections() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [panelTarget, setPanelTarget] = useState<PanelTarget | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-  const [requestAgainInitial, setRequestAgainInitial] = useState<RequestCorrectionModalInitial | null>(null)
+  const [requestAgainInitial, setRequestAgainInitial] =
+    useState<RequestCorrectionModalInitial | null>(null)
   const [pendingRequest, setPendingRequest] = useState<PendingCorrectionRequest | null>(null)
 
   const reportCorrectionMutation = useRequestReportCorrectionMutation()
@@ -49,8 +60,14 @@ export function Corrections() {
     visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0] ?? null
 
   const tabItems: TabItem<CorrectionTab>[] = [
-    { value: 'needsAction', label: `${correctionTabInfo('needsAction').label} ${counts.needsAction}` },
-    { value: 'awaitingReview', label: `${correctionTabInfo('awaitingReview').label} ${counts.awaitingReview}` },
+    {
+      value: 'needsAction',
+      label: `${correctionTabInfo('needsAction').label} ${counts.needsAction}`,
+    },
+    {
+      value: 'awaitingReview',
+      label: `${correctionTabInfo('awaitingReview').label} ${counts.awaitingReview}`,
+    },
     { value: 'approved', label: `${correctionTabInfo('approved').label} ${counts.approved}` },
   ]
 
@@ -67,7 +84,11 @@ export function Corrections() {
   }
 
   function openRequestAgain(correction: IncidentCorrection) {
-    setRequestAgainInitial({ incidentId: correction.incidentId, siteId: correction.siteId, field: correction.field })
+    setRequestAgainInitial({
+      incidentId: correction.incidentId,
+      siteId: correction.siteId,
+      field: correction.field,
+    })
     setCreateOpen(true)
   }
 
@@ -119,9 +140,7 @@ export function Corrections() {
         <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
           <ul className="flex flex-col gap-2">
             {isLoading ? (
-              <li className="rounded-lg border border-border bg-surface p-4 text-center">
-                <Spinner className="mx-auto h-5 w-5" />
-              </li>
+              <SkeletonListItems count={5} />
             ) : visibleItems.length === 0 ? (
               <li className="rounded-lg border border-border bg-surface p-4 text-sm text-text-muted">
                 {tab === 'needsAction'
@@ -145,9 +164,7 @@ export function Corrections() {
 
         <div className="min-w-0 lg:col-span-3">
           {isLoading ? (
-            <div className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-surface p-8">
-              <Spinner className="h-6 w-6" />
-            </div>
+            <SkeletonDetailPane />
           ) : !selectedItem ? (
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-muted">
               Select a record to see its details.

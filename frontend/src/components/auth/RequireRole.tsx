@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
 import { usePermissions } from '../../hooks'
-import { Spinner } from '../ui'
+import { MainLoader } from '../ui'
 
 export interface RequireRoleProps {
   /** A real backend permission string (from GET /auth/me's permissions[]),
@@ -22,7 +22,7 @@ export function RequireRole({ permission, children }: RequireRoleProps) {
   const { can } = usePermissions()
 
   if (status === 'loading') {
-    return <Spinner className="mx-auto mt-20 h-6 w-6" />
+    return <MainLoader />
   }
 
   if (status === 'unauthenticated' || !can(permission)) {

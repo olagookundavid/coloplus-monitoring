@@ -3,13 +3,13 @@ import { Navigate } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
-import { Spinner } from '../ui'
+import { MainLoader } from '../ui'
 
 export function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { status, user } = useAuth()
 
   if (status === 'loading') {
-    return <Spinner className="mx-auto mt-20 h-6 w-6" />
+    return <MainLoader />
   }
 
   if (status === 'authenticated') {

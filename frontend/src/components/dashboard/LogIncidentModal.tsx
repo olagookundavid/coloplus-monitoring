@@ -144,7 +144,11 @@ export function LogIncidentModal({ open, onClose }: LogIncidentModalProps) {
         )}
 
         <Field label="Site" htmlFor="incident-site">
-          <Select id="incident-site" value={siteId} onChange={(event) => setSiteId(event.target.value)}>
+          <Select
+            id="incident-site"
+            value={siteId}
+            onChange={(event) => setSiteId(event.target.value)}
+          >
             <option value="">Select a site</option>
             {sites.map((site) => (
               <option key={site.siteId} value={site.siteId}>
@@ -215,7 +219,11 @@ export function LogIncidentModal({ open, onClose }: LogIncidentModalProps) {
           />
         </Field>
 
-        <Field label="Started at" htmlFor="incident-started" hint="When the fault began, as best you know.">
+        <Field
+          label="Started at"
+          htmlFor="incident-started"
+          hint="When the fault began, as best you know."
+        >
           <Input
             id="incident-started"
             type="datetime-local"

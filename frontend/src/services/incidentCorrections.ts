@@ -49,9 +49,12 @@ function mapCorrection(dto: IncidentCorrectionDTO): IncidentCorrection {
 // fetchReporterIncidents, a reporter's own correction-request volume is small.
 export async function fetchIncidentCorrections(): Promise<IncidentCorrection[]> {
   try {
-    const { data } = await getApi().get<IncidentCorrectionListResponseDTO>('/incident-corrections', {
-      params: { limit: 200 },
-    })
+    const { data } = await getApi().get<IncidentCorrectionListResponseDTO>(
+      '/incident-corrections',
+      {
+        params: { limit: 200 },
+      }
+    )
     return (data.corrections ?? []).map(mapCorrection)
   } catch (error) {
     throw mapAxiosError(error, 'Could not load corrections.')
@@ -65,11 +68,14 @@ export async function requestIncidentCorrection(
   reason: string
 ): Promise<IncidentCorrection> {
   try {
-    const { data } = await getApi().post<IncidentCorrectionDTO>(`/incidents/${incidentId}/corrections`, {
-      field,
-      corrected_value: correctedValue,
-      reason,
-    })
+    const { data } = await getApi().post<IncidentCorrectionDTO>(
+      `/incidents/${incidentId}/corrections`,
+      {
+        field,
+        corrected_value: correctedValue,
+        reason,
+      }
+    )
     return mapCorrection(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not send this correction request.')

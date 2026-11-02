@@ -6,12 +6,12 @@ import {
 } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader } from '../../components/dashboard'
+import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
 import {
   AlertBanner,
   Button,
   ConfirmDialog,
   ConfirmSummary,
-  Spinner,
   StatusBadge,
   Tabs,
   Textarea,
@@ -182,9 +182,7 @@ export function Approvals() {
 
           <ul className="flex flex-col gap-2">
             {activeQuery.isLoading ? (
-              <li className="rounded-lg border border-border bg-surface p-4 text-center">
-                <Spinner className="mx-auto h-5 w-5" />
-              </li>
+              <SkeletonListItems count={5} />
             ) : filteredReports.length === 0 ? (
               <li className="rounded-lg border border-border bg-surface p-4 text-sm text-text-muted">
                 Nothing here.
@@ -235,9 +233,7 @@ export function Approvals() {
               Select a request to review it.
             </div>
           ) : detailQuery.isLoading || !detail ? (
-            <div className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-surface p-8">
-              <Spinner className="h-6 w-6" />
-            </div>
+            <SkeletonDetailPane />
           ) : (
             <DetailCard
               detail={detail}

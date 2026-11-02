@@ -14,6 +14,7 @@ import {
   DataRecencyIndicator,
   StatCard,
 } from '../../components/dashboard'
+import { SkeletonStatCards } from '../../components/skeletons'
 import {
   AlertBanner,
   Button,
@@ -172,32 +173,36 @@ export function ReporterOverview() {
 
       <DataRecencyIndicator label="Updated" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Today's progress"
-          value={`${reportedToday} of ${total}`}
-          icon={CheckCircleIcon}
-          caption={cutoffHasPassed() ? "Today's 18:00 cut-off has passed" : 'Due by 18:00 today'}
-        />
-        <StatCard
-          label="Still to report"
-          value={pendingCount + draftCount}
-          icon={ClockIcon}
-          caption={`${draftCount} saved as draft`}
-        />
-        <StatCard
-          label="Returned to fix"
-          value={returnedSites.length}
-          icon={ArrowUturnLeftIcon}
-          caption={returnedSites.length > 0 ? 'Needs your attention' : 'All clear'}
-        />
-        <StatCard
-          label="Outages this week"
-          value={overviewQuery.data?.outagesThisWeek ?? '—'}
-          icon={BoltIcon}
-          caption="Trailing 7 days"
-        />
-      </div>
+      {overviewQuery.isLoading ? (
+        <SkeletonStatCards count={4} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Today's progress"
+            value={`${reportedToday} of ${total}`}
+            icon={CheckCircleIcon}
+            caption={cutoffHasPassed() ? "Today's 18:00 cut-off has passed" : 'Due by 18:00 today'}
+          />
+          <StatCard
+            label="Still to report"
+            value={pendingCount + draftCount}
+            icon={ClockIcon}
+            caption={`${draftCount} saved as draft`}
+          />
+          <StatCard
+            label="Returned to fix"
+            value={returnedSites.length}
+            icon={ArrowUturnLeftIcon}
+            caption={returnedSites.length > 0 ? 'Needs your attention' : 'All clear'}
+          />
+          <StatCard
+            label="Outages this week"
+            value={overviewQuery.data?.outagesThisWeek ?? '—'}
+            icon={BoltIcon}
+            caption="Trailing 7 days"
+          />
+        </div>
+      )}
 
       {returnedSites.map((site) => (
         <AlertBanner

@@ -108,6 +108,10 @@ type UserRepository interface {
 
 	PermissionsForRole(ctx context.Context, role domain.Role) ([]domain.Permission, error)
 	SiteIDsForUser(ctx context.Context, userID string) ([]string, error)
+	// SiteIDsForUsers batch-loads site assignments for every id given, keyed
+	// by user id -- the List endpoint's answer to the N+1 that fetching each
+	// user's sites one at a time would be.
+	SiteIDsForUsers(ctx context.Context, userIDs []string) (map[string][]string, error)
 	SetUserSites(ctx context.Context, userID string, siteIDs []string) error
 }
 

@@ -29,10 +29,7 @@ export { useRejectReportMutation } from './useRejectReportMutation'
 export { useDashboardOverview, DASHBOARD_OVERVIEW_QUERY_KEY } from './useDashboardOverview'
 export { useMySites, MY_SITES_QUERY_KEY } from './useMySites'
 export { useReporterIncidents, REPORTER_INCIDENTS_QUERY_KEY } from './useReporterIncidents'
-export {
-  useReporterIncidentDetail,
-  REPORTER_INCIDENT_QUERY_KEY,
-} from './useReporterIncidentDetail'
+export { useReporterIncidentDetail, REPORTER_INCIDENT_QUERY_KEY } from './useReporterIncidentDetail'
 export { useCreateIncidentMutation } from './useCreateIncidentMutation'
 export { useAddIncidentUpdateMutation } from './useAddIncidentUpdateMutation'
 export { useRestoreIncidentMutation } from './useRestoreIncidentMutation'

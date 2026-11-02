@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircleIcon, ClockIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
+import { SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
 import { ButtonLink, DataTable, StatusBadge, Tabs, type Column } from '../../components/ui'
 import { ROUTES } from '../../constants'
 import {
@@ -147,26 +148,30 @@ export function Overview() {
         actions={<ButtonLink to={ROUTES.OPS_USERS}>Manage users</ButtonLink>}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Active users"
-          value={activeUsers}
-          icon={UserGroupIcon}
-          caption={`${invitedUsers} invitation${invitedUsers === 1 ? '' : 's'} pending`}
-        />
-        <StatCard
-          label="Sites assigned"
-          value={`${sitesWithReporter} / ${sites.length}`}
-          icon={CheckCircleIcon}
-          caption={`${sites.length - sitesWithReporter} need a reporter`}
-        />
-        <StatCard
-          label="Approvals waiting"
-          value={approvals.length}
-          icon={ClockIcon}
-          caption={`${oldApprovals} older than 48 hours`}
-        />
-      </div>
+      {usersQuery.isLoading || sitesQuery.isLoading || approvalsQuery.isLoading ? (
+        <SkeletonStatCards count={3} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Active users"
+            value={activeUsers}
+            icon={UserGroupIcon}
+            caption={`${invitedUsers} invitation${invitedUsers === 1 ? '' : 's'} pending`}
+          />
+          <StatCard
+            label="Sites assigned"
+            value={`${sitesWithReporter} / ${sites.length}`}
+            icon={CheckCircleIcon}
+            caption={`${sites.length - sitesWithReporter} need a reporter`}
+          />
+          <StatCard
+            label="Approvals waiting"
+            value={approvals.length}
+            icon={ClockIcon}
+            caption={`${oldApprovals} older than 48 hours`}
+          />
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="min-w-0 lg:col-span-2">
@@ -195,6 +200,7 @@ export function Overview() {
             columns={approvalColumns}
             getRowId={(a) => a.id}
             loading={approvalsQuery.isLoading}
+            skeletonRows={3}
             searchable={false}
             paginated={false}
             emptyMessage="Nothing waiting on approval."
@@ -209,7 +215,11 @@ export function Overview() {
                 Assign sites
               </ButtonLink>
             </div>
-            {unassignedSites.length === 0 ? (
+            {sitesQuery.isLoading || usersQuery.isLoading ? (
+              <ul className="flex flex-col gap-3">
+                <SkeletonListItems count={3} withBadge={false} />
+              </ul>
+            ) : unassignedSites.length === 0 ? (
               <p className="text-sm text-text-muted">Every site has a field officer.</p>
             ) : (
               <ul className="flex flex-col gap-3">
@@ -237,7 +247,11 @@ export function Overview() {
 
           <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
             <h2 className="mb-3 text-base font-semibold text-text">Recent audit activity</h2>
-            {(auditQuery.data?.length ?? 0) === 0 ? (
+            {auditQuery.isLoading ? (
+              <ul className="flex flex-col gap-3">
+                <SkeletonListItems count={3} withBadge={false} />
+              </ul>
+            ) : (auditQuery.data?.length ?? 0) === 0 ? (
               <p className="text-sm text-text-muted">No recent activity.</p>
             ) : (
               <ul className="flex flex-col gap-3">
@@ -268,6 +282,7 @@ export function Overview() {
           columns={previewUserColumns}
           getRowId={(u) => u.id}
           loading={usersQuery.isLoading}
+          skeletonRows={6}
           searchable={false}
           paginated={false}
           emptyMessage="No users yet."

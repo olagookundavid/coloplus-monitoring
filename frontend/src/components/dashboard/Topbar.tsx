@@ -24,7 +24,7 @@ export function Topbar({ nav }: TopbarProps) {
         {/* The sidebar already carries the brand mark at lg+; below that it's
             hidden entirely (frontend/CLAUDE.md §3), so this is the only
             branding a phone-width user ever sees. */}
-        <Logo variant="mark" className="h-7 w-7 shrink-0 lg:hidden" />
+        <Logo variant="mark" tone="black" className="h-7 w-7 shrink-0 lg:hidden" />
         <div className="flex min-w-0 items-center gap-1.5 text-sm text-text-muted">
           <span className="hidden lg:inline">Workspace</span>
           <ChevronRightIcon className="hidden h-3.5 w-3.5 shrink-0 lg:block" aria-hidden="true" />

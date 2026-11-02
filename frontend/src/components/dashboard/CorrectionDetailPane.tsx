@@ -1,4 +1,8 @@
-import { ArrowPathIcon, CheckCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import {
+  ArrowPathIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
+} from '@heroicons/react/24/outline'
 
 import { AlertBanner, Button, FileDropZone, Spinner, StatusBadge } from '../ui'
 import { useReportDetail } from '../../hooks'
@@ -16,7 +20,15 @@ function reviewerName(site: MySiteRow | undefined): string {
   return site?.supervisorName || 'a supervisor'
 }
 
-function DiffRow({ label, before, after }: { label: string; before?: number | string; after: number | string }) {
+function DiffRow({
+  label,
+  before,
+  after,
+}: {
+  label: string
+  before?: number | string
+  after: number | string
+}) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
       <dt className="text-text-muted">{label}</dt>
@@ -106,10 +118,20 @@ function ReportCorrectionBody({
   return (
     <>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">What changed</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          What changed
+        </p>
         <dl className="mt-2 divide-y divide-border rounded-lg border border-border">
-          <DiffRow label="Outage minutes" before={superseded?.summary.outageMinutes} after={summary.outageMinutes} />
-          <DiffRow label="Served minutes" before={superseded?.summary.servedMinutes} after={summary.servedMinutes} />
+          <DiffRow
+            label="Outage minutes"
+            before={superseded?.summary.outageMinutes}
+            after={summary.outageMinutes}
+          />
+          <DiffRow
+            label="Served minutes"
+            before={superseded?.summary.servedMinutes}
+            after={summary.servedMinutes}
+          />
           <DiffRow
             label="Coverage"
             before={formatPct(superseded?.summary.coveragePct)}
@@ -129,15 +151,21 @@ function ReportCorrectionBody({
         <ul className="mt-2 flex flex-col gap-2 text-sm">
           <li>
             <span className="font-medium text-text">Requested by you</span>
-            {report.createdAt && <span className="text-text-muted"> · {formatDateTimeWAT(report.createdAt)}</span>}
+            {report.createdAt && (
+              <span className="text-text-muted"> · {formatDateTimeWAT(report.createdAt)}</span>
+            )}
           </li>
           {report.status !== 'submitted' && report.status !== 'draft' && (
             <li>
-              <span className="font-medium text-text">{report.status === 'approved' ? 'Approved' : 'Returned'}</span>
+              <span className="font-medium text-text">
+                {report.status === 'approved' ? 'Approved' : 'Returned'}
+              </span>
               {report.reviewedAt && (
                 <span className="text-text-muted"> · {formatDateTimeWAT(report.reviewedAt)}</span>
               )}
-              {report.reviewComment && <p className="mt-1 text-text-muted">&ldquo;{report.reviewComment}&rdquo;</p>}
+              {report.reviewComment && (
+                <p className="mt-1 text-text-muted">&ldquo;{report.reviewComment}&rdquo;</p>
+              )}
             </li>
           )}
         </ul>
@@ -173,7 +201,9 @@ function IncidentCorrectionBody({
       )}
 
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Value to correct</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Value to correct
+        </p>
         <dl className="mt-2 divide-y divide-border rounded-lg border border-border">
           <DiffRow
             label={correctionFieldLabel(correction.field)}
@@ -184,7 +214,9 @@ function IncidentCorrectionBody({
       </div>
 
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Reason for the change</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Reason for the change
+        </p>
         <div className="mt-2 rounded-lg border border-border bg-surface-subtle p-3 text-sm text-text">
           {correction.reason}
         </div>
@@ -205,7 +237,9 @@ function IncidentCorrectionBody({
                 {correction.status === 'approved' ? 'Approved' : 'Declined'}
               </span>
               <span className="text-text-muted"> · {formatDateTimeWAT(correction.reviewedAt)}</span>
-              {correction.reviewNote && <p className="mt-1 text-text-muted">&ldquo;{correction.reviewNote}&rdquo;</p>}
+              {correction.reviewNote && (
+                <p className="mt-1 text-text-muted">&ldquo;{correction.reviewNote}&rdquo;</p>
+              )}
             </li>
           )}
         </ul>
@@ -220,7 +254,12 @@ function IncidentCorrectionBody({
   )
 }
 
-export function CorrectionDetailPane({ item, site, onFixReport, onRequestAgain }: CorrectionDetailPaneProps) {
+export function CorrectionDetailPane({
+  item,
+  site,
+  onFixReport,
+  onRequestAgain,
+}: CorrectionDetailPaneProps) {
   const siteLabel = site?.airtelCode ?? item.siteId
 
   return (
@@ -244,7 +283,9 @@ export function CorrectionDetailPane({ item, site, onFixReport, onRequestAgain }
       {item.kind === 'returnedReport' && (
         <ReturnedReportBody item={item} site={site} onFixReport={onFixReport} />
       )}
-      {item.kind === 'reportCorrection' && <ReportCorrectionBody item={item} onFixReport={onFixReport} />}
+      {item.kind === 'reportCorrection' && (
+        <ReportCorrectionBody item={item} onFixReport={onFixReport} />
+      )}
       {item.kind === 'incidentCorrection' && (
         <IncidentCorrectionBody item={item} onRequestAgain={onRequestAgain} />
       )}

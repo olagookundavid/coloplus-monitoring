@@ -61,7 +61,9 @@ export function MySiteCard({ site, onReport, onDetails }: MySiteCardProps) {
             />
           ))}
         </div>
-        <p className="mt-1 text-xs text-text-muted">{reportedDays} of {site.bars.length} days reported</p>
+        <p className="mt-1 text-xs text-text-muted">
+          {reportedDays} of {site.bars.length} days reported
+        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -80,7 +82,11 @@ export function MySiteCard({ site, onReport, onDetails }: MySiteCardProps) {
       <div className="flex gap-2">
         <div className="min-w-0 flex-1">
           <Button variant={mode === 'view' ? 'outline' : 'primary'} fullWidth onClick={onReport}>
-            {mode === 'create' ? 'Report today' : mode === 'edit' ? `${actionLabel} report` : 'View report'}
+            {mode === 'create'
+              ? 'Report today'
+              : mode === 'edit'
+                ? `${actionLabel} report`
+                : 'View report'}
           </Button>
         </div>
         <div className="min-w-0 flex-1">

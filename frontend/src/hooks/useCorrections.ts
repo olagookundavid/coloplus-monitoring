@@ -24,7 +24,11 @@ export function useCorrections() {
   const sitesById = useMemo(() => new Map(sites.map((site) => [site.siteId, site])), [sites])
 
   const items = useMemo(
-    () => buildCorrectionList(reportsQuery.data?.reports ?? NO_REPORTS, correctionsQuery.data ?? NO_CORRECTIONS),
+    () =>
+      buildCorrectionList(
+        reportsQuery.data?.reports ?? NO_REPORTS,
+        correctionsQuery.data ?? NO_CORRECTIONS
+      ),
     [reportsQuery.data, correctionsQuery.data]
   )
 

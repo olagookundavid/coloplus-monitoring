@@ -8,14 +8,17 @@ Standing rules for all code under `frontend/`. Follow them without being asked. 
 
 ## 1. No text icons
 
-Never use emoji, Unicode symbols or text as icons (`✅ 🔍 ⚡ ⭐ ✕ ✓ ← → ▲ ▼ ●`, an `x` or `>` for an icon, `...` as a loading indicator) in JSX, labels, headings, `toast()` or dialog strings. Currency signs, the `—` empty-cell placeholder and punctuation are typography and stay. `—` has one meaning here: *not reported*. Never replace it with a fabricated `0`, a repeated last-known value, or any other inferred number (§11).
+Never use emoji, Unicode symbols or text as icons (`✅ 🔍 ⚡ ⭐ ✕ ✓ ← → ▲ ▼ ●`, an `x` or `>` for an icon, `...` as a loading indicator) in JSX, labels, headings, `toast()` or dialog strings. Currency signs, the `—` empty-cell placeholder and punctuation are typography and stay. `—` has one meaning here: _not reported_. Never replace it with a fabricated `0`, a repeated last-known value, or any other inferred number (§11).
 
 1. **Heroicons** (`@heroicons/react`): `24/outline`, or `24/solid` for filled or active states. Check `node_modules/@heroicons/react/24/outline` before deciding one doesn't exist.
 2. **Custom SVG**, only when no heroicon depicts the exact thing (a site mast, a fuel drop), never a loosely related one. Outline style: `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, `strokeWidth={1.5}`, round caps and joins, sized with `className`. Used in more than one place? Make it a component in `src/components/icons/`.
 
 - Size `w-4 h-4` beside text, `w-5 h-5` in headings and larger controls. Align with `inline-flex items-center gap-1.5`.
 - Decorative icons get `aria-hidden="true"`. Icon-only buttons use `IconButton` (§7), which requires a `label`.
-- Loading: `ArrowPathIcon` with `animate-spin`, or `<Spinner />` (`src/components/ui/`).
+- **Loading** has three tiers — never substitute one for another:
+  - **App boot, auth bootstrap, or first entry into a not-yet-loaded route chunk:** `MainLoader` (`src/components/ui/MainLoader.tsx`) — a fixed, full-screen overlay with a pulsing Coloplus logo. Used only by `RequireAuth`, `PublicOnlyRoute`, `RequireRole`, `RequireMfaSetup` and the `Suspense` fallback around each lazy portal layout in `App.tsx`. Never rendered inside a page.
+  - **A page or section's first data load:** the shared skeleton system (`src/components/skeletons/`) — the base `Skeleton` block plus its composed shapes (`SkeletonStatCards`, `SkeletonListItems`, `SkeletonDetailPane`, `SkeletonCardGrid`, `SkeletonChartRow`, ...). Shape a new one to match the real layout it replaces rather than reusing a near-fit; key it off the same `.isLoading` the page's query already exposes, never a new trigger. `DataTable`'s own `loading` prop already renders shimmering skeleton rows — never additionally wrap a `DataTable` in a page-level table skeleton.
+  - **A small inline wait inside content that's already on screen** (a button mid-submit, a modal's own secondary lookup, a nested per-row detail fetch): `ArrowPathIcon` with `animate-spin`, or `<Spinner />` (`src/components/ui/`) — unchanged.
 
 ## 2. Confirm key writes, and logout
 
@@ -102,12 +105,13 @@ Buttons, form fields and dialogs come from the shared primitives in `src/compone
 - **Tabs:** an underline tab bar. `items` (`value`, `label`, optional `icon`), `value`, `onChange`, `aria-label`.
 - **Input, Textarea, Select:** native controls with the shared look. `invalid` gives an error border.
 - **Modal:** `title`, `subtitle`, `footer` (Cancel first, primary last; stacked on phones), `maxWidth`. Omit `onClose` for a gate that can't be dismissed. A form goes in the body, and its submit button goes in the footer as `form="<id>"`. Render a `ConfirmDialog` outside the Modal, or its backdrop clicks close the Modal.
-- **SidePanel:** a right-anchored slide-over for reading one record's detail (a ticket, a site) without leaving the list — `eyebrow`, `title`, `subtitle` (caller composes the meta row: a location line, status badges), `headerActions` (e.g. a future "Create ticket" next to the close button), `maxWidth`. Shares its focus-trap/Escape/scroll-lock behavior with `Modal` via `dialogBehavior.ts`, so a change to that behavior is made once, not per-dialog. Use `Modal` for a form or a confirmation; use `SidePanel` when the row's own detail page would otherwise be the destination (frontend/CLAUDE.md §4's "clickable to the record's detail page" row convention — the panel *is* that detail page, reachable by a real `getRowHref` link, not `onRowClick`).
+- **SidePanel:** a right-anchored slide-over for reading one record's detail (a ticket, a site) without leaving the list — `eyebrow`, `title`, `subtitle` (caller composes the meta row: a location line, status badges), `headerActions` (e.g. a future "Create ticket" next to the close button), `maxWidth`. Shares its focus-trap/Escape/scroll-lock behavior with `Modal` via `dialogBehavior.ts`, so a change to that behavior is made once, not per-dialog. Use `Modal` for a form or a confirmation; use `SidePanel` when the row's own detail page would otherwise be the destination (frontend/CLAUDE.md §4's "clickable to the record's detail page" row convention — the panel _is_ that detail page, reachable by a real `getRowHref` link, not `onRowClick`).
 - **Pointer cursor:** set globally in `src/index.css` for buttons, selects, checkboxes and radios. Disabled controls show `not-allowed`. Don't add `cursor-pointer` per element.
 - **Corners are round by default,** matching the stakeholder mockup; no page currently needs the sharp-corner exception Showtime reserves for its store. If one ever does, it's a `shape="square"` prop on the primitive, recorded in `docs/DECISIONS.md`, not a page override.
 - **On a dark surface** (a dark modal header, a dark hero): pass `tone="dark"` to any control on it.
 - **Text in controls** is `text-base` on phones and `sm:text-sm` above, because iOS zooms into smaller text.
 - **Brand tokens.** Components reference semantic Tailwind v4 theme tokens (`primary`, `primary-soft`, `warning`, `danger`, `surface`, …), never a raw hex. Tokens are seeded in `src/index.css`'s `@theme` block when the app is scaffolded, provisionally from the stakeholder mockup pending an official brand kit (DECISIONS 039): primary teal ≈ Tailwind `teal-600`/`teal-700` (soft background `teal-50`/`100`), warning = `amber-500`/`100`, danger = `red-600`/`50`, neutrals = `slate`. The Sidebar's "AT" organization avatar is the one place Airtel's own red appears, borrowing the `danger` token's hue for brand identity, not to signal an actual error or warning. When the real brand kit lands, only `@theme` changes; no component touches.
+- **Custom animation.** `--animate-pulse-fade` (`src/index.css`: an `@theme` token plus a bare `@keyframes pulse-fade` block) is this codebase's first hand-authored keyframe — used only by `MainLoader`'s logo. Tailwind's built-in `animate-pulse` stays the default for routine skeleton shimmer; add a new custom keyframe, registered the same way, only for a deliberate branded moment like this one, not for ordinary loading chrome.
 
 ## 8. Types
 
@@ -129,7 +133,7 @@ No `public/sitemap.xml`. Coloplus has no public, evergreen pages — both `pages
 
 ## 11. Data trust and status language
 
-A site's displayed status reflects its most recent *reported* state, never an assumption. An overdue or missing report shows as "Update overdue" or "Awaiting update" — never the last-known "Available," and never silently re-colored green by the passage of time. Status is always text *and* icon or dot alongside color, never color or a bare dot alone. On trend charts, reported and estimated series use visibly distinct line styles (solid vs. dashed, say), never the same style distinguished only by a tooltip. A gap in reporting stays a visible gap on the chart; never interpolate, zero-fill or otherwise paper over a missing interval. This applies to every chart, table cell, card and export — not just the portfolio dashboard.
+A site's displayed status reflects its most recent _reported_ state, never an assumption. An overdue or missing report shows as "Update overdue" or "Awaiting update" — never the last-known "Available," and never silently re-colored green by the passage of time. Status is always text _and_ icon or dot alongside color, never color or a bare dot alone. On trend charts, reported and estimated series use visibly distinct line styles (solid vs. dashed, say), never the same style distinguished only by a tooltip. A gap in reporting stays a visible gap on the chart; never interpolate, zero-fill or otherwise paper over a missing interval. This applies to every chart, table cell, card and export — not just the portfolio dashboard.
 
 ## 12. Provenance and measurement basis
 

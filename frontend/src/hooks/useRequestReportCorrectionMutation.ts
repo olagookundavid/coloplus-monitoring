@@ -24,7 +24,12 @@ export interface RequestReportCorrectionInput {
 export function useRequestReportCorrectionMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ reportId, field, correctedValue, reason }: RequestReportCorrectionInput) => {
+    mutationFn: async ({
+      reportId,
+      field,
+      correctedValue,
+      reason,
+    }: RequestReportCorrectionInput) => {
       const revision = await startReportCorrection(reportId, reason)
       const powerStatus =
         field === 'power_status'

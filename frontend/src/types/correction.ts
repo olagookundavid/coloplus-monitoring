@@ -42,7 +42,13 @@ export type CorrectionTab = 'needsAction' | 'awaitingReview' | 'approved'
 // straight from the real object, same precedent as Approvals.tsx's DetailCard.
 export type CorrectionListItem =
   | { id: string; kind: 'returnedReport'; tab: CorrectionTab; siteId: string; report: DailyReport }
-  | { id: string; kind: 'reportCorrection'; tab: CorrectionTab; siteId: string; report: DailyReport }
+  | {
+      id: string
+      kind: 'reportCorrection'
+      tab: CorrectionTab
+      siteId: string
+      report: DailyReport
+    }
   | {
       id: string
       kind: 'incidentCorrection'

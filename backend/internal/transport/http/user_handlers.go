@@ -55,14 +55,14 @@ func (a *api) createUser(c *gin.Context) {
 //	@Success	200	{object}	dto.UserListResponse
 //	@Router		/api/v1/users [get]
 func (a *api) listUsers(c *gin.Context) {
-	users, err := a.users.List(c.Request.Context(), actorFrom(c))
+	views, err := a.users.List(c.Request.Context(), actorFrom(c))
 	if err != nil {
 		a.fail(c, err)
 		return
 	}
-	out := make([]dto.UserDTO, len(users))
-	for i, u := range users {
-		out[i] = toUserDTO(u)
+	out := make([]dto.UserDetailDTO, len(views))
+	for i, v := range views {
+		out[i] = toUserDetail(v)
 	}
 	c.JSON(http.StatusOK, dto.UserListResponse{Users: out})
 }

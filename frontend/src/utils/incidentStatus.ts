@@ -17,9 +17,11 @@ export type IncidentBucket = 'open' | 'awaitingReview' | 'closed'
 // The real 7-stage lifecycle (domain.IncidentStatus), simplified to the
 // three states a reporter needs to act on: restored/verified both mean "my
 // part is done, a supervisor still needs to verify and close it."
-export function describeIncidentStatus(
-  status: IncidentWorkflowStatus
-): { bucket: IncidentBucket; label: string; tone: StatusTone } {
+export function describeIncidentStatus(status: IncidentWorkflowStatus): {
+  bucket: IncidentBucket
+  label: string
+  tone: StatusTone
+} {
   switch (status) {
     case 'restored':
     case 'verified':

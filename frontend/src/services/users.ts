@@ -13,11 +13,14 @@ interface UserDTO {
   last_login_at?: string
 }
 
+// GET /users and GET /users/:id both return this shape -- the list endpoint
+// batch-loads every row's site assignments in one query server-side, so
+// there's no separate per-user fetch needed to get them.
 interface UserDetailDTO extends UserDTO {
   site_ids: string[]
 }
 
-function mapManagedUser(dto: UserDTO): ManagedUser {
+function mapManagedUserDetail(dto: UserDetailDTO): ManagedUser {
   return {
     id: dto.id,
     email: dto.email,
@@ -27,29 +30,16 @@ function mapManagedUser(dto: UserDTO): ManagedUser {
     invited: dto.invited,
     mfaEnabled: dto.mfa_enabled,
     lastLoginAt: dto.last_login_at,
+    siteIds: dto.site_ids,
   }
-}
-
-function mapManagedUserDetail(dto: UserDetailDTO): ManagedUser {
-  return { ...mapManagedUser(dto), siteIds: dto.site_ids }
 }
 
 export async function fetchUsers(): Promise<ManagedUser[]> {
   try {
-    const { data } = await getApi().get<{ users: UserDTO[] }>('/users')
-    return data.users.map(mapManagedUser)
+    const { data } = await getApi().get<{ users: UserDetailDTO[] }>('/users')
+    return data.users.map(mapManagedUserDetail)
   } catch (error) {
     throw mapAxiosError(error, 'Could not load users.')
-  }
-}
-
-// The list endpoint doesn't return site_ids -- only this per-user call does.
-export async function fetchUser(id: string): Promise<ManagedUser> {
-  try {
-    const { data } = await getApi().get<UserDetailDTO>(`/users/${id}`)
-    return mapManagedUserDetail(data)
-  } catch (error) {
-    throw mapAxiosError(error, 'Could not load that user.')
   }
 }
 
@@ -75,15 +65,6 @@ export async function createUser(request: CreateUserRequest): Promise<ManagedUse
   } catch (error) {
     throw mapAxiosError(error, 'Could not invite that user.')
   }
-}
-
-// GET /users has no site_ids -- this fetches per-user detail for every
-// non-admin user (admin can never hold a site assignment at all; the
-// backend's checkSites rejects it) to get real site counts/ids. Fine at
-// this scale: a handful of Coloplus/Airtel staff, not thousands.
-export async function fetchUsersWithSites(): Promise<ManagedUser[]> {
-  const all = await fetchUsers()
-  return Promise.all(all.map((u) => (u.role === 'admin' ? u : fetchUser(u.id))))
 }
 
 // PATCH /users/:id replaces the whole site_ids list for that user -- there

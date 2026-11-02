@@ -24,13 +24,7 @@ export interface Incident {
 // Mirrors domain.IncidentStatus. "assigned" is reached only via the assign
 // endpoint, not a direct transition.
 export type IncidentWorkflowStatus =
-  | 'reported'
-  | 'acknowledged'
-  | 'assigned'
-  | 'in_progress'
-  | 'restored'
-  | 'verified'
-  | 'closed'
+  'reported' | 'acknowledged' | 'assigned' | 'in_progress' | 'restored' | 'verified' | 'closed'
 
 // Mirrors domain.Severity.
 export type IncidentSeverity = 'minor' | 'major' | 'critical'

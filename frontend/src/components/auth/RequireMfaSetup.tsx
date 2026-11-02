@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
-import { Spinner } from '../ui'
+import { MainLoader } from '../ui'
 
 // Guards /mfa-setup itself: bounces away once enrollment is already done,
 // so the page can't be re-entered and call POST /auth/mfa/setup again —
@@ -13,7 +13,7 @@ export function RequireMfaSetup({ children }: { children: ReactNode }) {
   const { status, mfaSetupRequired } = useAuth()
 
   if (status === 'loading') {
-    return <Spinner className="mx-auto mt-20 h-6 w-6" />
+    return <MainLoader />
   }
 
   if (status === 'unauthenticated') {

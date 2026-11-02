@@ -9,6 +9,7 @@ import {
   MySiteCard,
   SiteProfilePanel,
 } from '../../components/dashboard'
+import { SkeletonCardGrid } from '../../components/skeletons'
 import { Input, Tabs, type TabItem } from '../../components/ui'
 import { useMySites } from '../../hooks'
 import type { MySiteRow } from '../../types'
@@ -98,12 +99,17 @@ export function MySites() {
           />
         </div>
         {typeItems.length > 1 && (
-          <Tabs aria-label="Filter by site type" items={typeItems} value={typeFilter} onChange={setTypeFilter} />
+          <Tabs
+            aria-label="Filter by site type"
+            items={typeItems}
+            value={typeFilter}
+            onChange={setTypeFilter}
+          />
         )}
       </div>
 
       {mySitesQuery.isLoading ? (
-        <p className="py-10 text-center text-sm text-text-muted">Loading...</p>
+        <SkeletonCardGrid count={6} />
       ) : filtered.length === 0 ? (
         <p className="rounded-lg border border-border bg-surface px-4 py-10 text-center text-sm text-text-muted">
           {rows.length === 0 ? 'No sites are assigned to you yet.' : 'No sites match this search.'}

@@ -69,12 +69,19 @@ export function buildCorrectionList(
 
   for (const report of reports) {
     if (report.status === 'rejected' && !report.supersedesId) {
-      items.push({ id: report.id, kind: 'returnedReport', tab: 'needsAction', siteId: report.siteId, report })
+      items.push({
+        id: report.id,
+        kind: 'returnedReport',
+        tab: 'needsAction',
+        siteId: report.siteId,
+        report,
+      })
       continue
     }
     if (report.supersedesId) {
       const tab = reportCorrectionTab(report)
-      if (tab) items.push({ id: report.id, kind: 'reportCorrection', tab, siteId: report.siteId, report })
+      if (tab)
+        items.push({ id: report.id, kind: 'reportCorrection', tab, siteId: report.siteId, report })
     }
   }
 

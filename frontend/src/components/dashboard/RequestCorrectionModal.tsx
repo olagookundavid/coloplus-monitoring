@@ -3,11 +3,7 @@ import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 import { Button, Field, Input, SegmentedToggle, Select, SidePanel, Spinner, Textarea } from '../ui'
 import { useApprovedReportForDate, useReporterIncidents } from '../../hooks'
-import type {
-  IncidentCorrectionField,
-  MySiteRow,
-  PowerStatus,
-} from '../../types'
+import type { IncidentCorrectionField, MySiteRow, PowerStatus } from '../../types'
 import { correctionFieldLabel } from '../../utils'
 import type { ReportCorrectionField } from '../../hooks'
 
@@ -86,12 +82,17 @@ export function RequestCorrectionModal({
   const [reportDate, setReportDate] = useState(todayIsoDate())
   const [reportField, setReportField] = useState<ReportCorrectionField>('generator_hours')
   const [incidentId, setIncidentId] = useState(initial?.incidentId ?? '')
-  const [incidentField, setIncidentField] = useState<IncidentCorrectionField>(initial?.field ?? 'restored_at')
+  const [incidentField, setIncidentField] = useState<IncidentCorrectionField>(
+    initial?.field ?? 'restored_at'
+  )
   const [correctValue, setCorrectValue] = useState('')
   const [reason, setReason] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  const resolvedReportQuery = useApprovedReportForDate(target === 'report' ? siteId : '', reportDate)
+  const resolvedReportQuery = useApprovedReportForDate(
+    target === 'report' ? siteId : '',
+    reportDate
+  )
   const resolvedReport = resolvedReportQuery.data
 
   const incidentsQuery = useReporterIncidents()
@@ -338,7 +339,9 @@ export function RequestCorrectionModal({
               <Select
                 id="correction-incident-field"
                 value={incidentField}
-                onChange={(event) => setIncidentField(event.target.value as IncidentCorrectionField)}
+                onChange={(event) =>
+                  setIncidentField(event.target.value as IncidentCorrectionField)
+                }
                 disabled={Boolean(initial)}
               >
                 {INCIDENT_FIELD_OPTIONS.map((f) => (

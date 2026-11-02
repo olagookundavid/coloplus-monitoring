@@ -19,7 +19,7 @@ import {
 
 import { Button } from './Button'
 import { Input } from './Input'
-import { Spinner } from './Spinner'
+import { Skeleton } from '../skeletons'
 
 export interface Column<T> {
   header: string
@@ -37,6 +37,8 @@ export interface DataTableProps<T> {
   columns: Column<T>[]
   getRowId: (row: T) => string
   loading?: boolean
+  /** Shimmering placeholder rows rendered while loading. Default 5. */
+  skeletonRows?: number
   emptyMessage?: string
   searchable?: boolean
   searchPlaceholder?: string
@@ -60,6 +62,7 @@ export function DataTable<T>({
   columns,
   getRowId,
   loading = false,
+  skeletonRows = 5,
   emptyMessage = 'Nothing to show yet.',
   searchable = true,
   searchPlaceholder = 'Search...',
@@ -186,14 +189,28 @@ export function DataTable<T>({
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td
-                  colSpan={columns.length + (isInteractive ? 1 : 0)}
-                  className="px-4 py-10 text-center text-text-muted"
+              Array.from({ length: skeletonRows }).map((_, rowIndex) => (
+                <tr
+                  key={`skeleton-row-${rowIndex}`}
+                  className="border-b border-border last:border-b-0"
                 >
-                  <Spinner className="mx-auto h-5 w-5" />
-                </td>
-              </tr>
+                  {columns.map((column, columnIndex) => {
+                    const align = column.align ?? 'left'
+                    const width = ['w-3/5', 'w-2/5', 'w-1/2', 'w-1/3', 'w-2/5'][columnIndex % 5]
+                    const marginClass =
+                      align === 'right' ? 'ml-auto' : align === 'center' ? 'mx-auto' : ''
+                    return (
+                      <td
+                        key={columnIndex}
+                        className={`px-4 py-3 align-middle ${ALIGN_CLASS[align]}`}
+                      >
+                        <Skeleton height={14} className={`${width} ${marginClass}`} />
+                      </td>
+                    )
+                  })}
+                  {isInteractive && <td className="px-2" aria-hidden="true" />}
+                </tr>
+              ))
             ) : rows.length === 0 ? (
               <tr>
                 <td

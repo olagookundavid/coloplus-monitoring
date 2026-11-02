@@ -16,6 +16,7 @@ import {
   StatCard,
   TicketDetailPanel,
 } from '../../components/dashboard'
+import { SkeletonStatCards } from '../../components/skeletons'
 import { Button, DataTable, Select, StatusBadge, type Column } from '../../components/ui'
 import { ROUTES, ticketDetailPath } from '../../constants'
 import { useTickets } from '../../hooks'
@@ -133,48 +134,52 @@ export function SupportTickets() {
         onPeriodChange={setPeriod}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="All tickets"
-          value={stats.all}
-          icon={TicketIcon}
-          trend={{
-            icon: ArrowTrendingUpIcon,
-            label: 'In the selected reporting scope',
-            tone: 'positive',
-          }}
-        />
-        <StatCard
-          label="Awaiting response"
-          value={stats.awaitingResponse}
-          icon={ClockIcon}
-          trend={{
-            icon: ArrowTrendingUpIcon,
-            label: 'Received by the support queue',
-            tone: 'positive',
-          }}
-        />
-        <StatCard
-          label="In progress"
-          value={stats.inProgress}
-          icon={LifebuoyIcon}
-          trend={{
-            icon: ArrowTrendingUpIcon,
-            label: 'Assigned to operations',
-            tone: 'positive',
-          }}
-        />
-        <StatCard
-          label="Resolved"
-          value={stats.resolved}
-          icon={CheckCircleIcon}
-          trend={{
-            icon: ArrowTrendingUpIcon,
-            label: 'Resolution recorded',
-            tone: 'positive',
-          }}
-        />
-      </div>
+      {ticketsQuery.isLoading ? (
+        <SkeletonStatCards count={4} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="All tickets"
+            value={stats.all}
+            icon={TicketIcon}
+            trend={{
+              icon: ArrowTrendingUpIcon,
+              label: 'In the selected reporting scope',
+              tone: 'positive',
+            }}
+          />
+          <StatCard
+            label="Awaiting response"
+            value={stats.awaitingResponse}
+            icon={ClockIcon}
+            trend={{
+              icon: ArrowTrendingUpIcon,
+              label: 'Received by the support queue',
+              tone: 'positive',
+            }}
+          />
+          <StatCard
+            label="In progress"
+            value={stats.inProgress}
+            icon={LifebuoyIcon}
+            trend={{
+              icon: ArrowTrendingUpIcon,
+              label: 'Assigned to operations',
+              tone: 'positive',
+            }}
+          />
+          <StatCard
+            label="Resolved"
+            value={stats.resolved}
+            icon={CheckCircleIcon}
+            trend={{
+              icon: ArrowTrendingUpIcon,
+              label: 'Resolution recorded',
+              tone: 'positive',
+            }}
+          />
+        </div>
+      )}
 
       <div>
         <div className="mb-3 flex items-center gap-2">

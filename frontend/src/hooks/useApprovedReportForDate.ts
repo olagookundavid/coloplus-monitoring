@@ -10,7 +10,13 @@ export function useApprovedReportForDate(siteId: string, date: string) {
   return useQuery({
     queryKey: ['approved-report-for-date', siteId, date],
     queryFn: async () => {
-      const { reports } = await fetchReports({ siteId, from: date, to: date, status: 'approved', limit: 1 })
+      const { reports } = await fetchReports({
+        siteId,
+        from: date,
+        to: date,
+        status: 'approved',
+        limit: 1,
+      })
       return reports[0] ?? null
     },
     enabled: Boolean(siteId && date),

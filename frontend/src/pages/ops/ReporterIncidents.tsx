@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, LogIncidentModal } from '../../components/dashboard'
+import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
 import {
   Button,
   ConfirmDialog,
@@ -67,9 +68,11 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
   const [updateText, setUpdateText] = useState('')
   const [restoredAtTime, setRestoredAtTime] = useState('')
 
-  const { bucket, label: statusLabelText, tone: statusTone } = describeIncidentStatus(
-    incident.status
-  )
+  const {
+    bucket,
+    label: statusLabelText,
+    tone: statusTone,
+  } = describeIncidentStatus(incident.status)
   const { label: sevLabel, tone: sevTone } = severityLabel(incident.severity)
 
   async function handleAddUpdate() {
@@ -246,9 +249,7 @@ export function ReporterIncidents() {
         <div className="flex min-w-0 flex-col gap-3 lg:col-span-2">
           <ul className="flex flex-col gap-2">
             {incidentsQuery.isLoading ? (
-              <li className="rounded-lg border border-border bg-surface p-4 text-center">
-                <Spinner className="mx-auto h-5 w-5" />
-              </li>
+              <SkeletonListItems count={5} />
             ) : visibleIncidents.length === 0 ? (
               <li className="rounded-lg border border-border bg-surface p-4 text-sm text-text-muted">
                 Nothing here.
@@ -292,9 +293,7 @@ export function ReporterIncidents() {
 
         <div className="min-w-0 lg:col-span-3">
           {incidentsQuery.isLoading ? (
-            <div className="flex min-h-48 items-center justify-center rounded-lg border border-border bg-surface p-8">
-              <Spinner className="h-6 w-6" />
-            </div>
+            <SkeletonDetailPane />
           ) : !selectedIncident ? (
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-muted">
               Select an incident to see its details.

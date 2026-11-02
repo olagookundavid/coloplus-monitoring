@@ -7,7 +7,7 @@ import { Route, Routes } from 'react-router-dom'
 // bundle instead of the lazy customer-portal chunk.
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { PublicOnlyRoute, RequireAuth, RequireMfaSetup, RequireRole } from './components/auth'
-import { Spinner } from './components/ui'
+import { MainLoader } from './components/ui'
 import { ROUTES } from './constants'
 import { NotFound } from './pages'
 import { AcceptInvite, ForgotPassword, Login, MfaSetup, ResetPassword } from './pages/auth'
@@ -72,7 +72,7 @@ export function App() {
         <Route
           element={
             <RequireAuth>
-              <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+              <Suspense fallback={<MainLoader />}>
                 <CustomerLayout />
               </Suspense>
             </RequireAuth>
@@ -90,7 +90,7 @@ export function App() {
           element={
             <RequireAuth>
               <RequireRole permission="users.manage">
-                <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+                <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>
               </RequireRole>
@@ -111,7 +111,7 @@ export function App() {
           element={
             <RequireAuth>
               <RequireRole permission={['users.manage', 'reports.review']}>
-                <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+                <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>
               </RequireRole>
@@ -129,7 +129,7 @@ export function App() {
           element={
             <RequireAuth>
               <RequireRole permission="audit.read">
-                <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+                <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>
               </RequireRole>
@@ -147,7 +147,7 @@ export function App() {
           element={
             <RequireAuth>
               <RequireRole permission="reports.create">
-                <Suspense fallback={<Spinner className="mx-auto mt-20 h-6 w-6" />}>
+                <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>
               </RequireRole>

@@ -97,7 +97,7 @@ export function Sidebar({ nav, portalLabel, orgBadge, supportCard }: SidebarProp
           to={ROUTES.HOME}
           className={`flex items-center ${collapsed ? 'justify-center' : 'gap-1.5'}`}
         >
-          <Logo variant={collapsed ? 'mark' : 'full'} className="h-7" />
+          <Logo variant={collapsed ? 'mark' : 'full'} tone="black" className="h-7" />
         </Link>
         {!collapsed && (
           <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-text-muted">

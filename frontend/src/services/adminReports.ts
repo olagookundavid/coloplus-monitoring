@@ -258,9 +258,14 @@ export async function submitDailyReport(id: string): Promise<DailyReport> {
 // revision is itself submitted and approved (backend/internal/services
 // /reports.go StartCorrection). The reporter then edits it through the same
 // save/submit path as any other draft.
-export async function startReportCorrection(reportId: string, reason: string): Promise<DailyReport> {
+export async function startReportCorrection(
+  reportId: string,
+  reason: string
+): Promise<DailyReport> {
   try {
-    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${reportId}/corrections`, { reason })
+    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${reportId}/corrections`, {
+      reason,
+    })
     return mapDailyReport(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not start this correction.')

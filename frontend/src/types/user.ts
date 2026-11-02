@@ -20,8 +20,9 @@ export const STAFF_ROLES: StaffRole[] = [
 
 // The admin's view of *another* account — distinct from types/auth.ts's
 // `User`, which is the signed-in session's own shape from /auth/me.
-// `siteIds` is only present when fetched via fetchUser(id); the list
-// endpoint doesn't return it.
+// `siteIds` is always present (both the list and single-user fetches return
+// it, batch-loaded server-side); still optional here since an admin's own
+// row carries none.
 export interface ManagedUser {
   id: string
   email: string

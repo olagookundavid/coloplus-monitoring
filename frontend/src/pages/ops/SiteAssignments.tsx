@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { BriefcaseIcon, MapPinIcon, UserGroupIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
+import { SkeletonStatCards } from '../../components/skeletons'
 import { Checkbox, DataTable, Select, StatusBadge, Tabs, type Column } from '../../components/ui'
 import { useAdminSites, useManagedUsers, useUpdateUserSitesMutation } from '../../hooks'
 import type { AdminSite, ManagedUser } from '../../types'
@@ -156,30 +157,34 @@ export function SiteAssignments() {
         subtitle="Decide who reports on each site and who supervises it. Reporters only see sites assigned to them."
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Sites with a field officer"
-          value={`${sitesWithOfficer} / ${sites.length}`}
-          icon={UserGroupIcon}
-          caption={`${sites.length - sitesWithOfficer} unassigned`}
-        />
-        <StatCard
-          label="States without a supervisor"
-          value={statesWithoutSupervisor.length}
-          icon={MapPinIcon}
-          caption={
-            statesWithoutSupervisor.length > 0
-              ? `${statesWithoutSupervisor.join(', ')} need one`
-              : 'Every state has one'
-          }
-        />
-        <StatCard
-          label="Field officers"
-          value={reporters.length}
-          icon={BriefcaseIcon}
-          caption={`Avg ${avgSitesPerOfficer.toFixed(1)} sites each`}
-        />
-      </div>
+      {sitesQuery.isLoading || usersQuery.isLoading ? (
+        <SkeletonStatCards count={3} />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard
+            label="Sites with a field officer"
+            value={`${sitesWithOfficer} / ${sites.length}`}
+            icon={UserGroupIcon}
+            caption={`${sites.length - sitesWithOfficer} unassigned`}
+          />
+          <StatCard
+            label="States without a supervisor"
+            value={statesWithoutSupervisor.length}
+            icon={MapPinIcon}
+            caption={
+              statesWithoutSupervisor.length > 0
+                ? `${statesWithoutSupervisor.join(', ')} need one`
+                : 'Every state has one'
+            }
+          />
+          <StatCard
+            label="Field officers"
+            value={reporters.length}
+            icon={BriefcaseIcon}
+            caption={`Avg ${avgSitesPerOfficer.toFixed(1)} sites each`}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Tabs
