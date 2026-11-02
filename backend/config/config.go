@@ -312,8 +312,21 @@ func (c Config) validate() []error {
 		bad("RATE_LIMIT_RPS and RATE_LIMIT_BURST must be positive when the rate limit is enabled")
 	}
 	if s := c.Storage; s.Enabled() {
-		if s.AccessKeyID == "" || s.SecretAccessKey == "" || s.Bucket == "" || (s.AccountID == "" && s.Endpoint == "") {
-			bad("file storage needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET together")
+		var missing []string
+		if s.AccountID == "" && s.Endpoint == "" {
+			missing = append(missing, "R2_ACCOUNT_ID")
+		}
+		if s.AccessKeyID == "" {
+			missing = append(missing, "R2_ACCESS_KEY_ID")
+		}
+		if s.SecretAccessKey == "" {
+			missing = append(missing, "R2_SECRET_ACCESS_KEY")
+		}
+		if s.Bucket == "" {
+			missing = append(missing, "R2_BUCKET")
+		}
+		if len(missing) > 0 {
+			bad("file storage needs all of R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET, or none of them; missing or empty: %s", strings.Join(missing, ", "))
 		}
 		if s.Endpoint != "" && !strings.HasPrefix(s.Endpoint, "https://") && !strings.HasPrefix(s.Endpoint, "http://") {
 			bad("R2_ENDPOINT must start with https:// or http://")
