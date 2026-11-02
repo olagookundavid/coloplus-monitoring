@@ -29,9 +29,13 @@ echo "[deploy] $(date -Is) starting..."
 PREVIOUS_IMAGE_ID="$(docker compose images -q "$APP" 2>/dev/null || true)"
 
 echo "[deploy] pulling latest image..."
-if ! docker compose pull; then
+if ! PULL_OUT="$(docker compose pull 2>&1)"; then
+  echo "$PULL_OUT"
   echo "[deploy] FAILED: could not pull the image. Nothing changed."
-  alert "[Coloplus] DEPLOY FAILED on $(hostname)" "Stage: image pull. docker compose pull failed; the running deployment is untouched."
+  alert "[Coloplus] DEPLOY FAILED on $(hostname)" "Stage: image pull. The running deployment is untouched.
+
+--- Output (last 15 lines) ---
+$(printf '%s\n' "$PULL_OUT" | tail -n 15)"
   exit 1
 fi
 
@@ -39,9 +43,11 @@ echo "[deploy] applying migrations..."
 if ! MIGRATE_OUT="$(docker compose run --rm --no-deps "$APP" ./server migrate 2>&1)"; then
   echo "$MIGRATE_OUT"
   echo "[deploy] FAILED: migrations did not apply. The running container is untouched."
+  # tail, not ${var: -N}: that expands to nothing when the output is shorter than N.
   alert "[Coloplus] DEPLOY FAILED (migration) on $(hostname)" "Stage: migrate. The running deployment is untouched.
 
-${MIGRATE_OUT: -3000}"
+--- Output (last 25 lines) ---
+$(printf '%s\n' "$MIGRATE_OUT" | tail -n 25)"
   exit 1
 fi
 echo "$MIGRATE_OUT"
