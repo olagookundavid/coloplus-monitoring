@@ -60,6 +60,162 @@
                 }
             }
         },
+        "/api/v1/attachments": {
+            "get": {
+                "description": "Received files only. Coloplus's internal files are left out for Airtel. For acceptance, owner_id is the site's id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Files on a ticket, incident, dispute or acceptance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ticket, incident, dispute or acceptance",
+                        "name": "owner_type",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Its id",
+                        "name": "owner_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AttachmentListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Step 1 of 3. Say what the file is and what it belongs to; the answer is a short-lived link. Step 2: PUT the file to that link with exactly the headers given. Step 3: POST /attachments/{id}/complete. Accepted: JPEG, PNG, WebP, PDF, plain text, CSV, Word and Excel files, up to the size limit, at most 25 per ticket, incident, dispute or acceptance. The file goes straight to private storage and is checked against the SHA-256 you give. A file is only visible once confirmed. 503 when file storage is not set up.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Ask for a link to upload one file",
+                "parameters": [
+                    {
+                        "description": "File",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RequestUploadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RequestUploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/attachments/{id}/complete": {
+            "post": {
+                "description": "Step 3 of 3. Checks the stored file is the size and SHA-256 declared; if not it is discarded and you start again. Repeating it is safe. Only the sender can confirm.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "Confirm an upload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.AttachmentDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/attachments/{id}/download": {
+            "get": {
+                "description": "Checks you may see the file and returns a link that works for a couple of minutes and makes the browser save it, never display it. Every link issued is recorded in the audit log. Open the link at once; do not store it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "attachments"
+                ],
+                "summary": "A link to read one file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Attachment id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DownloadResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/audit": {
             "get": {
                 "description": "Newest first. Needs audit access, which is separate from editing rights. A reader scoped to some sites sees only events about those sites.",
@@ -2944,6 +3100,69 @@
                 }
             }
         },
+        "dto.AttachmentDTO": {
+            "type": "object",
+            "properties": {
+                "confirmed_at": {
+                    "type": "string"
+                },
+                "content_type": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "internal": {
+                    "type": "boolean"
+                },
+                "owner_id": {
+                    "type": "string"
+                },
+                "owner_type": {
+                    "type": "string"
+                },
+                "party": {
+                    "description": "Party is who sent it: airtel or coloplus.",
+                    "type": "string"
+                },
+                "scan_status": {
+                    "type": "string"
+                },
+                "sha256": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "size_bytes": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "Status is pending until the upload is confirmed, then ready.",
+                    "type": "string"
+                },
+                "uploaded_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AttachmentListResponse": {
+            "type": "object",
+            "properties": {
+                "attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AttachmentDTO"
+                    }
+                }
+            }
+        },
         "dto.AuditEventDTO": {
             "type": "object",
             "properties": {
@@ -3288,6 +3507,21 @@
                 "with_coloplus": {
                     "description": "WithColoplus are waiting on Coloplus; WithAirtel on Airtel (evidence or acknowledgement).",
                     "type": "integer"
+                }
+            }
+        },
+        "dto.DownloadResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "url": {
+                    "description": "URL works for a couple of minutes and makes the browser save the file.",
+                    "type": "string"
                 }
             }
         },
@@ -4333,6 +4567,52 @@
                 }
             }
         },
+        "dto.RequestUploadRequest": {
+            "type": "object",
+            "properties": {
+                "content_type": {
+                    "type": "string",
+                    "example": "image/jpeg"
+                },
+                "filename": {
+                    "description": "Filename is shown to people; it is never used as a path.",
+                    "type": "string",
+                    "example": "generator-panel.jpg"
+                },
+                "owner_id": {
+                    "description": "OwnerID is the id of that ticket, incident or dispute. For acceptance it\nis the site's id: a site has one acceptance.",
+                    "type": "string"
+                },
+                "owner_type": {
+                    "description": "OwnerType is ticket, incident, dispute or acceptance.",
+                    "type": "string",
+                    "example": "ticket"
+                },
+                "sha256": {
+                    "description": "SHA256 is the file's SHA-256 as 64 lower-case hex characters. The store\nrefuses an upload that does not match it.",
+                    "type": "string"
+                },
+                "shared": {
+                    "description": "Shared lets Airtel see a file Coloplus sends. Left out, a Coloplus file\nis internal. Airtel's own files are always visible to Coloplus.",
+                    "type": "boolean"
+                },
+                "size_bytes": {
+                    "type": "integer",
+                    "example": 482113
+                }
+            }
+        },
+        "dto.RequestUploadResponse": {
+            "type": "object",
+            "properties": {
+                "attachment": {
+                    "$ref": "#/definitions/dto.AttachmentDTO"
+                },
+                "upload": {
+                    "$ref": "#/definitions/dto.UploadTarget"
+                }
+            }
+        },
         "dto.ReviewRequest": {
             "type": "object",
             "properties": {
@@ -5050,6 +5330,27 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "dto.UploadTarget": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "method": {
+                    "type": "string",
+                    "example": "PUT"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },

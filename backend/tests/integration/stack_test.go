@@ -19,7 +19,9 @@ import (
 	"coloplus-backend/internal/adapters/postgres"
 	"coloplus-backend/internal/adapters/security"
 	"coloplus-backend/internal/domain"
+	apperrors "coloplus-backend/internal/errors"
 	"coloplus-backend/internal/platform"
+	"coloplus-backend/internal/ports"
 	"coloplus-backend/internal/services"
 	"coloplus-backend/internal/sql/migrations"
 	httpapi "coloplus-backend/internal/transport/http"
@@ -58,6 +60,7 @@ type stack struct {
 	authenticator map[string]string
 
 	mailer        *fakeMailer
+	store         *fakeStore
 	notifications *services.NotificationService
 	incidents     *services.IncidentService
 	corrections   *services.CorrectionService
@@ -135,6 +138,7 @@ func newStack(t *testing.T) *stack {
 	incidentCorrectionRepo := postgres.NewIncidentCorrectionRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
 	ticketRepo := postgres.NewTicketRepository(db)
+	attachmentRepo := postgres.NewAttachmentRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
@@ -164,6 +168,11 @@ func newStack(t *testing.T) *stack {
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, "https://app.test")
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, "https://app.test")
+	store := newFakeStore()
+	attachments := services.NewAttachmentService(attachmentRepo, store, ticketRepo, incidentRepo, disputeRepo, acceptanceRepo,
+		tx, audit, clock, services.AttachmentConfig{
+			MaxBytes: 10 << 20, UploadTTL: 15 * time.Minute, DownloadTTL: 2 * time.Minute, PendingTTL: 24 * time.Hour,
+		})
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
 
@@ -183,6 +192,7 @@ func newStack(t *testing.T) *stack {
 		Corrections:   corrections,
 		Disputes:      disputes,
 		Tickets:       tickets,
+		Attachments:   attachments,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
@@ -191,7 +201,7 @@ func newStack(t *testing.T) *stack {
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
-		mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
+		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
 }
 
 // reply is a decoded response.
@@ -363,4 +373,50 @@ func (s *stack) countAudit(action, entityID string) int {
 		s.t.Fatal(err)
 	}
 	return n
+}
+
+// fakeStore stands in for R2: it remembers what a browser would have uploaded,
+// so a test can send a file, send a wrong one, or send nothing.
+type fakeStore struct {
+	mu      sync.Mutex
+	objects map[string]ports.ObjectInfo
+	deleted []string
+}
+
+func newFakeStore() *fakeStore { return &fakeStore{objects: map[string]ports.ObjectInfo{}} }
+
+// put is the browser's PUT to the signed link.
+func (f *fakeStore) put(key string, size int64, sha string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.objects[key] = ports.ObjectInfo{SizeBytes: size, SHA256Hex: sha}
+}
+
+func (f *fakeStore) PresignUpload(req ports.UploadRequest) (ports.PresignedUpload, error) {
+	return ports.PresignedUpload{
+		Method: "PUT", URL: "https://store.test/up/" + req.Key,
+		Headers: map[string]string{"Content-Type": req.ContentType}, ExpiresAt: time.Now().Add(req.TTL),
+	}, nil
+}
+
+func (f *fakeStore) PresignDownload(req ports.DownloadRequest) (string, time.Time, error) {
+	return "https://store.test/dl/" + req.Key, time.Now().Add(req.TTL), nil
+}
+
+func (f *fakeStore) Stat(_ context.Context, key string) (ports.ObjectInfo, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	info, ok := f.objects[key]
+	if !ok {
+		return ports.ObjectInfo{}, apperrors.ErrNotFound
+	}
+	return info, nil
+}
+
+func (f *fakeStore) Delete(_ context.Context, key string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.objects, key)
+	f.deleted = append(f.deleted, key)
+	return nil
 }

@@ -75,13 +75,18 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "reset-mfa" {
 		return resetMFA(ctx, cfg, log, args[1:])
 	}
+	// `api check-storage` proves the file-storage keys and bucket work by
+	// sending, reading back and deleting one tiny test file.
+	if len(args) > 0 && args[0] == "check-storage" {
+		return checkStorage(ctx, cfg, log)
+	}
 	// `api seed` inserts a sample dataset for local development. Dev-only,
 	// safe to run more than once.
 	if len(args) > 0 && args[0] == "seed" {
 		return seed(ctx, cfg, log)
 	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, seed)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, seed, check-storage)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }
@@ -132,6 +137,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	disputeRepo := postgres.NewDisputeRepository(db)
 	ticketRepo := postgres.NewTicketRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
+	attachmentRepo := postgres.NewAttachmentRepository(db)
 	notificationRepo := postgres.NewNotificationRepository(db)
 	userTokenRepo := postgres.NewUserTokenRepository(db)
 	recoveryRepo := postgres.NewRecoveryCodeRepository(db)
@@ -166,6 +172,18 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		notifications, loc, cfg.Mail.BaseURL)
 	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, cfg.Mail.BaseURL)
+	objectStore, err := newObjectStore(cfg)
+	if err != nil {
+		return err
+	}
+	if objectStore == nil {
+		log.Warn("file storage is not configured; attachments are switched off")
+	}
+	attachments := services.NewAttachmentService(attachmentRepo, objectStore, ticketRepo, incidentRepo, disputeRepo,
+		acceptanceRepo, txManager, audit, clock, services.AttachmentConfig{
+			MaxBytes: cfg.Storage.MaxUploadBytes, UploadTTL: cfg.Storage.UploadTTL,
+			DownloadTTL: cfg.Storage.DownloadTTL, PendingTTL: cfg.Storage.PendingTTL,
+		})
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
@@ -213,6 +231,16 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}); err != nil {
 		return err
 	}
+	if err := scheduler.Add("attachment-gc", cfg.Jobs.AttachmentGCCron, func(ctx context.Context) error {
+		dryRun := !cfg.Storage.GCEnabled
+		n, err := attachments.ExpireAbandoned(ctx, dryRun)
+		if n > 0 {
+			log.Info("abandoned uploads", "count", n, "dry_run", dryRun)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
 	scheduler.Start()
 
 	// Transport.
@@ -251,6 +279,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Corrections:   corrections,
 		Disputes:      disputes,
 		Tickets:       tickets,
+		Attachments:   attachments,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),

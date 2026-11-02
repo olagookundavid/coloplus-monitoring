@@ -47,6 +47,7 @@ type Deps struct {
 	Corrections   *services.CorrectionService
 	Disputes      *services.DisputeService
 	Tickets       *services.TicketService
+	Attachments   *services.AttachmentService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
@@ -70,6 +71,7 @@ type api struct {
 	corrections   *services.CorrectionService
 	disputes      *services.DisputeService
 	tickets       *services.TicketService
+	attachments   *services.AttachmentService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
@@ -113,7 +115,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -191,6 +193,11 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/tickets/:id/comments", h.commentTicket)
 	authed.POST("/tickets/:id/transition", h.transitionTicket)
 	authed.POST("/tickets/:id/incident", h.linkTicketIncident)
+
+	authed.POST("/attachments", h.requestUpload)
+	authed.GET("/attachments", h.listAttachments)
+	authed.POST("/attachments/:id/complete", h.completeUpload)
+	authed.GET("/attachments/:id/download", h.downloadAttachment)
 
 	authed.POST("/sites/:id/acceptance", h.requestAcceptance)
 	authed.GET("/sites/:id/acceptance", h.getAcceptance)

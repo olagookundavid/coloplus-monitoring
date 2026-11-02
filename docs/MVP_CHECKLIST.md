@@ -89,9 +89,9 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Publication to Airtel does not wait for the daily report; Airtel sees published facts and customer updates only **FR**
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
 - [ ] Link an incident to the outage intervals of daily reports without duplicating downtime. Also the automatic midnight split
-- [ ] Evidence attachments on incidents. **new dependency** (R2)
+- [x] Evidence attachments on incidents (DECISIONS 047)
 - [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
-- [ ] Ticket attachments. **new dependency** (R2)
+- [x] Ticket attachments (DECISIONS 047)
 - [ ] Link planned maintenance and approval references
 - [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
@@ -103,7 +103,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] An upheld dispute needs a real, later approved revision of that day (AT09)
 - [x] Both parties' comments kept; internal Coloplus notes and staff ids never reach Airtel or their emails
 - [x] Reports show `open_disputes`, so a disputed figure says so
-- [ ] Evidence attachments on disputes. **new dependency** (R2); until then evidence is described in comments
+- [x] Evidence attachments on disputes (DECISIONS 047)
 - [x] Dispute state carried into exports (open and total disputes per site-day, corrections do not hide them)
 - [ ] Overdue-dispute alerts. **needs input** (an agreed response time)
 
@@ -116,7 +116,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Commissioning backlog (`GET /acceptances`), longest-waiting first
 - [x] Acceptance-overdue alert, once per missed due time; a hold stops the clock
 - [ ] KPI inclusion rule. **needs input**: built as a proposed default (Airtel's acceptance activates a pending site; pending sites stay out of the KPIs). Confirm with Airtel
-- [ ] Documents attached to the dossier. **new dependency** (R2)
+- [x] Documents attached to the acceptance dossier (DECISIONS 047)
 - [ ] Escalation beyond the second email; per-milestone due dates
 
 ## 10. Alerts and email (PRD 10)
@@ -132,8 +132,10 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 11. Evidence and files (PRD 6)
 
-- [ ] Private R2 bucket, presigned upload, permission-checked short-lived download, SHA-256 checksum, scoped to site and period. **new dependency**
-- [ ] Attach to reports, incidents, disputes, acceptance dossiers
+- [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Not yet tested against the live bucket
+- [x] Abandoned-upload cleanup, off by default (`ATTACHMENT_GC_ENABLED`), reports what it would delete
+- [ ] Virus scan before Airtel can open a Coloplus file (DECISIONS 016). **needs input**: a scanner service. Until then files are limited to photos, PDF, text, CSV, Word and Excel and are always downloaded, never displayed
+- [ ] Attach to daily reports
 
 ## 12. Reports and exports (PRD 10)
 
@@ -156,14 +158,14 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [ ] Dashboard p95 under 3 s at 1,000 sites and 50 concurrent users. Not measured
 - [ ] Approved entry reflected on the dashboard within 60 s. Meets it by construction today (computed on read); re-check once calculation runs are stored
-- [ ] Backup restore exercise (RPO 24 h, RTO 8 h)
+- [ ] Backup restore exercise (RPO 24 h, RTO 8 h). Script written (`deploy/restore-test.sh`); needs one run on the server and its time recorded here
 - [ ] Notification-failure test, access-control test at scale
 
 ## 15. Acceptance tests
 
 | ID | What it proves | Status |
 |---|---|---|
-| AT01 | Airtel cannot reach another customer's site, attachment, report or API response | Sites, reports, incidents, disputes: tested. Attachments and exports: not built |
+| AT01 | Airtel cannot reach another customer's site, attachment, report or API response | Sites, reports, incidents, disputes, tickets, attachments, exports: tested |
 | AT02 | A known input gives the expected energy estimate with its inputs and formula version | Not started (no energy model) |
 | AT03 | An overdue or missing entry shows stale or unknown, never available or zero | Done, tested |
 | AT04 | Overlapping, duplicate, cross-midnight intervals give correct unions and allocations | Unions, overlap rejection and coverage: done. Cross-midnight splitting: not built |

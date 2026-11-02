@@ -42,3 +42,9 @@ func conflict(format string, args ...any) error {
 func forbidden(format string, args ...any) error {
 	return fmt.Errorf("%w: %s", apperrors.ErrForbidden, fmt.Sprintf(format, args...))
 }
+
+// unavailableErr is for a feature whose provider is not set up or not
+// reachable; the caller is told to try again later, never why.
+func unavailableErr(format string, args ...any) error {
+	return fmt.Errorf("%w: %s", apperrors.ErrUnavailable, fmt.Sprintf(format, args...))
+}

@@ -52,4 +52,4 @@ Order matters: later steps need earlier ones.
 - [ ] **E3.** UptimeRobot monitor on `https://api.remotems.com/healthcheck`.
 - [ ] **E4.** Test email: invite a user, confirm the mail arrives and the link points at the front end origin.
 - [ ] **E5.** Dozzle: no customer data in the logs, or put Dozzle behind a login before real data (DECISIONS 017).
-- [ ] **E6.** Add a restore test of the `coloplus` dump to the calendar.
+- [ ] **E6.** Run the restore test once now and put it on the calendar monthly: copy `deploy/restore-test.sh` to `~/scripts/coloplus-restore-test.sh` and run `bash ~/scripts/coloplus-restore-test.sh`. It restores the newest dump into a throwaway database, compares it with live, times it and drops it. It never writes to the live database.

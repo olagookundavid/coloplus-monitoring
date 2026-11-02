@@ -442,3 +442,69 @@ type TicketRepository interface {
 	List(ctx context.Context, f TicketFilter) (tickets []domain.Ticket, total int, err error)
 	Counts(ctx context.Context, f TicketFilter) (TicketCounts, error)
 }
+
+// UploadRequest asks the store for a short-lived link a browser can PUT one
+// file to. The link only works for exactly this key, type, size and digest.
+type UploadRequest struct {
+	Key         string
+	ContentType string
+	SizeBytes   int64
+	// SHA256Hex is the lower-case hex digest the upload must match.
+	SHA256Hex string
+	TTL       time.Duration
+}
+
+type PresignedUpload struct {
+	Method string
+	URL    string
+	// Headers must be sent with the PUT exactly as given (the browser adds
+	// Content-Length itself).
+	Headers   map[string]string
+	ExpiresAt time.Time
+}
+
+// DownloadRequest asks for a short-lived link to read one file. The link
+// makes the browser save it rather than display it.
+type DownloadRequest struct {
+	Key         string
+	Filename    string
+	ContentType string
+	TTL         time.Duration
+}
+
+// ObjectInfo is what the store reports about a stored object.
+type ObjectInfo struct {
+	SizeBytes int64
+	// SHA256Hex is the digest the store recorded; empty when it did not say.
+	SHA256Hex string
+}
+
+// ObjectStore is private file storage. Nothing here is public: every read is
+// a link issued after a permission check, and every link expires.
+type ObjectStore interface {
+	PresignUpload(req UploadRequest) (PresignedUpload, error)
+	PresignDownload(req DownloadRequest) (url string, expiresAt time.Time, err error)
+	// Stat reports a stored object; apperrors.ErrNotFound when it is not there.
+	Stat(ctx context.Context, key string) (ObjectInfo, error)
+	// Delete removes an object. Deleting one that is not there is not an error.
+	Delete(ctx context.Context, key string) error
+}
+
+type AttachmentRepository interface {
+	// Create stores a pending attachment.
+	Create(ctx context.Context, a domain.Attachment) (domain.Attachment, error)
+	// GetByID loads one; forUpdate locks it for the surrounding transaction.
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.Attachment, error)
+	// SetStatus moves a pending attachment to ready, rejected or expired. It
+	// changes nothing and returns false when the attachment was not pending.
+	SetStatus(ctx context.Context, id string, status domain.AttachmentStatus, at time.Time) (bool, error)
+	// ListReady returns an owner's received files, oldest first; withInternal
+	// includes Coloplus-only ones.
+	ListReady(ctx context.Context, owner domain.AttachmentOwner, ownerID string, withInternal bool) ([]domain.Attachment, error)
+	// CountForOwner counts the pending and ready files on an owner.
+	CountForOwner(ctx context.Context, owner domain.AttachmentOwner, ownerID string) (int, error)
+	// CountPendingBy counts a person's uploads not yet confirmed.
+	CountPendingBy(ctx context.Context, userID string) (int, error)
+	// StalePending returns uploads started before the given time and never confirmed.
+	StalePending(ctx context.Context, before time.Time, limit int) ([]domain.Attachment, error)
+}

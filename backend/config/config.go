@@ -28,6 +28,7 @@ type Config struct {
 	Workers   Workers
 	Audit     Audit
 	Mail      Mail
+	Storage   Storage
 	Jobs      Jobs
 	Swagger   Swagger
 }
@@ -106,12 +107,41 @@ type Mail struct {
 	BaseURL string
 }
 
+// Storage configures private file storage (Cloudflare R2). It is optional:
+// without it the evidence endpoints answer "not set up yet" and everything else
+// works. Giving any of the four credentials means giving all of them.
+type Storage struct {
+	AccountID       string
+	AccessKeyID     string
+	SecretAccessKey string
+	Bucket          string
+	// Endpoint overrides the account address, for a local S3-compatible server.
+	Endpoint string
+	// Timeout bounds the calls this server itself makes to storage.
+	Timeout time.Duration
+	// MaxUploadBytes caps one file.
+	MaxUploadBytes int64
+	UploadTTL      time.Duration
+	DownloadTTL    time.Duration
+	// PendingTTL is how long an unconfirmed upload may wait before it is
+	// treated as abandoned. GCEnabled lets the cleanup job delete them; off,
+	// it only reports what it would delete.
+	PendingTTL time.Duration
+	GCEnabled  bool
+}
+
+// Enabled says whether storage credentials were given.
+func (s Storage) Enabled() bool {
+	return s.AccessKeyID != "" || s.SecretAccessKey != "" || s.Bucket != "" || s.AccountID != "" || s.Endpoint != ""
+}
+
 // Jobs holds the cron specs (five fields) of the scheduled work.
 type Jobs struct {
 	DispatchEmailsCron   string
 	IncidentAlertsCron   string
 	ReportAlertsCron     string
 	AcceptanceAlertsCron string
+	AttachmentGCCron     string
 }
 
 type Swagger struct {
@@ -184,11 +214,25 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			Timeout:       r.duration("MAIL_TIMEOUT", 10*time.Second),
 			BaseURL:       strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
+		Storage: Storage{
+			AccountID:       r.str("R2_ACCOUNT_ID", ""),
+			AccessKeyID:     r.str("R2_ACCESS_KEY_ID", ""),
+			SecretAccessKey: r.str("R2_SECRET_ACCESS_KEY", ""),
+			Bucket:          r.str("R2_BUCKET", ""),
+			Endpoint:        strings.TrimRight(r.str("R2_ENDPOINT", ""), "/"),
+			Timeout:         r.duration("R2_TIMEOUT", 10*time.Second),
+			MaxUploadBytes:  int64(r.integer("ATTACHMENT_MAX_MB", 10)) << 20,
+			UploadTTL:       r.duration("ATTACHMENT_UPLOAD_TTL", 15*time.Minute),
+			DownloadTTL:     r.duration("ATTACHMENT_DOWNLOAD_TTL", 2*time.Minute),
+			PendingTTL:      r.duration("ATTACHMENT_PENDING_TTL", 24*time.Hour),
+			GCEnabled:       r.boolean("ATTACHMENT_GC_ENABLED", false),
+		},
 		Jobs: Jobs{
 			DispatchEmailsCron:   r.str("JOB_DISPATCH_EMAILS_CRON", "* * * * *"),
 			IncidentAlertsCron:   r.str("JOB_INCIDENT_ALERTS_CRON", "*/10 * * * *"),
 			ReportAlertsCron:     r.str("JOB_REPORT_ALERTS_CRON", "*/30 * * * *"),
 			AcceptanceAlertsCron: r.str("JOB_ACCEPTANCE_ALERTS_CRON", "*/30 * * * *"),
+			AttachmentGCCron:     r.str("JOB_ATTACHMENT_GC_CRON", "17 3 * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}
@@ -256,6 +300,27 @@ func (c Config) validate() []error {
 	}
 	if c.RateLimit.Enabled && (c.RateLimit.Rps <= 0 || c.RateLimit.Burst < 1) {
 		bad("RATE_LIMIT_RPS and RATE_LIMIT_BURST must be positive when the rate limit is enabled")
+	}
+	if s := c.Storage; s.Enabled() {
+		if s.AccessKeyID == "" || s.SecretAccessKey == "" || s.Bucket == "" || (s.AccountID == "" && s.Endpoint == "") {
+			bad("file storage needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET together")
+		}
+		if s.Endpoint != "" && !strings.HasPrefix(s.Endpoint, "https://") && !strings.HasPrefix(s.Endpoint, "http://") {
+			bad("R2_ENDPOINT must start with https:// or http://")
+		}
+		if c.IsProduction() && s.Endpoint != "" && !strings.HasPrefix(s.Endpoint, "https://") {
+			bad("R2_ENDPOINT must be https in production")
+		}
+	}
+	if c.Storage.MaxUploadBytes < 1<<20 || c.Storage.MaxUploadBytes > 100<<20 {
+		bad("ATTACHMENT_MAX_MB must be between 1 and 100")
+	}
+	if c.Storage.UploadTTL < time.Minute || c.Storage.UploadTTL > time.Hour ||
+		c.Storage.DownloadTTL < 10*time.Second || c.Storage.DownloadTTL > 15*time.Minute {
+		bad("ATTACHMENT_UPLOAD_TTL must be 1m to 1h and ATTACHMENT_DOWNLOAD_TTL 10s to 15m")
+	}
+	if c.Storage.PendingTTL < time.Hour || c.Storage.Timeout <= 0 {
+		bad("ATTACHMENT_PENDING_TTL must be at least 1h and R2_TIMEOUT positive")
 	}
 	switch c.Mail.Provider {
 	case "log":
