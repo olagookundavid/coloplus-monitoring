@@ -60,6 +60,7 @@ func (a *api) createReport(c *gin.Context) {
 		services.ReportInput{
 			Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals),
 			PowerStatus: parsePowerStatus(req.PowerStatus), GeneratorHours: req.GeneratorHours,
+			OutageReason: req.OutageReason,
 		})
 	if err != nil {
 		a.fail(c, err)
@@ -90,6 +91,7 @@ func (a *api) saveReport(c *gin.Context) {
 		services.ReportInput{
 			Notes: req.Notes, Intervals: fromIntervalDTOs(req.Intervals),
 			PowerStatus: parsePowerStatus(req.PowerStatus), GeneratorHours: req.GeneratorHours,
+			OutageReason: req.OutageReason,
 		})
 	if err != nil {
 		a.fail(c, err)
@@ -312,7 +314,7 @@ func optionalDate(v string) (*time.Time, error) {
 // overview godoc
 //
 //	@Summary		Portfolio overview for a day or a period
-//	@Description	Availability pools active sites by eligible minutes over the period. A day with no approved report counts its window as unknown; it never appears as available. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.
+//	@Description	Availability pools active sites by eligible minutes over the period. A site is available by default: time nobody reported as an outage counts as available, shown as assumed_available_minutes and never as confirmed (confirmed_served_share_pct counts only reported time). days_without_report and site_days_without_report say how many days nobody reported. A site set to unreported_time "unknown" keeps the stricter reading, with no figure for unreported time. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.
 //	@Tags			dashboard
 //	@Produce		json
 //	@Param			date	query		string	false	"One reporting day, defaults to today (Africa/Lagos)"
@@ -356,7 +358,7 @@ func (a *api) mySites(c *gin.Context) {
 // trend godoc
 //
 //	@Summary		Portfolio availability day by day
-//	@Description	One point per reporting day for the active sites in scope, pooled by eligible minutes. A day on which nothing was reported has null availability: draw a gap, not a line at zero or 100. Daily is the finest grain the reports give.
+//	@Description	One point per reporting day for the active sites in scope, pooled by eligible minutes. A day nobody reported is assumed available for sites that are available by default, and says so: assumed_available_minutes is above 0, confirmed_served_share_pct is 0 and sites_reported shows how many reported. Draw those days differently, not as confirmed. Daily is the finest grain the reports give.
 //	@Tags			dashboard
 //	@Produce		json
 //	@Param			from	query		string	true	"First day"

@@ -71,6 +71,9 @@ type DailyReport struct {
 
 	SupersedesID     string
 	CorrectionReason string
+	// OutageReason is why the site was unavailable that day; required to submit
+	// a report that records an outage.
+	OutageReason string
 	// LateReason is why a late report was late; empty when it was on time.
 	LateReason string
 
@@ -270,10 +273,19 @@ type DailySummary struct {
 	ServedMinutes   int // U
 	OutageMinutes   int // D
 	UnknownMinutes  int // X = S - U - D
+	// AssumedMinutes is the unreported time counted as available because the
+	// site is available by default (X, for such a site; 0 otherwise). It is
+	// never confirmed: ConfirmedServedShare still counts only observed time.
+	AssumedMinutes int
+
+	// The numerator and denominator of ReportedAvailability, kept so sites
+	// that count unreported time differently can still be pooled.
+	availNum, availDen int
 
 	// Coverage is 100 x (U+D) / S.
 	Coverage *float64
-	// ReportedAvailability is 100 x U / (U+D).
+	// ReportedAvailability is 100 x U / (U+D) when unreported time is unknown,
+	// and 100 x (S-D) / S when the site is available by default.
 	ReportedAvailability *float64
 	// ConfirmedServedShare is 100 x U / S, the availability lower bound.
 	ConfirmedServedShare *float64
@@ -288,10 +300,10 @@ func Summarise(site Site, date time.Time, intervals []PowerInterval, loc *time.L
 	dayStart, _ := DayBounds(date, loc)
 	from := dayStart.Add(time.Duration(site.ServiceStartMinute) * time.Minute)
 	to := dayStart.Add(time.Duration(site.ServiceEndMinute) * time.Minute)
-	return summarise(from, to, intervals)
+	return summarise(from, to, intervals, site.DefaultAvailable())
 }
 
-func summarise(from, to time.Time, intervals []PowerInterval) DailySummary {
+func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable bool) DailySummary {
 	var served, outage []Span
 	for _, iv := range intervals {
 		if iv.Basis != BasisObserved {
@@ -314,8 +326,14 @@ func summarise(from, to time.Time, intervals []PowerInterval) DailySummary {
 		sum.Coverage = pct(u+d, s)
 		sum.ConfirmedServedShare = pct(u, s)
 	}
-	if u+d > 0 {
-		sum.ReportedAvailability = pct(u, u+d)
+	if defaultAvailable {
+		sum.AssumedMinutes = s - u - d
+		sum.availNum, sum.availDen = s-d, s
+	} else {
+		sum.availNum, sum.availDen = u, u+d
+	}
+	if sum.availDen > 0 {
+		sum.ReportedAvailability = pct(sum.availNum, sum.availDen)
 	}
 	return sum
 }
@@ -334,13 +352,16 @@ func PortfolioSummary(sites []DailySummary) DailySummary {
 		total.ServedMinutes += s.ServedMinutes
 		total.OutageMinutes += s.OutageMinutes
 		total.UnknownMinutes += s.UnknownMinutes
+		total.AssumedMinutes += s.AssumedMinutes
+		total.availNum += s.availNum
+		total.availDen += s.availDen
 	}
 	if total.EligibleMinutes > 0 {
 		total.Coverage = pct(total.ServedMinutes+total.OutageMinutes, total.EligibleMinutes)
 		total.ConfirmedServedShare = pct(total.ServedMinutes, total.EligibleMinutes)
 	}
-	if total.ServedMinutes+total.OutageMinutes > 0 {
-		total.ReportedAvailability = pct(total.ServedMinutes, total.ServedMinutes+total.OutageMinutes)
+	if total.availDen > 0 {
+		total.ReportedAvailability = pct(total.availNum, total.availDen)
 	}
 	return total
 }
@@ -453,4 +474,14 @@ func crossesDay(n int, date time.Time, iv PowerInterval, dayStart, dayEnd time.T
 			n, iv.Start.In(loc).Format(hm), iv.End.In(loc).Format(hm))
 	}
 	return fmt.Sprintf("interval %d: must stay within %s", n, day)
+}
+
+// HasObservedOutage reports whether the report records any observed outage.
+func (r DailyReport) HasObservedOutage() bool {
+	for _, iv := range r.Intervals {
+		if iv.Basis == BasisObserved && iv.State == StateOutage {
+			return true
+		}
+	}
+	return false
 }

@@ -54,8 +54,8 @@ func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 		w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
 	}
 	report(4, map[string]any{"power_status": "served"})
-	report(3, map[string]any{"power_status": "outage", "generator_hours": 10.0})
-	report(2, map[string]any{"power_status": "outage", "generator_hours": 10.0})
+	report(3, map[string]any{"power_status": "outage", "generator_hours": 10.0, "outage_reason": "Grid down"})
+	report(2, map[string]any{"power_status": "outage", "generator_hours": 10.0, "outage_reason": "Grid down"})
 	report(1, map[string]any{"power_status": "served"})
 
 	level := func(tok string) map[string]any {

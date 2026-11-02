@@ -40,6 +40,8 @@ type Calculation struct {
 	From, To   time.Time
 	ComputedAt time.Time
 	Warnings   []string
+	// DefaultAvailable is whether unreported time counted as available.
+	DefaultAvailable bool
 }
 
 // ReportView is a report with its site and computed summary.
@@ -52,7 +54,9 @@ type ReportView struct {
 
 const (
 	formulaDailyAvailability = "daily-availability"
-	formulaVersion           = "1"
+	// Version 2: time not reported as an outage counts as available for a site
+	// that is available by default (DECISIONS 051). Version 1 left it unknown.
+	formulaVersion = "2"
 )
 
 type ReportInput struct {
@@ -65,6 +69,9 @@ type ReportInput struct {
 	// stays available for any future caller.
 	PowerStatus    *domain.IntervalState
 	GeneratorHours *float64
+	// OutageReason is why the site was unavailable; needed to submit a day
+	// that records an outage.
+	OutageReason string
 }
 
 // resolveIntervals turns a ReportInput into the intervals to persist, and
@@ -135,6 +142,7 @@ func (s *ReportService) CreateDraft(ctx context.Context, actor domain.Actor, sit
 		created, err = s.reports.Create(ctx, domain.DailyReport{
 			SiteID: siteID, Date: date, Revision: rev, Status: domain.ReportDraft,
 			AuthorID: actor.UserID, Notes: in.Notes, Intervals: intervals, GeneratorHours: in.GeneratorHours,
+			OutageReason: strings.TrimSpace(in.OutageReason),
 		})
 		return err
 	})
@@ -189,6 +197,10 @@ func (s *ReportService) SaveDraft(ctx context.Context, actor domain.Actor, id st
 			return invalidProblems(problems)
 		}
 		r.Notes, r.Intervals, r.GeneratorHours = in.Notes, intervals, in.GeneratorHours
+		// Saving without a reason keeps the one already given; a new one replaces it.
+		if reason := strings.TrimSpace(in.OutageReason); reason != "" {
+			r.OutageReason = reason
+		}
 		saved, err = s.reports.SaveDraft(ctx, r, rowVersion)
 		return err
 	})
@@ -225,6 +237,13 @@ func (s *ReportService) Submit(ctx context.Context, actor domain.Actor, id, late
 		problems := domain.ValidateIntervals(site, r.Date, r.Intervals, now, s.loc)
 		if !hasObserved(r.Intervals) {
 			problems = append(problems, "add at least one observed interval before submitting")
+		}
+		// A site is available unless someone says otherwise, so saying it was
+		// not has to come with a reason.
+		if r.HasObservedOutage() && r.OutageReason == "" {
+			problems = append(problems, "say why the site was unavailable")
+		} else if utf8.RuneCountInString(r.OutageReason) > 1000 {
+			problems = append(problems, "the reason for the outage is too long")
 		}
 		// A report that arrives after its site would already show "Awaiting
 		// update" has to say why. A correction already carries its own reason.
@@ -367,7 +386,7 @@ func (s *ReportService) StartCorrection(ctx context.Context, actor domain.Actor,
 		out, err = s.reports.Create(ctx, domain.DailyReport{
 			SiteID: orig.SiteID, Date: orig.Date, Revision: rev, Status: domain.ReportDraft,
 			AuthorID: actor.UserID, Notes: orig.Notes, Intervals: intervals,
-			SupersedesID: orig.ID, CorrectionReason: reason,
+			SupersedesID: orig.ID, CorrectionReason: reason, OutageReason: orig.OutageReason,
 		})
 		if err != nil {
 			return err
@@ -410,7 +429,7 @@ func (s *ReportService) view(r domain.DailyReport, site domain.Site) ReportView 
 			ReportID: r.ID, Revision: r.Revision,
 			From:       dayStart.Add(time.Duration(site.ServiceStartMinute) * time.Minute),
 			To:         dayStart.Add(time.Duration(site.ServiceEndMinute) * time.Minute),
-			ComputedAt: s.clock.Now(), Warnings: warnings,
+			ComputedAt: s.clock.Now(), Warnings: warnings, DefaultAvailable: site.DefaultAvailable(),
 		},
 	}
 }

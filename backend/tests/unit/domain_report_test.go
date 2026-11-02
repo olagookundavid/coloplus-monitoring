@@ -26,9 +26,13 @@ func outage(from, to time.Time) domain.PowerInterval {
 	return domain.PowerInterval{Start: from, End: to, State: domain.StateOutage, Basis: domain.BasisObserved}
 }
 
+// testSite counts unreported time as unknown: the PRD's worked examples and the
+// "unknown is never available" rule are about that reading. The default for a
+// real site is the other one, covered separately below.
 func testSite() domain.Site {
 	return domain.Site{
-		ID: "site-1", AirtelCode: "LOS-001", ColoplusCode: "CP-001", Name: "Ikeja", State: "Lagos",
+		UnreportedTime: domain.UnreportedUnknown,
+		ID:             "site-1", AirtelCode: "LOS-001", ColoplusCode: "CP-001", Name: "Ikeja", State: "Lagos",
 		PowerSources:       []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
 		ServiceStartMinute: 0, ServiceEndMinute: 1440, FreshnessHours: 30, Status: domain.SiteActive,
 	}
@@ -112,10 +116,54 @@ func TestSummarise_ClipsToServiceWindow(t *testing.T) {
 func TestPortfolioSummary_WeightsByEligibleMinutes(t *testing.T) {
 	// Site A: 100% over 1000 minutes. Site B: 0% over 10 minutes.
 	// An unweighted mean would say 50%; pooling must say ~99%.
-	a := domain.DailySummary{EligibleMinutes: 1000, ServedMinutes: 1000}
-	b := domain.DailySummary{EligibleMinutes: 10, OutageMinutes: 10}
+	siteA, siteB := testSite(), testSite()
+	siteA.ServiceStartMinute, siteA.ServiceEndMinute = 0, 1000
+	siteB.ServiceStartMinute, siteB.ServiceEndMinute = 0, 10
+	a := domain.Summarise(siteA, day, []domain.PowerInterval{served(at(0, 0), at(16, 40), domain.SourceGrid)}, lagos)
+	b := domain.Summarise(siteB, day, []domain.PowerInterval{outage(at(0, 0), at(0, 10))}, lagos)
 	p := domain.PortfolioSummary([]domain.DailySummary{a, b})
 	near(t, "pooled availability", p.ReportedAvailability, 100*1000.0/1010)
+}
+
+// A site is available by default: time nobody reported as an outage counts as
+// available, but it is always shown as assumed and never as confirmed.
+func TestSummarise_AvailableByDefault(t *testing.T) {
+	site := testSite()
+	site.UnreportedTime = domain.UnreportedAvailable
+
+	// The PRD example again: 30 minutes of outage, 30 unreported.
+	ivs := []domain.PowerInterval{
+		served(at(0, 0), at(11, 30), domain.SourceGrid),
+		outage(at(11, 30), at(12, 0)),
+		served(at(12, 0), at(23, 30), domain.SourceGenerator),
+	}
+	sum := domain.Summarise(site, day, ivs, lagos)
+	near(t, "availability (1440-30)/1440", sum.ReportedAvailability, 100*1410.0/1440)
+	near(t, "confirmed share", sum.ConfirmedServedShare, 95.83)
+	if sum.AssumedMinutes != 30 || !sum.Provisional() {
+		t.Fatalf("the 30 unreported minutes must be shown as assumed: %+v", sum)
+	}
+
+	// Nobody reported at all: available by default, none of it confirmed.
+	none := domain.Summarise(site, day, nil, lagos)
+	near(t, "availability with no report", none.ReportedAvailability, 100)
+	near(t, "confirmed with no report", none.ConfirmedServedShare, 0)
+	if none.AssumedMinutes != 1440 || none.ServedMinutes != 0 {
+		t.Fatalf("a day with no report is wholly assumed, not confirmed: %+v", none)
+	}
+
+	// An outage is still an outage, whatever the default.
+	down := domain.Summarise(site, day, []domain.PowerInterval{outage(at(0, 0), at(24-1, 59))}, lagos)
+	if down.ReportedAvailability == nil || *down.ReportedAvailability > 0.1 {
+		t.Fatalf("a day reported as an outage must not look available: %v", down.ReportedAvailability)
+	}
+
+	// Pooling a default-available site with a strict one keeps each site's own reading.
+	strict := domain.Summarise(testSite(), day, []domain.PowerInterval{
+		served(at(0, 0), at(10, 0), domain.SourceGrid), outage(at(10, 0), at(12, 0)),
+	}, lagos)
+	p := domain.PortfolioSummary([]domain.DailySummary{none, strict})
+	near(t, "pooled", p.ReportedAvailability, 100*float64(1440+600)/float64(1440+720))
 }
 
 func TestValidateIntervals(t *testing.T) {

@@ -50,8 +50,10 @@ func TestMySites_PooledAvailabilityAndIncidentScope(t *testing.T) {
 
 	// The silent site: never fabricate availability, every bar is a gap, no
 	// incidents leak onto it.
-	if neverReported["availability_pct_30d"] != nil {
-		t.Fatalf("a never-reported site's 30-day availability must be null, got %v", neverReported["availability_pct_30d"])
+	// A site is available by default, so with no report its figure is the assumed
+	// 100 while every bar below still shows the gap.
+	if neverReported["availability_pct_30d"] != 100.0 {
+		t.Fatalf("a never-reported site is available by default, got %v", neverReported["availability_pct_30d"])
 	}
 	for _, b := range neverReported["bars"].([]any) {
 		bar := b.(map[string]any)

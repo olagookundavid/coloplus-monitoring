@@ -20,14 +20,14 @@ func NewReportRepository(db *DB) *ReportRepository { return &ReportRepository{db
 
 const reportColumns = `id::text, site_id::text, report_date, revision, status, author_id::text, notes,
 	submitted_at, reviewed_at, COALESCE(reviewer_id::text, ''), review_comment,
-	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at, generator_hours, late_reason`
+	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at, generator_hours, late_reason, outage_reason`
 
 func scanReport(row pgx.Row) (domain.DailyReport, error) {
 	var r domain.DailyReport
 	var status string
 	err := row.Scan(&r.ID, &r.SiteID, &r.Date, &r.Revision, &status, &r.AuthorID, &r.Notes,
 		&r.SubmittedAt, &r.ReviewedAt, &r.ReviewerID, &r.ReviewComment,
-		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt, &r.GeneratorHours, &r.LateReason)
+		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt, &r.GeneratorHours, &r.LateReason, &r.OutageReason)
 	r.Status = domain.ReportStatus(status)
 	return r, err
 }
@@ -36,9 +36,9 @@ const staleMsg = "someone else changed this report while you were editing; reloa
 
 func (r *ReportRepository) Create(ctx context.Context, rep domain.DailyReport) (domain.DailyReport, error) {
 	row := r.db.q(ctx).QueryRow(ctx,
-		`INSERT INTO daily_reports (site_id, report_date, revision, status, author_id, notes, supersedes_id, correction_reason, generator_hours)
-		 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::uuid, $8, $9) RETURNING `+reportColumns,
-		rep.SiteID, rep.Date, rep.Revision, string(rep.Status), rep.AuthorID, rep.Notes, rep.SupersedesID, rep.CorrectionReason, rep.GeneratorHours)
+		`INSERT INTO daily_reports (site_id, report_date, revision, status, author_id, notes, supersedes_id, correction_reason, generator_hours, outage_reason)
+		 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::uuid, $8, $9, $10) RETURNING `+reportColumns,
+		rep.SiteID, rep.Date, rep.Revision, string(rep.Status), rep.AuthorID, rep.Notes, rep.SupersedesID, rep.CorrectionReason, rep.GeneratorHours, rep.OutageReason)
 	created, err := scanReport(row)
 	if err != nil {
 		return domain.DailyReport{}, mapErr(err, "a report for this site and day is already in progress or approved")
@@ -132,9 +132,9 @@ func (r *ReportRepository) SaveDraft(ctx context.Context, rep domain.DailyReport
 	q := r.db.q(ctx)
 	tag, err := q.Exec(ctx,
 		`UPDATE daily_reports
-		 SET notes = $2, generator_hours = $4, status = 'draft', row_version = row_version + 1, updated_at = now()
+		 SET notes = $2, generator_hours = $4, outage_reason = $5, status = 'draft', row_version = row_version + 1, updated_at = now()
 		 WHERE id = $1 AND row_version = $3 AND status IN ('draft', 'rejected')`,
-		rep.ID, rep.Notes, rowVersion, rep.GeneratorHours)
+		rep.ID, rep.Notes, rowVersion, rep.GeneratorHours, rep.OutageReason)
 	if err != nil {
 		return domain.DailyReport{}, mapErr(err, "")
 	}

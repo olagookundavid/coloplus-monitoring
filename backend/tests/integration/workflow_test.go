@@ -43,8 +43,9 @@ func newWorkflow(t *testing.T) *workflow {
 func (w *workflow) goodDay(daysAgo int) (date string, body map[string]any) {
 	date, at := w.reportDay(daysAgo)
 	return date, map[string]any{
-		"report_date": date,
-		"notes":       "internal: generator serviced",
+		"report_date":   date,
+		"notes":         "internal: generator serviced",
+		"outage_reason": "Grid failure at the site; generator took over",
 		"intervals": []any{
 			iv(at(0, 0), at(11, 30), "served", "grid"),
 			iv(at(11, 30), at(12, 0), "outage", ""),
@@ -99,7 +100,10 @@ func TestDailyReport_FullApprovalFlow(t *testing.T) {
 	if sum["served_minutes"] != float64(1380) || sum["outage_minutes"] != float64(30) || sum["unknown_minutes"] != float64(30) {
 		t.Fatalf("summary minutes wrong: %v", sum)
 	}
-	if sum["coverage_pct"] != 97.92 || sum["reported_availability_pct"] != 97.87 || sum["confirmed_served_share_pct"] != 95.83 {
+	if sum["assumed_available_minutes"] != float64(30) {
+		t.Fatalf("the 30 unreported minutes must be shown as assumed: %v", sum)
+	}
+	if sum["coverage_pct"] != 97.92 || sum["reported_availability_pct"] != 97.92 || sum["confirmed_served_share_pct"] != 95.83 {
 		t.Fatalf("summary percentages wrong: %v", sum)
 	}
 	calc, _ := pub.Body["calculation"].(map[string]any)
@@ -189,6 +193,7 @@ func TestDailyReport_ToggleSubmitsWithGeneratorHours(t *testing.T) {
 
 	created := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", map[string]any{
 		"report_date": date, "power_status": "outage", "generator_hours": 3.5,
+		"outage_reason": "Grid down since morning",
 	}, w.reporter), 201)
 	id := created.str("id")
 	if created.str("generator_hours") != "3.5" {
@@ -199,6 +204,28 @@ func TestDailyReport_ToggleSubmitsWithGeneratorHours(t *testing.T) {
 	if submitted.str("status") != "submitted" {
 		t.Fatalf("status = %s, want submitted: the day-level interval must count as observed", submitted.str("status"))
 	}
+
+	// A site is available unless someone says otherwise, so an outage day
+	// cannot be submitted without saying why; a save without a reason keeps it.
+	date3, _ := w.reportDay(1)
+	noReason := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports", map[string]any{
+		"report_date": date3, "power_status": "outage", "generator_hours": 2.0,
+	}, w.reporter), 201)
+	denied := w.expect(w.call("POST", "/api/v1/daily-reports/"+noReason.str("id")+"/submit", nil, w.reporter), 400)
+	if !strings.Contains(denied.str("error"), "why the site was unavailable") {
+		t.Fatalf("the refusal should ask for the reason: %s", denied.Raw)
+	}
+	saved := w.expect(w.call("PUT", "/api/v1/daily-reports/"+noReason.str("id"), map[string]any{
+		"row_version": noReason.Body["row_version"], "power_status": "outage", "generator_hours": 2.0,
+		"outage_reason": "Transformer fault",
+	}, w.reporter), 200)
+	again := w.expect(w.call("PUT", "/api/v1/daily-reports/"+noReason.str("id"), map[string]any{
+		"row_version": saved.Body["row_version"], "power_status": "outage", "generator_hours": 2.5,
+	}, w.reporter), 200)
+	if again.str("outage_reason") != "Transformer fault" {
+		t.Fatalf("saving without a reason must keep the one given: %s", again.Raw)
+	}
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+noReason.str("id")+"/submit", nil, w.reporter), 200)
 
 	// Missing generator hours on a day with an outage is refused.
 	date2, _ := w.reportDay(2)
@@ -353,7 +380,11 @@ func TestSelfApprovalIsBlocked(t *testing.T) {
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
 }
 
-func TestDashboard_MissingReportsAreUnknownNeverAvailable(t *testing.T) {
+// A site is available by default (owner direction, DECISIONS 051): time nobody
+// reported counts as available, but it is always shown as assumed, the days
+// without a report are counted beside it, the "Awaiting update" label stays,
+// and a site can be set to the stricter reading where it is unknown instead.
+func TestDashboard_UnreportedTimeIsAssumedAvailableAndSaysSo(t *testing.T) {
 	w := newWorkflow(t)
 	date, _ := w.goodDay(1)
 
@@ -376,8 +407,11 @@ func TestDashboard_MissingReportsAreUnknownNeverAvailable(t *testing.T) {
 	for _, row := range ov.list("sites") {
 		r := row.(map[string]any)
 		if r["site_id"] == silent {
-			if r["condition"] != "awaiting_update" || r["summary"] != nil {
-				t.Fatalf("a site with no report must be awaiting update with no summary: %v", r)
+			s, _ := r["summary"].(map[string]any)
+			if r["condition"] != "awaiting_update" || r["days_without_report"] != float64(1) || s == nil ||
+				s["reported_availability_pct"] != 100.0 || s["assumed_available_minutes"] != float64(1440) ||
+				s["confirmed_served_share_pct"] != 0.0 || s["served_minutes"] != float64(0) {
+				t.Fatalf("a site nobody reported on is available by default, but assumed, awaiting update, and counted as a day without a report: %v", r)
 			}
 		}
 	}
@@ -387,8 +421,24 @@ func TestDashboard_MissingReportsAreUnknownNeverAvailable(t *testing.T) {
 	if p["eligible_minutes"] != float64(2880) || p["served_minutes"] != float64(1380) || p["unknown_minutes"] != float64(1470) {
 		t.Fatalf("portfolio minutes = %v", p)
 	}
-	if p["coverage_pct"] != 48.96 || p["provisional"] != true {
-		t.Fatalf("portfolio coverage must expose the missing site: %v", p)
+	if p["coverage_pct"] != 48.96 || p["provisional"] != true || p["confirmed_served_share_pct"] != 47.92 {
+		t.Fatalf("coverage and the confirmed share must still expose the missing site: %v", p)
+	}
+	// 2,850 of 2,880 minutes count as available, 1,470 of them assumed.
+	if p["reported_availability_pct"] != 98.96 || p["assumed_available_minutes"] != float64(1470) || ov.Body["site_days_without_report"] != float64(1) {
+		t.Fatalf("availability must say how much of it is assumed: %v / %s", p, ov.Raw)
+	}
+
+	// Set to the stricter reading, the silent site's time is unknown again.
+	w.exec(`UPDATE sites SET unreported_time = 'unknown' WHERE id = $1`, silent)
+	strict := w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+date, nil, w.reporter), 200)
+	for _, row := range strict.list("sites") {
+		if r := row.(map[string]any); r["site_id"] == silent && r["summary"] != nil {
+			t.Fatalf("under the strict reading a site with no report has no figure: %v", r)
+		}
+	}
+	if sp, _ := strict.Body["portfolio"].(map[string]any); sp["reported_availability_pct"] != 97.92 {
+		t.Fatalf("the unknown site must not count as available: %v", sp)
 	}
 
 	// An Airtel viewer assigned to the first site only sees that site.
@@ -424,14 +474,15 @@ func TestDashboard_PeriodRegionAndTrendKeepGaps(t *testing.T) {
 	sum, _ := row["summary"].(map[string]any)
 	// Two days of 1440 minutes; only yesterday was reported.
 	if row["days_reported"] != float64(1) || row["current_source"] != "generator" ||
-		sum["eligible_minutes"] != float64(2880) || sum["served_minutes"] != float64(1380) || sum["unknown_minutes"] != float64(1470) {
-		t.Fatalf("a period must pool the days and keep the unreported one unknown: %v", row)
+		sum["eligible_minutes"] != float64(2880) || sum["served_minutes"] != float64(1380) || sum["unknown_minutes"] != float64(1470) ||
+		sum["assumed_available_minutes"] != float64(1470) || row["days_without_report"] != float64(1) {
+		t.Fatalf("a period must pool the days, with the unreported day assumed and counted: %v", row)
 	}
 
 	all := w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to="+to, nil, w.reporter), 200)
 	for _, r := range all.list("sites") {
-		if m := r.(map[string]any); m["site_id"] == silent && (m["summary"] != nil || m["current_source"] != nil || m["days_reported"] != float64(0)) {
-			t.Fatalf("a site that never reported must have no figures and no source: %v", m)
+		if m := r.(map[string]any); m["site_id"] == silent && (m["current_source"] != nil || m["days_reported"] != float64(0) || m["days_without_report"] != float64(2)) {
+			t.Fatalf("a site that never reported has no source and two days without a report: %v", m)
 		}
 	}
 
@@ -442,8 +493,11 @@ func TestDashboard_PeriodRegionAndTrendKeepGaps(t *testing.T) {
 	}
 	first := pts[0].(map[string]any)["summary"].(map[string]any)
 	last := pts[1].(map[string]any)["summary"].(map[string]any)
-	if first["reported_availability_pct"] != nil || pts[0].(map[string]any)["sites_reported"] != float64(0) {
-		t.Fatalf("a day nobody reported must be a gap, not a figure: %v", pts[0])
+	// A day nobody reported is assumed available, and says so: nothing is
+	// confirmed and no site reported.
+	if first["reported_availability_pct"] != 100.0 || first["assumed_available_minutes"] != float64(2880) ||
+		first["confirmed_served_share_pct"] != 0.0 || pts[0].(map[string]any)["sites_reported"] != float64(0) {
+		t.Fatalf("a day nobody reported is assumed available, never confirmed: %v", pts[0])
 	}
 	if last["reported_availability_pct"] == nil || pts[1].(map[string]any)["sites_reported"] != float64(1) {
 		t.Fatalf("yesterday was reported: %v", pts[1])

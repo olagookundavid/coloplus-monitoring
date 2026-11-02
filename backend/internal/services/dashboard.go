@@ -75,8 +75,10 @@ type SiteRow struct {
 	// its window as unknown). Nil when no day in the period has an approved
 	// report, which is never shown as zero or as available.
 	Summary *domain.DailySummary
-	// DaysReported is how many days of the period have an approved report.
-	DaysReported int
+	// DaysReported is how many days of the period have an approved report;
+	// DaysWithoutReport the rest, shown beside the figure so an assumed day is never hidden.
+	DaysReported      int
+	DaysWithoutReport int
 	// TodayReport/YesterdayReport are the report that best represents the
 	// period's last day and the day before (in-progress if there is one, else
 	// approved); nil when nothing has ever been filed. This is the reporter's
@@ -113,6 +115,9 @@ type Overview struct {
 	SitesNotReported    int
 	SitesAwaitingUpdate int
 	SitesOutageReported int
+	// SiteDaysWithoutReport counts, over the active sites, the days in the period
+	// with no approved report.
+	SiteDaysWithoutReport int
 	// OutagesThisWeek counts distinct site/day pairs in the 7 days ending on
 	// the period's last day whose current report has an outage. An
 	// approximation, not a full weekly aggregation.
@@ -293,7 +298,10 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 			}
 		}
 		pooled := domain.PortfolioSummary(days)
-		if row.DaysReported > 0 {
+		row.DaysWithoutReport = p.Days() - row.DaysReported
+		// A site that is available by default has a figure even if nobody
+		// reported; the days without a report are still counted and shown beside it.
+		if row.DaysReported > 0 || site.DefaultAvailable() {
 			row.Summary = &pooled
 		}
 
@@ -303,6 +311,7 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 			// Only active sites enter the service KPIs; pending sites stay
 			// visible separately.
 			kpi = append(kpi, pooled)
+			out.SiteDaysWithoutReport += row.DaysWithoutReport
 			if row.DaysReported > 0 {
 				out.SitesReported++
 			} else {

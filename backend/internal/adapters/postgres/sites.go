@@ -19,16 +19,17 @@ func NewSiteRepository(db *DB) *SiteRepository { return &SiteRepository{db: db} 
 const siteColumns = `id::text, airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
 	service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude,
 	generator_capacity, access_contact_name, access_contact_phone, supervisor_name,
-	created_at, updated_at, responsible_team, consumption_lph, tank_capacity_litres`
+	created_at, updated_at, responsible_team, consumption_lph, tank_capacity_litres, unreported_time`
 
 func scanSite(row pgx.Row) (domain.Site, error) {
 	var s domain.Site
 	var sources []string
-	var status string
+	var status, unreported string
 	err := row.Scan(&s.ID, &s.AirtelCode, &s.ColoplusCode, &s.Name, &s.Address, &s.Region, &s.State, &s.SiteType, &sources,
 		&s.ServiceStartMinute, &s.ServiceEndMinute, &s.FreshnessHours, &status, &s.CommissioningDate, &s.Latitude, &s.Longitude,
 		&s.GeneratorCapacity, &s.AccessContactName, &s.AccessContactPhone, &s.SupervisorName,
-		&s.CreatedAt, &s.UpdatedAt, &s.ResponsibleTeam, &s.ConsumptionLPH, &s.TankCapacityLitres)
+		&s.CreatedAt, &s.UpdatedAt, &s.ResponsibleTeam, &s.ConsumptionLPH, &s.TankCapacityLitres, &unreported)
+	s.UnreportedTime = domain.UnreportedPolicy(unreported)
 	s.Status = domain.SiteStatus(status)
 	for _, p := range sources {
 		s.PowerSources = append(s.PowerSources, domain.PowerSource(p))
@@ -51,12 +52,12 @@ func (r *SiteRepository) Create(ctx context.Context, s domain.Site) (domain.Site
 		`INSERT INTO sites (airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
 		        service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude,
 		        generator_capacity, access_contact_name, access_contact_phone, supervisor_name, responsible_team,
-		        consumption_lph, tank_capacity_litres)
-		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22) RETURNING `+siteColumns,
+		        consumption_lph, tank_capacity_litres, unreported_time)
+		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING `+siteColumns,
 		s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
 		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude,
 		s.GeneratorCapacity, s.AccessContactName, s.AccessContactPhone, s.SupervisorName, s.ResponsibleTeam,
-		s.ConsumptionLPH, s.TankCapacityLitres)
+		s.ConsumptionLPH, s.TankCapacityLitres, string(unreportedOrDefault(s.UnreportedTime)))
 	created, err := scanSite(row)
 	if err != nil {
 		return domain.Site{}, mapErr(err, siteConflictMsg)
@@ -75,12 +76,12 @@ func (r *SiteRepository) Update(ctx context.Context, s domain.Site) error {
 		        power_sources=$9, service_start_minute=$10, service_end_minute=$11, freshness_hours=$12, status=$13,
 		        commissioning_date=$14, latitude=$15, longitude=$16,
 		        generator_capacity=$17, access_contact_name=$18, access_contact_phone=$19, supervisor_name=$20,
-		        responsible_team=$21, consumption_lph=$22, tank_capacity_litres=$23, updated_at=now()
+		        responsible_team=$21, consumption_lph=$22, tank_capacity_litres=$23, unreported_time=$24, updated_at=now()
 		 WHERE id = $1`,
 		s.ID, s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
 		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude,
 		s.GeneratorCapacity, s.AccessContactName, s.AccessContactPhone, s.SupervisorName, s.ResponsibleTeam,
-		s.ConsumptionLPH, s.TankCapacityLitres)
+		s.ConsumptionLPH, s.TankCapacityLitres, string(unreportedOrDefault(s.UnreportedTime)))
 	return mapErr(err, siteConflictMsg)
 }
 
@@ -181,4 +182,11 @@ func nonNil(in []string) []string {
 
 func escapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
+func unreportedOrDefault(p domain.UnreportedPolicy) domain.UnreportedPolicy {
+	if p == "" {
+		return domain.UnreportedAvailable
+	}
+	return p
 }

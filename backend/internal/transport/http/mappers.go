@@ -26,6 +26,7 @@ func toSiteDTO(s domain.Site) dto.SiteDTO {
 		ID: s.ID, AirtelCode: s.AirtelCode, ColoplusCode: s.ColoplusCode, Name: s.Name, Address: s.Address,
 		Region: s.Region, State: s.State, SiteType: s.SiteType, PowerSources: sources, ResponsibleTeam: s.ResponsibleTeam,
 		ConsumptionLPH: s.ConsumptionLPH, TankCapacityLitres: s.TankCapacityLitres,
+		UnreportedTime:     string(unreportedOrAvailable(s.UnreportedTime)),
 		ServiceStartMinute: s.ServiceStartMinute, ServiceEndMinute: s.ServiceEndMinute,
 		FreshnessHours: s.FreshnessHours, Status: string(s.Status),
 		Latitude: s.Latitude, Longitude: s.Longitude, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
@@ -48,6 +49,7 @@ func fromSiteRequest(r dto.SiteRequest) (domain.Site, error) {
 		AirtelCode: r.AirtelCode, ColoplusCode: r.ColoplusCode, Name: r.Name, Address: r.Address,
 		Region: r.Region, State: r.State, SiteType: r.SiteType, PowerSources: sources, ResponsibleTeam: strings.TrimSpace(r.ResponsibleTeam),
 		ConsumptionLPH: r.ConsumptionLPH, TankCapacityLitres: r.TankCapacityLitres,
+		UnreportedTime:     domain.UnreportedPolicy(r.UnreportedTime),
 		ServiceStartMinute: r.ServiceStartMinute, ServiceEndMinute: r.ServiceEndMinute,
 		FreshnessHours: r.FreshnessHours, Status: domain.SiteStatus(r.Status),
 		Latitude: r.Latitude, Longitude: r.Longitude,
@@ -97,7 +99,7 @@ func toReportDTO(r domain.DailyReport, loc *time.Location) dto.ReportDTO {
 		Intervals: toIntervalDTOs(r.Intervals, loc), SubmittedAt: r.SubmittedAt, ReviewedAt: r.ReviewedAt,
 		ReviewerID: r.ReviewerID, ReviewComment: r.ReviewComment, SupersedesID: r.SupersedesID,
 		CorrectionReason: r.CorrectionReason, RowVersion: r.RowVersion, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
-		GeneratorHours: r.GeneratorHours, LateReason: r.LateReason,
+		GeneratorHours: r.GeneratorHours, LateReason: r.LateReason, OutageReason: r.OutageReason,
 	}
 }
 
@@ -126,6 +128,7 @@ func toSummaryDTO(s domain.DailySummary) dto.SummaryDTO {
 		EligibleMinutes: s.EligibleMinutes, ServedMinutes: s.ServedMinutes,
 		OutageMinutes: s.OutageMinutes, UnknownMinutes: s.UnknownMinutes,
 		CoveragePct: round2(s.Coverage), ReportedAvailabilityPct: round2(s.ReportedAvailability),
+		AssumedAvailableMinutes: s.AssumedMinutes,
 		ConfirmedServedSharePct: round2(s.ConfirmedServedShare), Provisional: s.Provisional(),
 	}
 }
@@ -148,12 +151,8 @@ func toCalculationDTO(c services.Calculation, loc *time.Location) dto.Calculatio
 		Formula: c.Formula, Version: c.Version, Basis: "calculation from reported inputs",
 		InputReport: c.ReportID, InputRev: c.Revision,
 		WindowStart: c.From.In(loc), WindowEnd: c.To.In(loc), Timezone: loc.String(), ComputedAt: c.ComputedAt,
-		Explanation: "Eligible minutes are the site's service window on this day. Served and outage minutes are the union of " +
-			"the observed intervals in the approved report, clipped to that window, so overlapping or duplicate entries " +
-			"never count twice. Unknown minutes are what remains: they are neither confirmed uptime nor confirmed downtime. " +
-			"Coverage is (served + outage) / eligible. Reported availability is served / (served + outage). " +
-			"Confirmed served share is served / eligible.",
-		Warnings: warnings,
+		Explanation: calculationExplanation(c.DefaultAvailable),
+		Warnings:    warnings,
 	}
 }
 
@@ -163,7 +162,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		row := dto.SiteRowDTO{
 			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			SiteType: r.Site.SiteType, State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
-			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported,
+			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported, DaysWithoutReport: r.DaysWithoutReport,
 			TodayStatus: toReportStatusDTO(r.TodayReport), YesterdayStatus: toReportStatusDTO(r.YesterdayReport),
 		}
 		if r.AsOf != nil {
@@ -187,8 +186,9 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		ActiveSites: o.Counts.Active, PendingSites: o.Counts.PendingAcceptance, SuspendedSites: o.Counts.Suspended,
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
-		OutagesThisWeek: o.OutagesThisWeek,
-		Portfolio:       toSummaryDTO(o.Portfolio), Sites: rows,
+		SiteDaysWithoutReport: o.SiteDaysWithoutReport,
+		OutagesThisWeek:       o.OutagesThisWeek,
+		Portfolio:             toSummaryDTO(o.Portfolio), Sites: rows,
 	}
 }
 
@@ -358,4 +358,27 @@ func toAcceptanceEventDTO(e domain.AcceptanceEvent) dto.AcceptanceEventDTO {
 		ID: e.ID, Party: string(e.Party), FromStage: string(e.FromStage), ToStage: string(e.ToStage),
 		Body: e.Body, CreatedAt: e.CreatedAt,
 	}
+}
+
+func unreportedOrAvailable(p domain.UnreportedPolicy) domain.UnreportedPolicy {
+	if p == "" {
+		return domain.UnreportedAvailable
+	}
+	return p
+}
+
+const calculationCommon = "Eligible minutes are the site's service window on this day. Served and outage minutes are the union of " +
+	"the observed intervals in the approved report, clipped to that window, so overlapping or duplicate entries " +
+	"never count twice. Coverage is (served + outage) / eligible. Confirmed served share is served / eligible, " +
+	"and counts only time that was actually reported."
+
+// calculationExplanation says how the availability figure was reached, and for
+// a site that is available by default, which part of it is assumed.
+func calculationExplanation(defaultAvailable bool) string {
+	if defaultAvailable {
+		return calculationCommon + " This site is available by default: time not reported as an outage counts as available, " +
+			"and those minutes are shown as assumed, not confirmed. Reported availability is (eligible - outage) / eligible."
+	}
+	return calculationCommon + " Unknown minutes are what remains: they are neither confirmed uptime nor confirmed downtime. " +
+		"Reported availability is served / (served + outage)."
 }

@@ -76,7 +76,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 6. Portfolio and site screens, as API (PRD 5)
 
 - [x] Portfolio overview for a day: active, pending and suspended counts, sites reported, not reported, awaiting update, outage reported, pooled availability with coverage, per-site condition (available, outage reported, awaiting update) **FR**
-- [x] An overdue or missing entry never shows as current or available (AT03)
+- [x] An overdue or missing entry shows "Awaiting update", never as current. Under the owner's default-available rule its time counts as available but is shown as assumed, never confirmed (AT03, DECISIONS 051)
 - [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
 - [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 043)
 - [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
@@ -170,7 +170,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 |---|---|---|
 | AT01 | Airtel cannot reach another customer's site, attachment, report or API response | Sites, reports, incidents, disputes, tickets, attachments, exports: tested |
 | AT02 | A known input gives the expected energy estimate with its inputs and formula version | Not started (no energy model) |
-| AT03 | An overdue or missing entry shows stale or unknown, never available or zero | Done, tested |
+| AT03 | An overdue or missing entry shows stale ("Awaiting update"); unreported time is assumed, never confirmed (owner's default-available rule, DECISIONS 051) | Done, tested. Changed from the PRD wording; the customer should agree to it |
 | AT04 | Overlapping, duplicate, cross-midnight intervals give correct unions and allocations | Unions, overlap rejection and coverage: done. Cross-midnight splitting: not built |
 | AT05 | Re-submitting an import or draft creates no duplicate; concurrent edits conflict | Concurrent edits: done, tested. Imports: not built |
 | AT06 | Reporter cannot self-approve; a correction keeps the original and makes a new revision | Done, tested |

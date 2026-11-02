@@ -900,7 +900,7 @@
         },
         "/api/v1/dashboard/overview": {
             "get": {
-                "description": "Availability pools active sites by eligible minutes over the period. A day with no approved report counts its window as unknown; it never appears as available. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.",
+                "description": "Availability pools active sites by eligible minutes over the period. A site is available by default: time nobody reported as an outage counts as available, shown as assumed_available_minutes and never as confirmed (confirmed_served_share_pct counts only reported time). days_without_report and site_days_without_report say how many days nobody reported. A site set to unreported_time \"unknown\" keeps the stricter reading, with no figure for unreported time. Give `date` for one day, or `from` and `to` (at most 92 days). `region` narrows the sites; `regions` lists what is on offer. Each site row says how many of the days were reported and, when its report is current, the source it was last observed running on.",
                 "produces": [
                     "application/json"
                 ],
@@ -952,7 +952,7 @@
         },
         "/api/v1/dashboard/trend": {
             "get": {
-                "description": "One point per reporting day for the active sites in scope, pooled by eligible minutes. A day on which nothing was reported has null availability: draw a gap, not a line at zero or 100. Daily is the finest grain the reports give.",
+                "description": "One point per reporting day for the active sites in scope, pooled by eligible minutes. A day nobody reported is assumed available for sites that are available by default, and says so: assumed_available_minutes is above 0, confirmed_served_share_pct is 0 and sites_reported shows how many reported. Draw those days differently, not as confirmed. Daily is the finest grain the reports give.",
                 "produces": [
                     "application/json"
                 ],
@@ -1205,7 +1205,7 @@
         },
         "/api/v1/exports/daily-summaries.csv": {
             "get": {
-                "description": "One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures, never zero and never available. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.",
+                "description": "One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures. For a site that is available by default its availability is shown as assumed (assumed_available_minutes), never as confirmed. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.",
                 "produces": [
                     "text/csv"
                 ],
@@ -3435,6 +3435,11 @@
                 "notes": {
                     "type": "string"
                 },
+                "outage_reason": {
+                    "description": "OutageReason says why the site was unavailable. A site is available\nunless someone says otherwise, so a report that records an outage cannot\nbe submitted without it.",
+                    "type": "string",
+                    "example": "Grid down; generator failed to start"
+                },
                 "power_status": {
                     "description": "PowerStatus, when set, is the reporter's simplified day-level entry:\n\"served\" (power on all day) or \"outage\" (had an outage). It builds the\nday's single interval and Intervals is ignored.",
                     "type": "string",
@@ -4421,6 +4426,10 @@
                         "type": "string"
                     }
                 },
+                "site_days_without_report": {
+                    "description": "SiteDaysWithoutReport counts site-days in the period with no approved report.",
+                    "type": "integer"
+                },
                 "sites": {
                     "type": "array",
                     "items": {
@@ -4709,6 +4718,10 @@
                 "notes": {
                     "type": "string"
                 },
+                "outage_reason": {
+                    "description": "OutageReason is why the site was unavailable that day.",
+                    "type": "string"
+                },
                 "report_date": {
                     "type": "string"
                 },
@@ -4949,6 +4962,10 @@
                 "notes": {
                     "type": "string"
                 },
+                "outage_reason": {
+                    "description": "OutageReason: see CreateReportRequest.",
+                    "type": "string"
+                },
                 "power_status": {
                     "type": "string",
                     "example": "served"
@@ -4994,7 +5011,6 @@
                     "example": "2026-09-01"
                 },
                 "consumption_lph": {
-                    "description": "ConsumptionLPH is the generator's agreed fuel use in litres per running\nhour; null until agreed. TankCapacityLitres is the tank size; null if unknown.",
                     "type": "number",
                     "example": 4.5
                 },
@@ -5062,6 +5078,11 @@
                 "tank_capacity_litres": {
                     "type": "number",
                     "example": 1000
+                },
+                "unreported_time": {
+                    "description": "ConsumptionLPH is the generator's agreed fuel use in litres per running\nhour; null until agreed. TankCapacityLitres is the tank size; null if unknown.\nUnreportedTime is how time nobody reported counts: available (the default,\na site is available unless someone says otherwise) or unknown.",
+                    "type": "string",
+                    "example": "available"
                 },
                 "updated_at": {
                     "type": "string"
@@ -5239,6 +5260,10 @@
                 },
                 "tank_capacity_litres": {
                     "type": "number"
+                },
+                "unreported_time": {
+                    "description": "UnreportedTime is available (default) or unknown.",
+                    "type": "string"
                 }
             }
         },
@@ -5266,6 +5291,10 @@
                 },
                 "days_reported": {
                     "description": "DaysReported of the response's Days have an approved report.",
+                    "type": "integer"
+                },
+                "days_without_report": {
+                    "description": "DaysWithoutReport are the days of the period nobody reported. For a site\nthat is available by default they are counted as available (assumed).",
                     "type": "integer"
                 },
                 "name": {
@@ -5323,6 +5352,10 @@
         "dto.SummaryDTO": {
             "type": "object",
             "properties": {
+                "assumed_available_minutes": {
+                    "description": "AssumedAvailableMinutes is time counted as available because nobody\nreported otherwise (a site is available by default). It is part of\nreported_availability_pct but never of confirmed_served_share_pct, so the\nconfirmed and the assumed parts can always be told apart.",
+                    "type": "integer"
+                },
                 "confirmed_served_share_pct": {
                     "type": "number"
                 },

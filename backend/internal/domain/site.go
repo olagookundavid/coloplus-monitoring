@@ -43,6 +43,21 @@ func ValidSiteStatus(s SiteStatus) bool {
 
 const minutesPerDay = 24 * 60
 
+// UnreportedPolicy is how a site's time counts when nobody has reported it.
+type UnreportedPolicy string
+
+const (
+	// UnreportedAvailable (the default): time not reported as an outage counts
+	// as available. The site is available unless someone says otherwise.
+	UnreportedAvailable UnreportedPolicy = "available"
+	// UnreportedUnknown: unreported time is neither up nor down.
+	UnreportedUnknown UnreportedPolicy = "unknown"
+)
+
+func ValidUnreportedPolicy(p UnreportedPolicy) bool {
+	return p == UnreportedAvailable || p == UnreportedUnknown
+}
+
 // Site is the master record. Its ID is immutable and internal.
 type Site struct {
 	ID           string
@@ -60,6 +75,8 @@ type Site struct {
 	// ConsumptionLPH is the generator's agreed fuel use in litres per running
 	// hour; TankCapacityLitres the size of the tank. Both are nil until agreed,
 	// and a fuel estimate is unavailable without the first.
+	// UnreportedTime says how time nobody reported counts. Empty means the default.
+	UnreportedTime     UnreportedPolicy
 	ConsumptionLPH     *float64
 	TankCapacityLitres *float64
 
@@ -85,6 +102,9 @@ type Site struct {
 	CreatedAt         time.Time
 	UpdatedAt         time.Time
 }
+
+// DefaultAvailable reports whether unreported time counts as available.
+func (s Site) DefaultAvailable() bool { return s.UnreportedTime != UnreportedUnknown }
 
 // Validate checks the rules every site record must meet.
 func (s Site) Validate() error {
@@ -124,6 +144,9 @@ func (s Site) Validate() error {
 	}
 	if !ValidSiteStatus(s.Status) {
 		add(fmt.Sprintf("%q is not a known site status", s.Status))
+	}
+	if s.UnreportedTime != "" && !ValidUnreportedPolicy(s.UnreportedTime) {
+		add("unreported time must count as available or unknown")
 	}
 	if s.ConsumptionLPH != nil && (*s.ConsumptionLPH <= 0 || *s.ConsumptionLPH > 1000) {
 		add("the consumption rate must be more than 0 and at most 1,000 litres per hour")

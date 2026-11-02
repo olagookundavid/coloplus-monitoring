@@ -24,6 +24,10 @@ type CreateReportRequest struct {
 	PowerStatus string `json:"power_status,omitempty" example:"served"`
 	// GeneratorHours is required only when PowerStatus is "outage", 0-24.
 	GeneratorHours *float64 `json:"generator_hours,omitempty" example:"3.5"`
+	// OutageReason says why the site was unavailable. A site is available
+	// unless someone says otherwise, so a report that records an outage cannot
+	// be submitted without it.
+	OutageReason string `json:"outage_reason,omitempty" example:"Grid down; generator failed to start"`
 }
 
 type SaveReportRequest struct {
@@ -35,6 +39,8 @@ type SaveReportRequest struct {
 	PowerStatus string        `json:"power_status,omitempty" example:"served"`
 	// GeneratorHours is required only when PowerStatus is "outage", 0-24.
 	GeneratorHours *float64 `json:"generator_hours,omitempty" example:"3.5"`
+	// OutageReason: see CreateReportRequest.
+	OutageReason string `json:"outage_reason,omitempty"`
 }
 
 // SubmitRequest is optional. A report submitted after its site would already
@@ -77,6 +83,8 @@ type ReportDTO struct {
 	GeneratorHours   *float64      `json:"generator_hours,omitempty"`
 	// LateReason is why the report was submitted late; absent when it was on time.
 	LateReason string `json:"late_reason,omitempty"`
+	// OutageReason is why the site was unavailable that day.
+	OutageReason string `json:"outage_reason,omitempty"`
 }
 
 // PublishedReportDTO is what Airtel sees: approved facts only. Internal notes,
@@ -109,6 +117,11 @@ type SummaryDTO struct {
 	// The percentages are null when not applicable or unavailable, never 0.
 	CoveragePct             *float64 `json:"coverage_pct"`
 	ReportedAvailabilityPct *float64 `json:"reported_availability_pct"`
+	// AssumedAvailableMinutes is time counted as available because nobody
+	// reported otherwise (a site is available by default). It is part of
+	// reported_availability_pct but never of confirmed_served_share_pct, so the
+	// confirmed and the assumed parts can always be told apart.
+	AssumedAvailableMinutes int      `json:"assumed_available_minutes"`
 	ConfirmedServedSharePct *float64 `json:"confirmed_served_share_pct"`
 	Provisional             bool     `json:"provisional"`
 }
@@ -170,6 +183,8 @@ type OverviewResponse struct {
 	SitesNotReported    int       `json:"sites_not_reported"`
 	SitesAwaitingUpdate int       `json:"sites_awaiting_update"`
 	SitesOutageReported int       `json:"sites_outage_reported"`
+	// SiteDaysWithoutReport counts site-days in the period with no approved report.
+	SiteDaysWithoutReport int `json:"site_days_without_report"`
 	// OutagesThisWeek counts distinct site/day pairs in the trailing 7 days
 	// (inclusive of the requested date) whose current report has an outage.
 	// An approximation, not a full weekly aggregation.
@@ -199,6 +214,9 @@ type SiteRowDTO struct {
 	Summary *SummaryDTO `json:"summary,omitempty"`
 	// DaysReported of the response's Days have an approved report.
 	DaysReported int `json:"days_reported"`
+	// DaysWithoutReport are the days of the period nobody reported. For a site
+	// that is available by default they are counted as available (assumed).
+	DaysWithoutReport int `json:"days_without_report"`
 
 	// TodayStatus/YesterdayStatus are the report that best represents that
 	// day's live status (in-progress if there is one, else the approved

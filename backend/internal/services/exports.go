@@ -41,8 +41,9 @@ const (
 	// spreadsheet still says what it does and does not mean.
 	ExportAssumptions = "Observed intervals only; declared intervals are kept but never counted. " +
 		"Time outside the service window is not counted. " +
-		"Unknown time is neither served nor outage. " +
-		"A day without an approved report has no figures and is not availability."
+		"Served and outage minutes are confirmed by a report. " +
+		"For a site that is available by default, time not reported as an outage is counted as available and shown as assumed_available_minutes: assumed, not confirmed. " +
+		"A day without an approved report has no served or outage figures; its availability is assumed."
 )
 
 // DailySummaryRow is one site and one reporting day. Summary is nil when the

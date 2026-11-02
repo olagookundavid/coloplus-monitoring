@@ -15,6 +15,9 @@ type SiteDTO struct {
 	ResponsibleTeam string   `json:"responsible_team" example:"Lagos Island field team"`
 	// ConsumptionLPH is the generator's agreed fuel use in litres per running
 	// hour; null until agreed. TankCapacityLitres is the tank size; null if unknown.
+	// UnreportedTime is how time nobody reported counts: available (the default,
+	// a site is available unless someone says otherwise) or unknown.
+	UnreportedTime     string    `json:"unreported_time" example:"available"`
 	ConsumptionLPH     *float64  `json:"consumption_lph" example:"4.5"`
 	TankCapacityLitres *float64  `json:"tank_capacity_litres" example:"1000"`
 	ServiceStartMinute int       `json:"service_start_minute" example:"0"`
@@ -35,15 +38,17 @@ type SiteDTO struct {
 // SiteRequest creates or replaces a site. Leave service window and freshness
 // at zero to get a 24-hour window and a 30-hour freshness threshold.
 type SiteRequest struct {
-	AirtelCode         string   `json:"airtel_code"`
-	ColoplusCode       string   `json:"coloplus_code"`
-	Name               string   `json:"name"`
-	Address            string   `json:"address"`
-	Region             string   `json:"region"`
-	State              string   `json:"state"`
-	SiteType           string   `json:"site_type"`
-	PowerSources       []string `json:"power_sources" example:"grid,generator"`
-	ResponsibleTeam    string   `json:"responsible_team"`
+	AirtelCode      string   `json:"airtel_code"`
+	ColoplusCode    string   `json:"coloplus_code"`
+	Name            string   `json:"name"`
+	Address         string   `json:"address"`
+	Region          string   `json:"region"`
+	State           string   `json:"state"`
+	SiteType        string   `json:"site_type"`
+	PowerSources    []string `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam string   `json:"responsible_team"`
+	// UnreportedTime is available (default) or unknown.
+	UnreportedTime     string   `json:"unreported_time,omitempty"`
 	ConsumptionLPH     *float64 `json:"consumption_lph,omitempty"`
 	TankCapacityLitres *float64 `json:"tank_capacity_litres,omitempty"`
 	ServiceStartMinute int      `json:"service_start_minute"`

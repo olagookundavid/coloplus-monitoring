@@ -177,8 +177,12 @@ func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
 			t.Fatalf("expected a row for each day of the site: %v", recs)
 		}
 		if gap[col["report_status"]] != "no_approved_report" || gap[col["served_minutes"]] != "" ||
-			gap[col["outage_minutes"]] != "" || gap[col["coverage_percent"]] != "" || gap[col["reported_availability_percent"]] != "" || gap[col["confirmed_served_share_percent"]] != "" {
-			t.Fatalf("a day without a report must stay a gap, got %v", gap)
+			gap[col["outage_minutes"]] != "" || gap[col["coverage_percent"]] != "" || gap[col["confirmed_served_share_percent"]] != "" {
+			t.Fatalf("a day without a report has nothing confirmed, got %v", gap)
+		}
+		// Available by default: the figure is there, and marked as assumed.
+		if gap[col["reported_availability_percent"]] != "100.00" || gap[col["assumed_available_minutes"]] != "1440" {
+			t.Fatalf("an unreported day is assumed available and the export must say so, got %v", gap)
 		}
 		if day[col["report_status"]] != "approved" || day[col["report_id"]] != orig || day[col["served_minutes"]] != "1380" ||
 			day[col["open_disputes"]] != "1" || day[col["formula_version"]] == "" || day[col["assumptions"]] == "" {

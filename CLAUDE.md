@@ -25,7 +25,7 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 7. **A third party down must not block a page.** singleflight + stale-while-revalidate + back-off.
 8. **Errors:** sentinel (`internal/errors`) + wrapped, mapped to HTTP in one place (`transport/http/errors.go`), worded for the end user.
 9. **Tests are kept minimal (owner's priority is building features).** Write a test only for what is critical or risky: money-like and trust rules (approval, scope, immutability, the PRD metrics), security (auth, lockout, access control), concurrency and shutdown behaviour, and anything that has already broken once. Do not write tests for getters, mappers, simple validation, config defaults, happy-path CRUD or library behaviour; testers will catch the obvious. Prefer one integration test through the HTTP stack over many small ones. A bug that slipped through gets one regression test. Do not add tests "for coverage".
-10. **PRD trust rules:** a missing report is never shown as "power available"; every derived figure carries provenance; approval needs a second person; the audit log is append-only.
+10. **PRD trust rules:** a site is available by default and made unavailable only with a reason (owner direction, DECISIONS 051, which amends the PRD), but time nobody reported is always shown as **assumed, never confirmed**, with the days without a report counted beside it, and a site can be set to the stricter "unknown" reading; every derived figure carries provenance; approval needs a second person; the audit log is append-only.
 11. **Docs stay true:** a new standing rule goes into the right CLAUDE.md in the same change; a questionable choice gets a `docs/DECISIONS.md` entry.
 
 ## Commands

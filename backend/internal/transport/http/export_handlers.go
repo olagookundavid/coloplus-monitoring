@@ -18,7 +18,7 @@ var dailySummaryHeader = []string{
 	"date", "time_zone", "service_window",
 	"report_status", "report_id", "report_revision", "approved_at_utc", "is_correction",
 	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes",
-	"coverage_percent", "reported_availability_percent", "confirmed_served_share_percent", "provisional",
+	"coverage_percent", "reported_availability_percent", "confirmed_served_share_percent", "assumed_available_minutes", "provisional",
 	"basis", "declared_intervals_ignored",
 	"open_disputes", "total_disputes",
 	"formula", "formula_version", "generated_at_utc", "assumptions",
@@ -27,7 +27,7 @@ var dailySummaryHeader = []string{
 // exportDailySummaries godoc
 //
 //	@Summary		Export daily summaries as CSV
-//	@Description	One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures, never zero and never available. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.
+//	@Description	One row per site and reporting day, approved reports only. A day without an approved report is still a row, marked no_approved_report with no served or outage figures. For a site that is available by default its availability is shown as assumed (assumed_available_minutes), never as confirmed. Every row carries the report revision, basis, coverage, formula and version, dispute state, time zone, units (minutes and percent), generation time and assumptions. Needs export access; an export is recorded in the audit log.
 //	@Tags			exports
 //	@Produce		text/csv
 //	@Param			from	query		string	true	"First day, 2026-12-01"
@@ -80,6 +80,10 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			correction = yesNo(r.Report.SupersedesID != "")
 			served, outage = strconv.Itoa(sum.ServedMinutes), strconv.Itoa(sum.OutageMinutes)
 			coverage, availability, confirmed = percent(sum.Coverage), percent(sum.ReportedAvailability), percent(sum.ConfirmedServedShare)
+		} else {
+			// No approved report: nothing is confirmed, but a site that is
+			// available by default still has an assumed figure, marked as such.
+			availability = percent(sum.ReportedAvailability)
 		}
 		_ = w.Write([]string{
 			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), string(r.Site.Status),
@@ -87,7 +91,7 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			fmt.Sprintf("%02d:%02d-%02d:%02d", r.Site.ServiceStartMinute/60, r.Site.ServiceStartMinute%60, r.Site.ServiceEndMinute/60, r.Site.ServiceEndMinute%60),
 			status, reportID, revision, approvedAt, correction,
 			strconv.Itoa(sum.EligibleMinutes), served, outage, strconv.Itoa(sum.UnknownMinutes),
-			coverage, availability, confirmed, yesNo(sum.Provisional()),
+			coverage, availability, confirmed, strconv.Itoa(sum.AssumedMinutes), yesNo(sum.Provisional()),
 			"observed intervals only", strconv.Itoa(r.DeclaredIgnored),
 			strconv.Itoa(r.Disputes.Open), strconv.Itoa(r.Disputes.Total),
 			exp.Formula, exp.Version, generated, services.ExportAssumptions,
