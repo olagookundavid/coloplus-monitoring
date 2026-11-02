@@ -59,9 +59,10 @@ type DailyReport struct {
 	Revision int
 	Status   ReportStatus
 
-	AuthorID  string
-	Notes     string
-	Intervals []PowerInterval
+	AuthorID       string
+	Notes          string
+	Intervals      []PowerInterval
+	GeneratorHours *float64
 
 	SubmittedAt   *time.Time
 	ReviewedAt    *time.Time
@@ -89,6 +90,45 @@ func DayBounds(date time.Time, loc *time.Location) (time.Time, time.Time) {
 	y, m, d := date.Date()
 	start := time.Date(y, m, d, 0, 0, 0, 0, loc)
 	return start, time.Date(y, m, d+1, 0, 0, 0, 0, loc)
+}
+
+// DayLevelInterval builds the single full-day observed interval for the
+// reporter's simplified power-status toggle ("power on all day" / "had an
+// outage"). It is observed, not declared: a reporter filing today's status is
+// reporting what they saw, just at day resolution rather than minute
+// resolution, and only an observed interval establishes availability
+// (Summarise, Condition). The end is capped at now, truncated to the minute,
+// so a same-day report never claims to observe its own remaining hours; those
+// stay correctly unknown until a later report covers them. For a past date
+// this resolves to the full day.
+func DayLevelInterval(site Site, date time.Time, state IntervalState, now time.Time, loc *time.Location) PowerInterval {
+	start, dayEnd := DayBounds(date, loc)
+	end := dayEnd
+	if now.Before(dayEnd) {
+		end = now.Truncate(time.Minute)
+	}
+	iv := PowerInterval{Start: start, End: end, State: state, Basis: BasisObserved}
+	if state == StateServed {
+		iv.Source = SourceGrid
+	}
+	return iv
+}
+
+// ValidateGeneratorHours checks the reporter's generator runtime entry.
+// Required only when the day had an outage; always within one day's hours.
+// No numeric cap is specified in the PRD beyond "runtime against the
+// period", so a day's 24 hours is the chosen bound.
+func ValidateGeneratorHours(hours *float64, hadOutage bool) []string {
+	if hours == nil {
+		if hadOutage {
+			return []string{"enter the generator runtime hours for a day with an outage"}
+		}
+		return nil
+	}
+	if *hours < 0 || *hours > 24 {
+		return []string{"generator runtime hours must be between 0 and 24"}
+	}
+	return nil
 }
 
 // ValidateIntervals checks a report's intervals against the PRD's entry
@@ -275,6 +315,28 @@ func PortfolioSummary(sites []DailySummary) DailySummary {
 		total.ReportedAvailability = pct(total.ServedMinutes, total.ServedMinutes+total.OutageMinutes)
 	}
 	return total
+}
+
+// DayBarColor is the trailing-days strip's per-day signal.
+type DayBarColor string
+
+const (
+	BarColorGreen DayBarColor = "green" // reported, no outage
+	BarColorAmber DayBarColor = "amber" // reported, had an outage
+	BarColorRed   DayBarColor = "red"   // no approved report that day -- a visible gap
+)
+
+// DayBar classifies one day for the trailing-days strip. reported is whether
+// an approved report exists for that site and day; a missing day is always a
+// visible gap, never shown as available or silently skipped.
+func DayBar(reported bool, outageMinutes int) DayBarColor {
+	if !reported {
+		return BarColorRed
+	}
+	if outageMinutes > 0 {
+		return BarColorAmber
+	}
+	return BarColorGreen
 }
 
 // SiteCondition is the plain label shown to customers.

@@ -142,11 +142,30 @@ func (s *UserService) checkSites(ctx context.Context, role domain.Role, ids []st
 	return nil
 }
 
-func (s *UserService) List(ctx context.Context, actor domain.Actor) ([]domain.User, error) {
+// List returns every user with their site assignments, one query for the
+// users and one batched query for every assignment -- not a separate lookup
+// per user (hard rule: no N+1).
+func (s *UserService) List(ctx context.Context, actor domain.Actor) ([]UserView, error) {
 	if !actor.Can(domain.PermUsersManage) {
 		return nil, apperrors.ErrForbidden
 	}
-	return s.users.List(ctx)
+	users, err := s.users.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(users))
+	for i, u := range users {
+		ids[i] = u.ID
+	}
+	siteIDs, err := s.users.SiteIDsForUsers(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]UserView, len(users))
+	for i, u := range users {
+		out[i] = UserView{User: u, SiteIDs: siteIDs[u.ID]}
+	}
+	return out, nil
 }
 
 func (s *UserService) Get(ctx context.Context, actor domain.Actor, id string) (UserView, error) {

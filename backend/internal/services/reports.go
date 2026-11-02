@@ -56,6 +56,27 @@ const (
 type ReportInput struct {
 	Notes     string
 	Intervals []domain.PowerInterval
+	// PowerStatus, when set, is the reporter's simplified day-level toggle
+	// ("power on all day" / "had an outage"). The service builds the single
+	// full-day observed interval from it and ignores Intervals. Nil means
+	// "use Intervals as given" -- the general, interval-level entry path
+	// stays available for any future caller.
+	PowerStatus    *domain.IntervalState
+	GeneratorHours *float64
+}
+
+// resolveIntervals turns a ReportInput into the intervals to persist, and
+// reports whether generator hours are required: only the simplified
+// PowerStatus toggle carries that requirement. A hand-entered interval set
+// (PowerStatus nil) is the general, pre-existing entry path, which has no
+// generator-hours concept and must not newly require one just because one of
+// its intervals happens to be an outage.
+func (s *ReportService) resolveIntervals(site domain.Site, date time.Time, in ReportInput) ([]domain.PowerInterval, bool) {
+	if in.PowerStatus == nil {
+		return in.Intervals, false
+	}
+	iv := domain.DayLevelInterval(site, date, *in.PowerStatus, s.clock.Now(), s.loc)
+	return []domain.PowerInterval{iv}, *in.PowerStatus == domain.StateOutage
 }
 
 // today returns the current reporting date in the reporting time zone.
@@ -90,7 +111,11 @@ func (s *ReportService) CreateDraft(ctx context.Context, actor domain.Actor, sit
 	if date.After(s.today()) {
 		return domain.DailyReport{}, invalid("a report cannot be for a future date")
 	}
-	if problems := domain.ValidateIntervals(site, date, in.Intervals, s.clock.Now(), s.loc); len(problems) > 0 {
+	intervals, hadOutage := s.resolveIntervals(site, date, in)
+	var problems []string
+	problems = append(problems, domain.ValidateIntervals(site, date, intervals, s.clock.Now(), s.loc)...)
+	problems = append(problems, domain.ValidateGeneratorHours(in.GeneratorHours, hadOutage)...)
+	if len(problems) > 0 {
 		return domain.DailyReport{}, invalidProblems(problems)
 	}
 
@@ -107,7 +132,7 @@ func (s *ReportService) CreateDraft(ctx context.Context, actor domain.Actor, sit
 		}
 		created, err = s.reports.Create(ctx, domain.DailyReport{
 			SiteID: siteID, Date: date, Revision: rev, Status: domain.ReportDraft,
-			AuthorID: actor.UserID, Notes: in.Notes, Intervals: in.Intervals,
+			AuthorID: actor.UserID, Notes: in.Notes, Intervals: intervals, GeneratorHours: in.GeneratorHours,
 		})
 		return err
 	})
@@ -154,10 +179,14 @@ func (s *ReportService) SaveDraft(ctx context.Context, actor domain.Actor, id st
 		if err != nil {
 			return err
 		}
-		if problems := domain.ValidateIntervals(site, r.Date, in.Intervals, s.clock.Now(), s.loc); len(problems) > 0 {
+		intervals, hadOutage := s.resolveIntervals(site, r.Date, in)
+		var problems []string
+		problems = append(problems, domain.ValidateIntervals(site, r.Date, intervals, s.clock.Now(), s.loc)...)
+		problems = append(problems, domain.ValidateGeneratorHours(in.GeneratorHours, hadOutage)...)
+		if len(problems) > 0 {
 			return invalidProblems(problems)
 		}
-		r.Notes, r.Intervals = in.Notes, in.Intervals
+		r.Notes, r.Intervals, r.GeneratorHours = in.Notes, intervals, in.GeneratorHours
 		saved, err = s.reports.SaveDraft(ctx, r, rowVersion)
 		return err
 	})
@@ -383,7 +412,9 @@ func countDeclared(ivs []domain.PowerInterval) int {
 }
 
 type ListReportsInput struct {
-	SiteID        string
+	SiteID string
+	// AuthorID narrows to one author's own reports (e.g. "my reports").
+	AuthorID      string
 	From, To      *time.Time
 	Statuses      []domain.ReportStatus
 	Limit, Offset int
@@ -410,7 +441,7 @@ func (s *ReportService) List(ctx context.Context, actor domain.Actor, in ListRep
 	}
 	limit, offset := Page(in.Limit, in.Offset)
 	return s.reports.List(ctx, ports.ReportFilter{
-		AllSites: actor.AllSites, SiteIDs: actor.SiteIDList(), SiteID: in.SiteID,
+		AllSites: actor.AllSites, SiteIDs: actor.SiteIDList(), SiteID: in.SiteID, AuthorID: in.AuthorID,
 		From: in.From, To: in.To, Statuses: statuses, Limit: limit, Offset: offset,
 	})
 }

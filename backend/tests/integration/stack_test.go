@@ -60,6 +60,7 @@ type stack struct {
 	mailer        *fakeMailer
 	notifications *services.NotificationService
 	incidents     *services.IncidentService
+	corrections   *services.CorrectionService
 	reportAlerts  *services.ReportAlertService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
@@ -131,6 +132,7 @@ func newStack(t *testing.T) *stack {
 	siteRepo := postgres.NewSiteRepository(db)
 	reportRepo := postgres.NewReportRepository(db)
 	incidentRepo := postgres.NewIncidentRepository(db)
+	incidentCorrectionRepo := postgres.NewIncidentCorrectionRepository(db)
 	disputeRepo := postgres.NewDisputeRepository(db)
 	ticketRepo := postgres.NewTicketRepository(db)
 	acceptanceRepo := postgres.NewAcceptanceRepository(db)
@@ -157,6 +159,7 @@ func newStack(t *testing.T) *stack {
 	}
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
+	corrections := services.NewCorrectionService(incidentCorrectionRepo, incidentRepo, tx, audit, clock)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, "https://app.test")
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
@@ -177,17 +180,18 @@ func newStack(t *testing.T) *stack {
 		Sites:         services.NewSiteService(siteRepo, tx, audit),
 		Reports:       services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
 		Incidents:     incidents,
+		Corrections:   corrections,
 		Disputes:      disputes,
 		Tickets:       tickets,
 		Audit:         audit,
 		Acceptance:    acceptance,
 		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
 		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, clock, loc),
+		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, clock, loc),
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
-		mailer: mailer, notifications: notifications, incidents: incidents, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
+		mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance}
 }
 
 // reply is a decoded response.

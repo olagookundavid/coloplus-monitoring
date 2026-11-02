@@ -2,6 +2,13 @@
 .env
 .env.*
 !.env.example
+# VITE_ vars are bundled into the client JS regardless of where they're set,
+# so this one is public, not a secret -- Vercel's build picks it up
+# automatically (deploy/README.md).
+!frontend/.env.production
+# A template with real non-secret values and obvious placeholders for real
+# ones -- never the actual production .env (deploy/CHECKLIST.md B5).
+!deploy/.env.production.example
 
 # generated
 backend/docs/

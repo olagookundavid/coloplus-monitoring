@@ -33,11 +33,11 @@ Auth: `POST /auth/login|logout|forgot-password|set-password|mfa/setup|mfa/enable
 - Only `observed` intervals count; `declared` ones are kept and ignored. Served and outage intervals may not overlap. Intervals stay inside one reporting day (decision 027).
 - Incidents: restoration is an observed time, never a target; verification needs a new observation from someone other than the person who recorded restoration; closing needs a root cause; closed is frozen; Airtel sees only published incidents and customer updates (DECISIONS 032).
 - Disputes: Coloplus's resolution and Airtel's acknowledgement are separate acts; an upheld dispute about a report needs a later approved revision of that day; Airtel never sees internal comments or staff ids; a closed dispute is frozen (DECISIONS 034).
-- Tickets: a request from Airtel, not a fault record. Airtel never sees internal notes, staff ids, or a linked incident until it is published to them; the priority is the requester's wish, not an incident severity; the contact address typed into a ticket is never emailed (only the requester's account is); a retried request with the same `client_key` returns the same ticket (DECISIONS 045).
+- Tickets: a request from Airtel, not a fault record. Airtel never sees internal notes, staff ids, or a linked incident until it is published to them; the priority is the requester's wish, not an incident severity; the contact address typed into a ticket is never emailed (only the requester's account is); a retried request with the same `client_key` returns the same ticket (DECISIONS 046).
 - Acceptance: only Airtel's own decision is acceptance, an inspection comes first, and acceptance (not Coloplus's say-so) activates a pending site (DECISIONS 036).
-- Airtel sees a site's responsible team, never the person working an incident (DECISIONS 043).
-- Dashboard: figures over a period are summed minutes (never an average of daily percentages); an unreported day is unknown and a trend day nobody reported is null; `current_source` is named only while the report is current and the last interval was served (DECISIONS 042).
-- Exports: a day with no approved report stays a row with no figures (never zero); every row carries revision, basis, coverage, formula version, dispute state and assumptions; each export is audited (DECISIONS 037). The incident register shows Airtel published incidents only and leaves duration blank until restoration is recorded (DECISIONS 043).
+- Airtel sees a site's responsible team, never the person working an incident (DECISIONS 044).
+- Dashboard: figures over a period are summed minutes (never an average of daily percentages); an unreported day is unknown and a trend day nobody reported is null; `current_source` is named only while the report is current and the last interval was served (DECISIONS 043).
+- Exports: a day with no approved report stays a row with no figures (never zero); every row carries revision, basis, coverage, formula version, dispute state and assumptions; each export is audited (DECISIONS 037). The incident register shows Airtel published incidents only and leaves duration blank until restoration is recorded (DECISIONS 044).
 - Two-step sign-in: required by `roles.mfa_required` (admin, supervisor, Airtel). A required person who has not enrolled holds **no permissions** (`Actor.MFASetupRequired`) until they enable it; never add a route that works for such an actor beyond `/auth/me` and the `mfa` setup (DECISIONS 038).
 - Approved reports are immutable (DB triggers). A change is a linked correction revision. The approver is never the author.
 - Airtel users get `PublishedReportDTO`, never the internal DTO. Out-of-scope ids return 404.
@@ -45,6 +45,9 @@ Auth: `POST /auth/login|logout|forgot-password|set-password|mfa/setup|mfa/enable
 
 ## First administrator
 `ADMIN_PASSWORD=... go run ./cmd/api create-admin boss@example.com Full Name` after `make migrate`. Administrators must set up two-step sign-in at their first login (`/auth/mfa/setup`, then `/auth/mfa/enable`; with curl until the front end exists). Locked out with no administrator left: `go run ./cmd/api reset-mfa boss@example.com`.
+
+## Sample data
+`make seed` (dev only) inserts one user per role, a handful of sites, daily reports moving through their workflow, an incident, a dispute, and sites at different acceptance stages — through the real services, so it carries a real audit trail. Safe to run more than once; it looks for what already exists before creating anything. Prints each seeded login and the shared password once, at the end.
 
 ## Pooling
 - pgxpool from env: `DB_MAX_CONNS` (default 8), `DB_MIN_CONNS` (1); lifetime 1h, idle 5m, health 30s, connect 5s. Shared Postgres: keep this product's share small and documented.

@@ -1,16 +1,20 @@
 import { Link, useLocation } from 'react-router-dom'
 
 import { usePermissions } from '../../hooks'
-import type { NavItem } from './navTypes'
+import type { NavGroup } from './navTypes'
 
 export interface BottomNavProps {
-  nav: NavItem[]
+  nav: NavGroup[]
 }
 
 export function BottomNav({ nav }: BottomNavProps) {
   const location = useLocation()
   const { can } = usePermissions()
-  const visibleNav = nav.filter((item) => !item.permission || can(item.permission))
+  // No room for section headers on a phone-width bottom bar -- groups are
+  // flattened back into one row, same as before grouping existed.
+  const visibleNav = nav
+    .flatMap((group) => group.items)
+    .filter((item) => !item.permission || can(item.permission))
 
   return (
     <nav

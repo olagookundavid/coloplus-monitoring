@@ -20,14 +20,14 @@ func NewReportRepository(db *DB) *ReportRepository { return &ReportRepository{db
 
 const reportColumns = `id::text, site_id::text, report_date, revision, status, author_id::text, notes,
 	submitted_at, reviewed_at, COALESCE(reviewer_id::text, ''), review_comment,
-	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at`
+	COALESCE(supersedes_id::text, ''), correction_reason, row_version, created_at, updated_at, generator_hours`
 
 func scanReport(row pgx.Row) (domain.DailyReport, error) {
 	var r domain.DailyReport
 	var status string
 	err := row.Scan(&r.ID, &r.SiteID, &r.Date, &r.Revision, &status, &r.AuthorID, &r.Notes,
 		&r.SubmittedAt, &r.ReviewedAt, &r.ReviewerID, &r.ReviewComment,
-		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt)
+		&r.SupersedesID, &r.CorrectionReason, &r.RowVersion, &r.CreatedAt, &r.UpdatedAt, &r.GeneratorHours)
 	r.Status = domain.ReportStatus(status)
 	return r, err
 }
@@ -36,9 +36,9 @@ const staleMsg = "someone else changed this report while you were editing; reloa
 
 func (r *ReportRepository) Create(ctx context.Context, rep domain.DailyReport) (domain.DailyReport, error) {
 	row := r.db.q(ctx).QueryRow(ctx,
-		`INSERT INTO daily_reports (site_id, report_date, revision, status, author_id, notes, supersedes_id, correction_reason)
-		 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::uuid, $8) RETURNING `+reportColumns,
-		rep.SiteID, rep.Date, rep.Revision, string(rep.Status), rep.AuthorID, rep.Notes, rep.SupersedesID, rep.CorrectionReason)
+		`INSERT INTO daily_reports (site_id, report_date, revision, status, author_id, notes, supersedes_id, correction_reason, generator_hours)
+		 VALUES ($1, $2, $3, $4, $5, $6, NULLIF($7, '')::uuid, $8, $9) RETURNING `+reportColumns,
+		rep.SiteID, rep.Date, rep.Revision, string(rep.Status), rep.AuthorID, rep.Notes, rep.SupersedesID, rep.CorrectionReason, rep.GeneratorHours)
 	created, err := scanReport(row)
 	if err != nil {
 		return domain.DailyReport{}, mapErr(err, "a report for this site and day is already in progress or approved")
@@ -132,9 +132,9 @@ func (r *ReportRepository) SaveDraft(ctx context.Context, rep domain.DailyReport
 	q := r.db.q(ctx)
 	tag, err := q.Exec(ctx,
 		`UPDATE daily_reports
-		 SET notes = $2, status = 'draft', row_version = row_version + 1, updated_at = now()
+		 SET notes = $2, generator_hours = $4, status = 'draft', row_version = row_version + 1, updated_at = now()
 		 WHERE id = $1 AND row_version = $3 AND status IN ('draft', 'rejected')`,
-		rep.ID, rep.Notes, rowVersion)
+		rep.ID, rep.Notes, rowVersion, rep.GeneratorHours)
 	if err != nil {
 		return domain.DailyReport{}, mapErr(err, "")
 	}
@@ -214,6 +214,9 @@ func (r *ReportRepository) List(ctx context.Context, f ports.ReportFilter) ([]do
 	}
 	if f.SiteID != "" {
 		add("site_id = ?::uuid", f.SiteID)
+	}
+	if f.AuthorID != "" {
+		add("author_id = ?::uuid", f.AuthorID)
 	}
 	if f.From != nil {
 		add("report_date >= ?", *f.From)
@@ -324,4 +327,49 @@ func (r *ReportRepository) LatestApproved(ctx context.Context, siteIDs []string)
 		out[rep.SiteID] = rep
 	}
 	return out, nil
+}
+
+// StatusForSitesOnDates returns, for each site and date, the report that
+// best represents that day's live status. An in-progress report (draft,
+// submitted or rejected) is preferred over an approved one, since it is the
+// most recent thing the reporter actually did; DISTINCT ON picks the first
+// row per (site_id, report_date) in ORDER BY, so in-progress sorts first.
+// Intervals are not attached -- this is for status display, not detail.
+func (r *ReportRepository) StatusForSitesOnDates(ctx context.Context, siteIDs []string, dates []time.Time) (map[string]domain.DailyReport, error) {
+	rows, err := r.db.q(ctx).Query(ctx,
+		`SELECT DISTINCT ON (site_id, report_date) `+reportColumns+`
+		 FROM daily_reports
+		 WHERE site_id = ANY($1::uuid[]) AND report_date = ANY($2::date[])
+		   AND status IN ('draft', 'submitted', 'rejected', 'approved')
+		 ORDER BY site_id, report_date, (status = 'approved')::int, revision DESC`,
+		nonNil(siteIDs), dates)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+
+	out := make(map[string]domain.DailyReport)
+	for rows.Next() {
+		rep, err := scanReport(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scanning report: %w", err)
+		}
+		out[ports.DayKey(rep.SiteID, rep.Date)] = rep
+	}
+	return out, rows.Err()
+}
+
+// OutageDayCount counts the distinct site/day pairs in from..to (inclusive)
+// whose current submitted or approved report carries at least one outage
+// interval. EXISTS, not a join, so a report with several outage intervals is
+// never counted more than once.
+func (r *ReportRepository) OutageDayCount(ctx context.Context, siteIDs []string, from, to time.Time) (int, error) {
+	var n int
+	err := r.db.q(ctx).QueryRow(ctx,
+		`SELECT COUNT(*) FROM daily_reports dr
+		 WHERE dr.site_id = ANY($1::uuid[]) AND dr.report_date BETWEEN $2 AND $3
+		   AND dr.status IN ('submitted', 'approved')
+		   AND EXISTS (SELECT 1 FROM power_intervals pi WHERE pi.report_id = dr.id AND pi.state = 'outage')`,
+		nonNil(siteIDs), from, to).Scan(&n)
+	return n, mapErr(err, "")
 }

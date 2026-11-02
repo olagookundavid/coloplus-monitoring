@@ -417,6 +417,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Only reports you authored",
+                        "name": "mine",
+                        "in": "query"
+                    },
+                    {
                         "type": "string",
                         "description": "First report date, 2026-12-01",
                         "name": "from",
@@ -697,6 +703,26 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.ReportDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/dashboard/my-sites": {
+            "get": {
+                "description": "Today's status, a trailing 7-day health strip, pooled 30-day availability and open-incident count, one card per assigned site. A site with no approved report in the window has a null availability -- never 0 -- and every bar red.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "dashboard"
+                ],
+                "summary": "The reporter's own site grid",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MySitesResponse"
                         }
                     }
                 }
@@ -1127,6 +1153,178 @@
                 }
             }
         },
+        "/api/v1/incident-corrections": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "corrections"
+                ],
+                "summary": "List incident corrections in your scope",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Only this site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only corrections for this incident",
+                        "name": "incident_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "requested, approved or rejected",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentCorrectionListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incident-corrections/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "corrections"
+                ],
+                "summary": "One incident correction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Correction id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentCorrectionDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incident-corrections/{id}/approve": {
+            "post": {
+                "description": "Writes the corrected value to the incident and the decision to the correction, in one transaction. Never the person who requested it. Refused once the incident is closed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "corrections"
+                ],
+                "summary": "Approve an incident correction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Correction id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentCorrectionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incident-corrections/{id}/reject": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "corrections"
+                ],
+                "summary": "Reject an incident correction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Correction id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RejectCorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentCorrectionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/incidents": {
             "get": {
                 "description": "Airtel users see only incidents that have been published to them.",
@@ -1287,6 +1485,59 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/dto.IncidentDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/incidents/{id}/corrections": {
+            "post": {
+                "description": "Corrects when a fault started or when it was actually restored. The current value is snapshotted server-side, never taken from the request. Refused once the incident is closed. Only one request per incident and field may be awaiting review at a time; that answers 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "corrections"
+                ],
+                "summary": "Ask to correct an incident field",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Incident id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Correction",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RequestCorrectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.IncidentCorrectionDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
                         }
                     }
                 }
@@ -2798,6 +3049,11 @@
         "dto.CreateReportRequest": {
             "type": "object",
             "properties": {
+                "generator_hours": {
+                    "description": "GeneratorHours is required only when PowerStatus is \"outage\", 0-24.",
+                    "type": "number",
+                    "example": 3.5
+                },
                 "intervals": {
                     "type": "array",
                     "items": {
@@ -2806,6 +3062,11 @@
                 },
                 "notes": {
                     "type": "string"
+                },
+                "power_status": {
+                    "description": "PowerStatus, when set, is the reporter's simplified day-level entry:\n\"served\" (power on all day) or \"outage\" (had an outage). It builds the\nday's single interval and Intervals is ignored.",
+                    "type": "string",
+                    "example": "served"
                 },
                 "report_date": {
                     "type": "string",
@@ -2835,6 +3096,20 @@
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "dto.DayBarDTO": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "description": "Color is green (reported, no outage), amber (reported, had an outage)\nor red (no approved report that day -- a visible gap).",
+                    "type": "string",
+                    "example": "green"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2026-10-31"
                 }
             }
         },
@@ -3053,6 +3328,77 @@
                 "status": {
                     "type": "string",
                     "example": "ok"
+                }
+            }
+        },
+        "dto.IncidentCorrectionDTO": {
+            "type": "object",
+            "properties": {
+                "corrected_value": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "incident_id": {
+                    "type": "string"
+                },
+                "original_value": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "ref": {
+                    "type": "string",
+                    "example": "COR-000058"
+                },
+                "requested_by": {
+                    "type": "string"
+                },
+                "review_note": {
+                    "type": "string"
+                },
+                "reviewed_at": {
+                    "type": "string"
+                },
+                "reviewed_by": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.IncidentCorrectionListResponse": {
+            "type": "object",
+            "properties": {
+                "corrections": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.IncidentCorrectionDTO"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -3386,6 +3732,86 @@
                 }
             }
         },
+        "dto.MySiteRowDTO": {
+            "type": "object",
+            "properties": {
+                "access_contact_name": {
+                    "type": "string"
+                },
+                "access_contact_phone": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "airtel_code": {
+                    "type": "string"
+                },
+                "availability_pct_30d": {
+                    "description": "AvailabilityPct30d is the pooled reported availability over the\ntrailing 30 days. Null when the site has no approved report in the\nwindow -- never 0.",
+                    "type": "number"
+                },
+                "bars": {
+                    "description": "Bars is the trailing 7 days, oldest first (last entry is today).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DayBarDTO"
+                    }
+                },
+                "coloplus_code": {
+                    "type": "string"
+                },
+                "generator_capacity": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "open_incidents": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_type": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "supervisor_name": {
+                    "type": "string"
+                },
+                "today_status": {
+                    "description": "TodayStatus is the report that best represents today's live status\n(in-progress if there is one, else approved); nil when nothing has\never been filed today.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.ReportStatusDTO"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.MySitesResponse": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "sites": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MySiteRowDTO"
+                    }
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.NotificationDTO": {
             "type": "object",
             "properties": {
@@ -3459,6 +3885,10 @@
                 },
                 "generated_at": {
                     "type": "string"
+                },
+                "outages_this_week": {
+                    "description": "OutagesThisWeek counts distinct site/day pairs in the trailing 7 days\n(inclusive of the requested date) whose current report has an outage.\nAn approximation, not a full weekly aggregation.",
+                    "type": "integer"
                 },
                 "pending_acceptance_sites": {
                     "type": "integer"
@@ -3569,6 +3999,9 @@
             "properties": {
                 "approved_at": {
                     "type": "string"
+                },
+                "generator_hours": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "string"
@@ -3688,6 +4121,14 @@
                 }
             }
         },
+        "dto.RejectCorrectionRequest": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.RejectRequest": {
             "type": "object",
             "properties": {
@@ -3707,6 +4148,9 @@
                 },
                 "created_at": {
                     "type": "string"
+                },
+                "generator_hours": {
+                    "type": "number"
                 },
                 "id": {
                     "type": "string"
@@ -3845,6 +4289,23 @@
                 }
             }
         },
+        "dto.ReportStatusDTO": {
+            "type": "object",
+            "properties": {
+                "report_id": {
+                    "type": "string"
+                },
+                "review_comment": {
+                    "type": "string"
+                },
+                "row_version": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.RequestAcceptanceRequest": {
             "type": "object",
             "properties": {
@@ -3852,6 +4313,22 @@
                     "type": "string"
                 },
                 "next_action": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RequestCorrectionRequest": {
+            "type": "object",
+            "properties": {
+                "corrected_value": {
+                    "type": "string"
+                },
+                "field": {
+                    "description": "Field is started_at or restored_at.",
+                    "type": "string",
+                    "example": "restored_at"
+                },
+                "reason": {
                     "type": "string"
                 }
             }
@@ -3867,6 +4344,11 @@
         "dto.SaveReportRequest": {
             "type": "object",
             "properties": {
+                "generator_hours": {
+                    "description": "GeneratorHours is required only when PowerStatus is \"outage\", 0-24.",
+                    "type": "number",
+                    "example": 3.5
+                },
                 "intervals": {
                     "type": "array",
                     "items": {
@@ -3875,6 +4357,10 @@
                 },
                 "notes": {
                     "type": "string"
+                },
+                "power_status": {
+                    "type": "string",
+                    "example": "served"
                 },
                 "row_version": {
                     "description": "RowVersion is the version this edit was based on. A stale one is\nrejected with a conflict.",
@@ -3897,6 +4383,12 @@
         "dto.SiteDTO": {
             "type": "object",
             "properties": {
+                "access_contact_name": {
+                    "type": "string"
+                },
+                "access_contact_phone": {
+                    "type": "string"
+                },
                 "address": {
                     "type": "string"
                 },
@@ -3916,6 +4408,10 @@
                 "freshness_hours": {
                     "type": "integer",
                     "example": 30
+                },
+                "generator_capacity": {
+                    "type": "string",
+                    "example": "20 kVA diesel"
                 },
                 "id": {
                     "type": "string"
@@ -3963,6 +4459,9 @@
                 "status": {
                     "type": "string",
                     "example": "active"
+                },
+                "supervisor_name": {
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -4065,6 +4564,12 @@
         "dto.SiteRequest": {
             "type": "object",
             "properties": {
+                "access_contact_name": {
+                    "type": "string"
+                },
+                "access_contact_phone": {
+                    "type": "string"
+                },
                 "address": {
                     "type": "string"
                 },
@@ -4080,6 +4585,10 @@
                 },
                 "freshness_hours": {
                     "type": "integer"
+                },
+                "generator_capacity": {
+                    "type": "string",
+                    "example": "20 kVA diesel"
                 },
                 "latitude": {
                     "type": "number"
@@ -4121,6 +4630,9 @@
                 "status": {
                     "type": "string",
                     "example": "pending_acceptance"
+                },
+                "supervisor_name": {
+                    "type": "string"
                 }
             }
         },
@@ -4163,6 +4675,9 @@
                 "site_id": {
                     "type": "string"
                 },
+                "site_type": {
+                    "type": "string"
+                },
                 "state": {
                     "type": "string"
                 },
@@ -4176,6 +4691,17 @@
                             "$ref": "#/definitions/dto.SummaryDTO"
                         }
                     ]
+                },
+                "today_status": {
+                    "description": "TodayStatus/YesterdayStatus are the report that best represents that\nday's live status (in-progress if there is one, else the approved\none); nil when nothing has ever been filed. For the reporter's own\nprogress view, not the approved-only Summary/Condition above.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.ReportStatusDTO"
+                        }
+                    ]
+                },
+                "yesterday_status": {
+                    "$ref": "#/definitions/dto.ReportStatusDTO"
                 }
             }
         },
@@ -4601,7 +5127,7 @@
                 "users": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/dto.UserDTO"
+                        "$ref": "#/definitions/dto.UserDetailDTO"
                     }
                 }
             }

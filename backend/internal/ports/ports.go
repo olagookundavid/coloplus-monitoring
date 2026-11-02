@@ -108,6 +108,10 @@ type UserRepository interface {
 
 	PermissionsForRole(ctx context.Context, role domain.Role) ([]domain.Permission, error)
 	SiteIDsForUser(ctx context.Context, userID string) ([]string, error)
+	// SiteIDsForUsers batch-loads site assignments for every id given, keyed
+	// by user id -- the List endpoint's answer to the N+1 that fetching each
+	// user's sites one at a time would be.
+	SiteIDsForUsers(ctx context.Context, userIDs []string) (map[string][]string, error)
 	SetUserSites(ctx context.Context, userID string, siteIDs []string) error
 }
 
@@ -152,6 +156,9 @@ type ReportFilter struct {
 	AllSites bool
 	SiteIDs  []string
 	SiteID   string
+	// AuthorID narrows to one author's own reports (e.g. a reporter's "my
+	// reports"). Empty means no author narrowing.
+	AuthorID string
 	From     *time.Time
 	To       *time.Time
 	Statuses []domain.ReportStatus
@@ -190,6 +197,17 @@ type ReportRepository interface {
 	// LatestApproved returns, per site, the approved report with the latest
 	// report date, with intervals.
 	LatestApproved(ctx context.Context, siteIDs []string) (map[string]domain.DailyReport, error)
+	// StatusForSitesOnDates returns, for each site and date, the report that
+	// best represents that day's live status: the in-progress one (draft,
+	// submitted or rejected) when there is one, otherwise the approved one.
+	// Keyed by DayKey(siteID, date). Intervals are not attached; this is for
+	// status display, not detail.
+	StatusForSitesOnDates(ctx context.Context, siteIDs []string, dates []time.Time) (map[string]domain.DailyReport, error)
+	// OutageDayCount counts the distinct site/day pairs in from..to
+	// (inclusive) whose current submitted or approved report carries at
+	// least one outage interval. An approximation, not a full weekly
+	// aggregation.
+	OutageDayCount(ctx context.Context, siteIDs []string, from, to time.Time) (int, error)
 }
 
 // IncidentFilter narrows an incident listing. Scope works as in SiteFilter.
@@ -234,6 +252,33 @@ type IncidentRepository interface {
 	// List returns incidents, newest first.
 	List(ctx context.Context, f IncidentFilter) (incidents []domain.Incident, total int, err error)
 	Counts(ctx context.Context, f IncidentFilter, now time.Time) (IncidentCounts, error)
+}
+
+// IncidentCorrectionFilter narrows an incident-correction listing. Scope
+// works as in IncidentFilter.
+type IncidentCorrectionFilter struct {
+	AllSites   bool
+	SiteIDs    []string
+	SiteID     string
+	IncidentID string
+	Statuses   []domain.CorrectionStatus
+	Limit      int
+	Offset     int
+}
+
+type IncidentCorrectionRepository interface {
+	// Create stores a new correction request. ErrConflict when the same
+	// incident and field already has one awaiting review.
+	Create(ctx context.Context, c domain.IncidentCorrection) (domain.IncidentCorrection, error)
+	// GetByID loads a correction. forUpdate locks it for the surrounding
+	// transaction.
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.IncidentCorrection, error)
+	// Save writes the mutable fields: status, reviewer, review note and
+	// decided-at. The original/corrected values and reason are write-once,
+	// set only at Create.
+	Save(ctx context.Context, c domain.IncidentCorrection) error
+	// List returns corrections, newest first.
+	List(ctx context.Context, f IncidentCorrectionFilter) (items []domain.IncidentCorrection, total int, err error)
 }
 
 // DisputeDay is the dispute state of one site and reporting day.

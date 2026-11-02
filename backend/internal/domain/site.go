@@ -58,6 +58,13 @@ type Site struct {
 	// A team, not a person.
 	ResponsibleTeam string
 
+	// Free-text site profile fields shown on the reporter's site details
+	// panel. Optional; no validation rule beyond being plain text.
+	GeneratorCapacity  string
+	AccessContactName  string
+	AccessContactPhone string
+	SupervisorName     string
+
 	// The contractual service window as minutes from local midnight. A site
 	// serviced around the clock is 0 to 1440.
 	ServiceStartMinute int

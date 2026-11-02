@@ -8,11 +8,15 @@ export interface LoginFormValues {
   password: string
 }
 
+export interface MfaCodeFormValues {
+  code: string
+}
+
 export interface ForgotPasswordFormValues {
   email: string
 }
 
-export interface AcceptInviteFormValues {
+export interface SetPasswordFormValues {
   password: string
   confirmPassword: string
 }
@@ -31,6 +35,12 @@ export const loginSchema = Joi.object<LoginFormValues>({
   }),
 })
 
+export const mfaCodeSchema = Joi.object<MfaCodeFormValues>({
+  code: Joi.string().trim().required().messages({
+    'string.empty': 'Enter the code from your authenticator app, or a recovery code.',
+  }),
+})
+
 export const forgotPasswordSchema = Joi.object<ForgotPasswordFormValues>({
   email: Joi.string()
     .trim()
@@ -42,11 +52,22 @@ export const forgotPasswordSchema = Joi.object<ForgotPasswordFormValues>({
     }),
 })
 
-export const acceptInviteSchema = Joi.object<AcceptInviteFormValues>({
-  password: Joi.string().min(8).required().messages({
-    'string.empty': 'Enter a password.',
-    'string.min': 'Password must be at least 8 characters.',
-  }),
+// Mirrors the backend's actual policy (12-72 chars, at least one letter and
+// one digit) so a form error never slips through client-side only to be
+// rejected again by the server.
+export const setPasswordSchema = Joi.object<SetPasswordFormValues>({
+  password: Joi.string()
+    .min(12)
+    .max(72)
+    .pattern(/[A-Za-z]/, { name: 'letter' })
+    .pattern(/[0-9]/, { name: 'digit' })
+    .required()
+    .messages({
+      'string.empty': 'Enter a password.',
+      'string.min': 'Password must be at least 12 characters.',
+      'string.max': 'Password must be at most 72 characters.',
+      'string.pattern.name': 'Password must include at least one letter and one number.',
+    }),
   confirmPassword: Joi.any().valid(Joi.ref('password')).required().messages({
     'any.only': 'Passwords must match.',
     'any.required': 'Confirm your password.',

@@ -18,14 +18,23 @@ type CreateReportRequest struct {
 	ReportDate string        `json:"report_date" example:"2026-12-01"`
 	Notes      string        `json:"notes"`
 	Intervals  []IntervalDTO `json:"intervals"`
+	// PowerStatus, when set, is the reporter's simplified day-level entry:
+	// "served" (power on all day) or "outage" (had an outage). It builds the
+	// day's single interval and Intervals is ignored.
+	PowerStatus string `json:"power_status,omitempty" example:"served"`
+	// GeneratorHours is required only when PowerStatus is "outage", 0-24.
+	GeneratorHours *float64 `json:"generator_hours,omitempty" example:"3.5"`
 }
 
 type SaveReportRequest struct {
 	// RowVersion is the version this edit was based on. A stale one is
 	// rejected with a conflict.
-	RowVersion int           `json:"row_version"`
-	Notes      string        `json:"notes"`
-	Intervals  []IntervalDTO `json:"intervals"`
+	RowVersion  int           `json:"row_version"`
+	Notes       string        `json:"notes"`
+	Intervals   []IntervalDTO `json:"intervals"`
+	PowerStatus string        `json:"power_status,omitempty" example:"served"`
+	// GeneratorHours is required only when PowerStatus is "outage", 0-24.
+	GeneratorHours *float64 `json:"generator_hours,omitempty" example:"3.5"`
 }
 
 type ReviewRequest struct {
@@ -59,18 +68,29 @@ type ReportDTO struct {
 	RowVersion       int           `json:"row_version"`
 	CreatedAt        time.Time     `json:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at"`
+	GeneratorHours   *float64      `json:"generator_hours,omitempty"`
 }
 
 // PublishedReportDTO is what Airtel sees: approved facts only. Internal notes,
 // author and reviewer details and review commentary are left out.
 type PublishedReportDTO struct {
-	ID         string        `json:"id"`
-	SiteID     string        `json:"site_id"`
-	ReportDate string        `json:"report_date"`
-	Revision   int           `json:"revision"`
-	Status     string        `json:"status"`
-	Intervals  []IntervalDTO `json:"intervals,omitempty"`
-	ApprovedAt *time.Time    `json:"approved_at,omitempty"`
+	ID             string        `json:"id"`
+	SiteID         string        `json:"site_id"`
+	ReportDate     string        `json:"report_date"`
+	Revision       int           `json:"revision"`
+	Status         string        `json:"status"`
+	Intervals      []IntervalDTO `json:"intervals,omitempty"`
+	ApprovedAt     *time.Time    `json:"approved_at,omitempty"`
+	GeneratorHours *float64      `json:"generator_hours,omitempty"`
+}
+
+// ReportStatusDTO is a lightweight status-only view of a report, for a
+// table cell rather than a detail page.
+type ReportStatusDTO struct {
+	ReportID      string `json:"report_id"`
+	Status        string `json:"status"`
+	RowVersion    int    `json:"row_version"`
+	ReviewComment string `json:"review_comment,omitempty"`
 }
 
 type SummaryDTO struct {
@@ -131,19 +151,23 @@ type OverviewResponse struct {
 	Days int    `json:"days"`
 	// Region is the filter applied, empty for every region; Regions lists the
 	// regions in the caller's scope for the filter to offer.
-	Region              string       `json:"region"`
-	Regions             []string     `json:"regions"`
-	Timezone            string       `json:"timezone"`
-	GeneratedAt         time.Time    `json:"generated_at"`
-	ActiveSites         int          `json:"active_sites"`
-	PendingSites        int          `json:"pending_acceptance_sites"`
-	SuspendedSites      int          `json:"suspended_sites"`
-	SitesReported       int          `json:"sites_reported"`
-	SitesNotReported    int          `json:"sites_not_reported"`
-	SitesAwaitingUpdate int          `json:"sites_awaiting_update"`
-	SitesOutageReported int          `json:"sites_outage_reported"`
-	Portfolio           SummaryDTO   `json:"portfolio"`
-	Sites               []SiteRowDTO `json:"sites"`
+	Region              string    `json:"region"`
+	Regions             []string  `json:"regions"`
+	Timezone            string    `json:"timezone"`
+	GeneratedAt         time.Time `json:"generated_at"`
+	ActiveSites         int       `json:"active_sites"`
+	PendingSites        int       `json:"pending_acceptance_sites"`
+	SuspendedSites      int       `json:"suspended_sites"`
+	SitesReported       int       `json:"sites_reported"`
+	SitesNotReported    int       `json:"sites_not_reported"`
+	SitesAwaitingUpdate int       `json:"sites_awaiting_update"`
+	SitesOutageReported int       `json:"sites_outage_reported"`
+	// OutagesThisWeek counts distinct site/day pairs in the trailing 7 days
+	// (inclusive of the requested date) whose current report has an outage.
+	// An approximation, not a full weekly aggregation.
+	OutagesThisWeek int          `json:"outages_this_week"`
+	Portfolio       SummaryDTO   `json:"portfolio"`
+	Sites           []SiteRowDTO `json:"sites"`
 }
 
 type SiteRowDTO struct {
@@ -151,6 +175,7 @@ type SiteRowDTO struct {
 	AirtelCode   string `json:"airtel_code"`
 	ColoplusCode string `json:"coloplus_code"`
 	Name         string `json:"name"`
+	SiteType     string `json:"site_type"`
 	State        string `json:"state"`
 	Status       string `json:"status"`
 	// Condition is available, outage_reported or awaiting_update.
@@ -166,6 +191,13 @@ type SiteRowDTO struct {
 	Summary *SummaryDTO `json:"summary,omitempty"`
 	// DaysReported of the response's Days have an approved report.
 	DaysReported int `json:"days_reported"`
+
+	// TodayStatus/YesterdayStatus are the report that best represents that
+	// day's live status (in-progress if there is one, else the approved
+	// one); nil when nothing has ever been filed. For the reporter's own
+	// progress view, not the approved-only Summary/Condition above.
+	TodayStatus     *ReportStatusDTO `json:"today_status,omitempty"`
+	YesterdayStatus *ReportStatusDTO `json:"yesterday_status,omitempty"`
 }
 
 // TrendResponse is the portfolio day by day.
@@ -187,4 +219,45 @@ type TrendPoint struct {
 	ActiveSites   int        `json:"active_sites"`
 	SitesReported int        `json:"sites_reported"`
 	Summary       SummaryDTO `json:"summary"`
+}
+
+// DayBarDTO is one day of the reporter's "my sites" trailing-days strip.
+type DayBarDTO struct {
+	Date string `json:"date" example:"2026-10-31"`
+	// Color is green (reported, no outage), amber (reported, had an outage)
+	// or red (no approved report that day -- a visible gap).
+	Color string `json:"color" example:"green"`
+}
+
+// MySiteRowDTO is one card on the reporter's "my sites" grid.
+type MySiteRowDTO struct {
+	SiteID             string `json:"site_id"`
+	AirtelCode         string `json:"airtel_code"`
+	ColoplusCode       string `json:"coloplus_code"`
+	Name               string `json:"name"`
+	SiteType           string `json:"site_type"`
+	Address            string `json:"address"`
+	State              string `json:"state"`
+	GeneratorCapacity  string `json:"generator_capacity"`
+	AccessContactName  string `json:"access_contact_name"`
+	AccessContactPhone string `json:"access_contact_phone"`
+	SupervisorName     string `json:"supervisor_name"`
+	// TodayStatus is the report that best represents today's live status
+	// (in-progress if there is one, else approved); nil when nothing has
+	// ever been filed today.
+	TodayStatus *ReportStatusDTO `json:"today_status,omitempty"`
+	// AvailabilityPct30d is the pooled reported availability over the
+	// trailing 30 days. Null when the site has no approved report in the
+	// window -- never 0.
+	AvailabilityPct30d *float64 `json:"availability_pct_30d"`
+	OpenIncidents      int      `json:"open_incidents"`
+	// Bars is the trailing 7 days, oldest first (last entry is today).
+	Bars []DayBarDTO `json:"bars"`
+}
+
+type MySitesResponse struct {
+	Date        string         `json:"date"`
+	Timezone    string         `json:"timezone"`
+	GeneratedAt time.Time      `json:"generated_at"`
+	Sites       []MySiteRowDTO `json:"sites"`
 }

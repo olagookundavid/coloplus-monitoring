@@ -158,6 +158,78 @@ func TestValidateIntervals(t *testing.T) {
 	}
 }
 
+func TestDayLevelInterval(t *testing.T) {
+	site := testSite()
+
+	t.Run("past day uses the full day", func(t *testing.T) {
+		now := at(23, 0).Add(48 * time.Hour) // well after the day has ended
+		iv := domain.DayLevelInterval(site, day, domain.StateServed, now, lagos)
+		dayStart, dayEnd := domain.DayBounds(day, lagos)
+		if !iv.Start.Equal(dayStart) || !iv.End.Equal(dayEnd) {
+			t.Fatalf("interval = %s..%s, want the full day %s..%s", iv.Start, iv.End, dayStart, dayEnd)
+		}
+		if iv.Basis != domain.BasisObserved {
+			t.Fatalf("basis = %s, want observed: only observed intervals count toward availability", iv.Basis)
+		}
+		if iv.Source != domain.SourceGrid {
+			t.Fatalf("source = %s, want grid for a served day", iv.Source)
+		}
+	})
+
+	t.Run("same-day report caps the end at now", func(t *testing.T) {
+		now := at(14, 30)
+		iv := domain.DayLevelInterval(site, day, domain.StateOutage, now, lagos)
+		if !iv.End.Equal(now) {
+			t.Fatalf("end = %s, want now (%s): the remaining hours of today are not yet observed", iv.End, now)
+		}
+		if iv.Source != "" {
+			t.Fatalf("source = %q, want empty for an outage", iv.Source)
+		}
+	})
+
+	t.Run("same-day interval passes validation and counts toward availability", func(t *testing.T) {
+		now := at(18, 0)
+		iv := domain.DayLevelInterval(site, day, domain.StateServed, now, lagos)
+		if problems := domain.ValidateIntervals(site, day, []domain.PowerInterval{iv}, now, lagos); len(problems) > 0 {
+			t.Fatalf("unexpected problems: %v", problems)
+		}
+		sum := domain.Summarise(site, day, []domain.PowerInterval{iv}, lagos)
+		if want := 18 * 60; sum.ServedMinutes != want {
+			t.Fatalf("served minutes = %d, want %d: a same-day toggle report must actually count", sum.ServedMinutes, want)
+		}
+	})
+}
+
+func TestValidateGeneratorHours(t *testing.T) {
+	hours := func(v float64) *float64 { return &v }
+
+	cases := []struct {
+		name      string
+		hours     *float64
+		hadOutage bool
+		want      string // substring of a problem; empty means valid
+	}{
+		{"nil and no outage is fine", nil, false, ""},
+		{"nil but there was an outage", nil, true, "enter the generator runtime hours"},
+		{"zero is fine", hours(0), true, ""},
+		{"24 is fine", hours(24), true, ""},
+		{"above 24 fails", hours(24.5), true, "between 0 and 24"},
+		{"negative fails", hours(-1), false, "between 0 and 24"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			problems := domain.ValidateGeneratorHours(tc.hours, tc.hadOutage)
+			joined := strings.Join(problems, "; ")
+			if tc.want == "" && len(problems) > 0 {
+				t.Fatalf("unexpected problems: %s", joined)
+			}
+			if tc.want != "" && !strings.Contains(joined, tc.want) {
+				t.Fatalf("problems = %q, want one containing %q", joined, tc.want)
+			}
+		})
+	}
+}
+
 func TestCondition_OverdueOrEmptyIsNeverAvailable(t *testing.T) {
 	site := testSite() // freshness 30h
 	now := time.Date(2026, 12, 3, 12, 0, 0, 0, lagos)

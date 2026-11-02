@@ -35,6 +35,26 @@
 
   --radius-md: 0.625rem;
   --radius-lg: 0.875rem;
+
+  /* Large display headings only (auth pages). Body text stays on the
+     default sans-serif. Loaded in index.html. */
+  --font-heading: 'Nunito', ui-sans-serif, system-ui, sans-serif;
+
+  /* MainLoader's logo pulse -- this codebase's first hand-authored
+     @keyframes. Tailwind's built-in animate-pulse stays the default for
+     routine skeleton shimmer; reserve a custom keyframe like this one for a
+     deliberate branded moment instead. */
+  --animate-pulse-fade: pulse-fade 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 @layer base {

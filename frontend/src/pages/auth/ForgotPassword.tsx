@@ -40,7 +40,6 @@ export function ForgotPassword() {
   if (sentFor) {
     return (
       <AuthLayout
-        eyebrow="Coloplus Monitoring"
         title="Check your email"
         subtitle={`If an account exists for ${sentFor}, we've sent a link to reset your password.`}
       >
@@ -58,7 +57,6 @@ export function ForgotPassword() {
 
   return (
     <AuthLayout
-      eyebrow="Coloplus Monitoring"
       title="Reset your password"
       subtitle="Enter your email and we'll send you a link to reset your password."
       footer={

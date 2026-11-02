@@ -9,11 +9,28 @@ import { Link, useLocation } from 'react-router-dom'
 
 import { ROUTES } from '../../constants'
 import { usePermissions } from '../../hooks'
+import { Logo } from '../icons'
 import { ButtonLink } from '../ui'
-import type { NavItem } from './navTypes'
+import type { NavGroup } from './navTypes'
+
+export interface SidebarOrgBadge {
+  initials: string
+  name: string
+  subtitle: string
+}
+
+export interface SidebarSupportCard {
+  title: string
+  body: string
+  to: string
+  linkLabel: string
+}
 
 export interface SidebarProps {
-  nav: NavItem[]
+  nav: NavGroup[]
+  portalLabel: string
+  orgBadge?: SidebarOrgBadge
+  supportCard?: SidebarSupportCard
 }
 
 const COLLAPSED_STORAGE_KEY = 'coloplus.sidebar.collapsed'
@@ -26,10 +43,18 @@ function readStoredCollapsed(): boolean {
   }
 }
 
-export function Sidebar({ nav }: SidebarProps) {
+export function Sidebar({ nav, portalLabel, orgBadge, supportCard }: SidebarProps) {
   const location = useLocation()
   const { can } = usePermissions()
-  const visibleNav = nav.filter((item) => !item.permission || can(item.permission))
+  // A group whose every item is filtered out (e.g. "System" for a
+  // supervisor, who can only reach Approvals) is dropped entirely, not left
+  // as an empty heading with nothing under it.
+  const visibleGroups = nav
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.permission || can(item.permission)),
+    }))
+    .filter((group) => group.items.length > 0)
   const [collapsed, setCollapsed] = useState(readStoredCollapsed)
 
   const toggleCollapsed = () => {
@@ -72,19 +97,11 @@ export function Sidebar({ nav }: SidebarProps) {
           to={ROUTES.HOME}
           className={`flex items-center ${collapsed ? 'justify-center' : 'gap-1.5'}`}
         >
-          {collapsed ? (
-            <span className="text-xl font-bold tracking-tight text-text">
-              c<span className="text-orange-500">.</span>
-            </span>
-          ) : (
-            <span className="text-xl font-bold tracking-tight text-text">
-              coloplus<span className="text-orange-500">.</span>
-            </span>
-          )}
+          <Logo variant={collapsed ? 'mark' : 'full'} tone="black" className="h-7" />
         </Link>
         {!collapsed && (
           <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Customer portal
+            {portalLabel}
           </p>
         )}
       </div>
@@ -97,91 +114,95 @@ export function Sidebar({ nav }: SidebarProps) {
         className={`min-h-0 flex-1 overflow-y-auto ${collapsed ? 'px-2' : 'px-4'}`}
         aria-label="Primary"
       >
-        {!collapsed && (
-          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-            Workspace
-          </p>
-        )}
-        <ul className="flex flex-col gap-1">
-          {visibleNav.map((item) => {
-            const isActive = location.pathname === item.to
-            const Icon = item.icon
-            return (
-              <li key={item.to}>
-                <Link
-                  to={item.to}
-                  aria-current={isActive ? 'page' : undefined}
-                  title={collapsed ? item.label : undefined}
-                  className={`flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors ${
-                    collapsed ? 'justify-center px-2' : 'gap-2.5 px-3'
-                  } ${
-                    isActive
-                      ? 'bg-primary-soft text-primary-700'
-                      : 'text-text-muted hover:bg-surface-subtle hover:text-text'
-                  }`}
-                >
-                  <span className="relative shrink-0">
-                    <Icon className="h-5 w-5" aria-hidden="true" />
-                    {collapsed && Boolean(item.badge) && (
-                      <span
-                        className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </span>
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1">{item.label}</span>
-                      {Boolean(item.badge) && (
-                        <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">
-                          {item.badge}
-                        </span>
+        {visibleGroups.map((group) => (
+          <div key={group.label} className="mb-4 last:mb-0">
+            {!collapsed && (
+              <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
+                {group.label}
+              </p>
+            )}
+            <ul className="flex flex-col gap-1">
+              {group.items.map((item) => {
+                const isActive = location.pathname === item.to
+                const Icon = item.icon
+                return (
+                  <li key={item.to}>
+                    <Link
+                      to={item.to}
+                      aria-current={isActive ? 'page' : undefined}
+                      title={collapsed ? item.label : undefined}
+                      className={`flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors ${
+                        collapsed ? 'justify-center px-2' : 'gap-2.5 px-3'
+                      } ${
+                        isActive
+                          ? 'bg-primary-soft text-primary-700'
+                          : 'text-text-muted hover:bg-surface-subtle hover:text-text'
+                      }`}
+                    >
+                      <span className="relative shrink-0">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                        {collapsed && Boolean(item.badge) && (
+                          <span
+                            className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </span>
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1">{item.label}</span>
+                          {Boolean(item.badge) && (
+                            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">
+                              {item.badge}
+                            </span>
+                          )}
+                        </>
                       )}
-                    </>
-                  )}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </nav>
 
-      {!collapsed && (
+      {!collapsed && supportCard && (
         <div className="mx-4 mb-4 shrink-0 rounded-lg border border-border p-4">
           <LifebuoyIcon className="h-5 w-5 text-primary" aria-hidden="true" />
-          <p className="mt-2 text-sm font-semibold text-text">A team behind every site.</p>
-          <p className="mt-1 text-sm text-text-muted">
-            Your Coloplus operations team is here to help.
-          </p>
-          {/* Routes into Support tickets — the realistic way to reach the team,
-              rather than a dead "#" link or a fabricated email address. */}
-          <ButtonLink to={ROUTES.CUSTOMER_TICKETS} variant="link" size="sm" className="mt-2">
-            Contact support
+          <p className="mt-2 text-sm font-semibold text-text">{supportCard.title}</p>
+          <p className="mt-1 text-sm text-text-muted">{supportCard.body}</p>
+          {/* Routes somewhere real, rather than a dead "#" link or a
+              fabricated email address. */}
+          <ButtonLink to={supportCard.to} variant="link" size="sm" className="mt-2">
+            {supportCard.linkLabel}
           </ButtonLink>
         </div>
       )}
 
-      <div
-        className={`flex shrink-0 items-center border-t border-border py-4 ${
-          collapsed ? 'justify-center px-2' : 'gap-3 px-4'
-        }`}
-      >
-        <span
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-50 text-sm font-semibold text-danger-600"
-          title={collapsed ? 'Airtel Nigeria' : undefined}
+      {orgBadge && (
+        <div
+          className={`flex shrink-0 items-center border-t border-border py-4 ${
+            collapsed ? 'justify-center px-2' : 'gap-3 px-4'
+          }`}
         >
-          AT
-        </span>
-        {!collapsed && (
-          <>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-text">Airtel Nigeria</p>
-              <p className="truncate text-xs text-text-muted">Customer workspace</p>
-            </div>
-            <LockClosedIcon className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-          </>
-        )}
-      </div>
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-50 text-sm font-semibold text-danger-600"
+            title={collapsed ? orgBadge.name : undefined}
+          >
+            {orgBadge.initials}
+          </span>
+          {!collapsed && (
+            <>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-text">{orgBadge.name}</p>
+                <p className="truncate text-xs text-text-muted">{orgBadge.subtitle}</p>
+              </div>
+              <LockClosedIcon className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
+            </>
+          )}
+        </div>
+      )}
     </aside>
   )
 }

@@ -20,6 +20,10 @@ type SiteDTO struct {
 	CommissioningDate  *string   `json:"commissioning_date,omitempty" example:"2026-09-01"`
 	Latitude           *float64  `json:"latitude,omitempty"`
 	Longitude          *float64  `json:"longitude,omitempty"`
+	GeneratorCapacity  string    `json:"generator_capacity" example:"20 kVA diesel"`
+	AccessContactName  string    `json:"access_contact_name"`
+	AccessContactPhone string    `json:"access_contact_phone"`
+	SupervisorName     string    `json:"supervisor_name"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
 }
@@ -43,6 +47,10 @@ type SiteRequest struct {
 	CommissioningDate  *string  `json:"commissioning_date,omitempty" example:"2026-09-01"`
 	Latitude           *float64 `json:"latitude,omitempty"`
 	Longitude          *float64 `json:"longitude,omitempty"`
+	GeneratorCapacity  string   `json:"generator_capacity" example:"20 kVA diesel"`
+	AccessContactName  string   `json:"access_contact_name"`
+	AccessContactPhone string   `json:"access_contact_phone"`
+	SupervisorName     string   `json:"supervisor_name"`
 }
 
 type SiteListResponse struct {

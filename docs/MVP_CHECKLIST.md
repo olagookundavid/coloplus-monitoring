@@ -34,7 +34,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] **Enforced** two-step sign-in for administrators, supervisors and all Airtel users: until enrolled they hold no permissions (DECISIONS 038). Confirm the role list with Airtel
 - [x] Recovery codes for a lost phone (one-time, hashed, emailed on use), regenerate, administrator or console reset of a lost second step
 - [ ] Model administrator role (drafts formulas; separate approver). Arrives with the formula engine
-- [x] Management / auditor role (`auditor`: sites, reports and audit log within assigned sites, nothing editable, two-step sign-in required; DECISIONS 044)
+- [x] Management / auditor role (`auditor`: sites, reports and audit log within assigned sites, nothing editable, two-step sign-in required; DECISIONS 045)
 
 ## 3. Sites (PRD 6)
 
@@ -76,7 +76,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Portfolio overview for a day: active, pending and suspended counts, sites reported, not reported, awaiting update, outage reported, pooled availability with coverage, per-site condition (available, outage reported, awaiting update) **FR**
 - [x] An overdue or missing entry never shows as current or available (AT03)
 - [x] Site detail in one call (`GET /sites/:id/overview`): profile, condition, last days with visible gaps, open incidents, disputes, acceptance
-- [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 042)
+- [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 043)
 - [ ] Data-quality indicator and stale-submission count on the dashboard
 - [ ] Click-through from a card to its supporting sites and intervals
 
@@ -90,9 +90,10 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
 - [ ] Link an incident to the outage intervals of daily reports without duplicating downtime. Also the automatic midnight split
 - [ ] Evidence attachments on incidents. **new dependency** (R2)
-- [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 045)
+- [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
 - [ ] Ticket attachments. **new dependency** (R2)
 - [ ] Link planned maintenance and approval references
+- [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
 ## 8. Disputes (PRD 9)
 
@@ -138,7 +139,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 - [ ] Daily site summaries, weekly exception report, monthly performance pack, incident register, maintenance log, commissioning backlog
 - [x] CSV export of daily summaries; gaps stay blank rows
-- [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 043)
+- [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
 - [ ] Immutable report snapshots with version history; "never overwrite an issued report"

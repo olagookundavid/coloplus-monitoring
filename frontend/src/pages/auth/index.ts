@@ -1,3 +1,5 @@
 export { Login } from './Login'
 export { ForgotPassword } from './ForgotPassword'
+export { ResetPassword } from './ResetPassword'
 export { AcceptInvite } from './AcceptInvite'
+export { MfaSetup } from './MfaSetup'

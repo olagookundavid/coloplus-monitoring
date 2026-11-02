@@ -86,7 +86,7 @@ type UpdateUserRequest struct {
 }
 
 type UserListResponse struct {
-	Users []UserDTO `json:"users"`
+	Users []UserDetailDTO `json:"users"`
 }
 
 type ForgotPasswordRequest struct {

@@ -4,8 +4,6 @@ import { env } from '../config'
 
 /**
  * The one axios instance for the whole app (architecture standard §4).
- * Not called by any service yet — auth.ts is mock-backed until the
- * backend ships a real auth feature (see docs/DECISIONS.md).
  *
  * Built lazily, on first use, not at module load: this module is reached
  * through the services/ barrel from code that's in the eager bundle
