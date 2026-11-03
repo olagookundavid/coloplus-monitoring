@@ -25,9 +25,11 @@ export const ROUTES = {
   // in App.tsx, not by the shape of the path.
   OPS_OVERVIEW: '/overview',
   OPS_USERS: '/users',
+  OPS_SITES: '/site-directory',
   OPS_SITE_ASSIGNMENTS: '/site-assignments',
   OPS_APPROVALS: '/approvals',
   OPS_AUDIT_LOG: '/audit-log',
+  OPS_EMAIL_LOG: '/email-log',
   OPS_SETTINGS: '/settings',
   OPS_REPORTER_OVERVIEW: '/reporting',
   OPS_MY_SITES: '/my-sites',

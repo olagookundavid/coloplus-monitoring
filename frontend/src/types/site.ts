@@ -98,3 +98,31 @@ export interface PortfolioQueryParams {
   from?: string
   to?: string
 }
+
+// Mirrors dto.TrendPoint from GET /dashboard/trend. summary's percentages are
+// null on a day nobody reported -- a chart gap, never a line at 0 or 100.
+export interface PortfolioTrendPoint {
+  date: string
+  activeSites: number
+  sitesReported: number
+  summary: PeriodSummary
+}
+
+// Mirrors dto.TrendResponse. formula/version aren't carried -- nothing on
+// the frontend surfaces a "how calculated" panel for this pooled figure.
+export interface PortfolioTrend {
+  from: string
+  to: string
+  region: string
+  timezone: string
+  generatedAt: string
+  points: PortfolioTrendPoint[]
+}
+
+// GET /dashboard/trend requires both bounds, unlike /dashboard/overview's
+// optional date|from|to -- a dedicated params type, not PortfolioQueryParams.
+export interface PortfolioTrendQueryParams {
+  region?: string
+  from: string
+  to: string
+}

@@ -4,7 +4,9 @@ import { ScaleIcon } from '@heroicons/react/24/outline'
 import { DashboardPageHeader, RaiseDisputeModal, StatCard } from '../../components/dashboard'
 import { SkeletonDetailPane, SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
 import {
+  AttachmentList,
   Button,
+  FileDropZone,
   Input,
   Spinner,
   StatusBadge,
@@ -14,6 +16,7 @@ import {
 } from '../../components/ui'
 import {
   useAdminSites,
+  useAttachments,
   useCommentDisputeMutation,
   useDisputeDetail,
   useDisputeSummary,
@@ -57,11 +60,13 @@ function DisputeDetailPane({
 
   const commentMutation = useCommentDisputeMutation()
   const transitionMutation = useTransitionDisputeMutation()
+  const attachmentsQuery = useAttachments('dispute', dispute.id)
 
   const { label: statusLabel, tone: statusTone } = disputeStatusLabel(dispute.status)
   const canWithdraw = canReview && (dispute.status === 'open' || dispute.status === 'under_review')
   const canSupplyEvidence = canReview && dispute.status === 'awaiting_evidence'
   const canActOnResolved = canReview && dispute.status === 'resolved'
+  const canAttach = canReview && dispute.status !== 'closed'
 
   async function handleComment() {
     const body = commentBody.trim()
@@ -119,6 +124,17 @@ function DisputeDetailPane({
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <AttachmentList
+          attachments={attachmentsQuery.data ?? []}
+          loading={attachmentsQuery.isLoading}
+          emptyMessage="No files attached yet."
+        />
+        {canAttach && (
+          <FileDropZone ownerType="dispute" ownerId={dispute.id} isStaff={false} />
         )}
       </div>
 

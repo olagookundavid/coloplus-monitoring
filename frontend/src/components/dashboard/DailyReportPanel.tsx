@@ -1,15 +1,6 @@
-import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon, PhotoIcon } from '@heroicons/react/24/outline'
 
-import {
-  AlertBanner,
-  Button,
-  Field,
-  FileDropZone,
-  Input,
-  SegmentedToggle,
-  SidePanel,
-  Textarea,
-} from '../ui'
+import { AlertBanner, Button, Field, Input, SegmentedToggle, SidePanel, Textarea } from '../ui'
 import { useDailyReportForm } from '../../hooks'
 import type { PowerStatus, SiteReportRow } from '../../types'
 
@@ -151,7 +142,18 @@ export function DailyReportPanel({
           </Field>
 
           <Field label="Evidence">
-            <FileDropZone />
+            {/* Daily reports aren't a supported attachment owner on the
+                backend yet (docs/DECISIONS.md #047's own stated gap) --
+                an honest disabled notice, not a non-functional upload
+                control. */}
+            <div
+              aria-disabled="true"
+              className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-subtle px-4 py-8 text-center opacity-60"
+            >
+              <PhotoIcon className="h-6 w-6 text-text-muted" aria-hidden="true" />
+              <p className="text-sm font-medium text-text-muted">Evidence upload coming soon</p>
+              <p className="text-xs text-text-muted">Not yet supported for daily reports.</p>
+            </div>
           </Field>
         </div>
       )}

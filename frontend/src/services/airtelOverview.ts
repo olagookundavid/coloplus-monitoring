@@ -7,6 +7,8 @@ import type {
   PortfolioOverview,
   PortfolioQueryParams,
   PortfolioSite,
+  PortfolioTrend,
+  PortfolioTrendQueryParams,
   SiteCondition,
 } from '../types'
 
@@ -140,6 +142,47 @@ function mapSite(dto: SiteRowDTO): PortfolioSite {
     daysWithoutReport: dto.days_without_report,
     dataQuality: dto.data_quality ? mapDataQuality(dto.data_quality) : undefined,
     fuel: dto.fuel ? mapFuel(dto.fuel) : undefined,
+  }
+}
+
+interface TrendPointDTO {
+  date: string
+  active_sites: number
+  sites_reported: number
+  summary: SummaryDTO
+}
+
+interface TrendResponseDTO {
+  from: string
+  to: string
+  region: string
+  timezone: string
+  formula: string
+  version: string
+  generated_at: string
+  points: TrendPointDTO[]
+}
+
+export async function fetchPortfolioTrend(
+  params: PortfolioTrendQueryParams
+): Promise<PortfolioTrend> {
+  try {
+    const { data } = await getApi().get<TrendResponseDTO>('/dashboard/trend', { params })
+    return {
+      from: data.from,
+      to: data.to,
+      region: data.region,
+      timezone: data.timezone,
+      generatedAt: data.generated_at,
+      points: data.points.map((p) => ({
+        date: p.date,
+        activeSites: p.active_sites,
+        sitesReported: p.sites_reported,
+        summary: mapSummary(p.summary),
+      })),
+    }
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load the performance trend.')
   }
 }
 

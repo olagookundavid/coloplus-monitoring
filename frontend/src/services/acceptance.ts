@@ -99,6 +99,26 @@ export async function fetchAcceptances(filter: AcceptanceFilter = {}): Promise<A
   }
 }
 
+export interface RequestAcceptanceInput {
+  nextAction?: string
+  dueAt?: string
+}
+
+export async function requestAcceptance(
+  siteId: string,
+  input: RequestAcceptanceInput = {}
+): Promise<Acceptance> {
+  try {
+    const { data } = await getApi().post<AcceptanceDTO>(`/sites/${siteId}/acceptance`, {
+      next_action: input.nextAction,
+      due_at: input.dueAt,
+    })
+    return mapAcceptance(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not start acceptance for this site.')
+  }
+}
+
 export async function fetchSiteAcceptance(
   siteId: string
 ): Promise<{ acceptance: Acceptance; events: AcceptanceEvent[] }> {

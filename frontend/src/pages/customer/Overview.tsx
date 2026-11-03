@@ -11,15 +11,17 @@ import {
   DashboardPageHeader,
   FuelHealthCard,
   NO_SITES,
+  PerformanceTrendChart,
   periodToDateRange,
+  periodToTrendRange,
   SITE_COLUMNS,
   SiteAttentionBanner,
   StatCard,
 } from '../../components/dashboard'
-import { SkeletonStatCards } from '../../components/skeletons'
+import { SkeletonChartRow, SkeletonStatCards } from '../../components/skeletons'
 import { Button, DataTable } from '../../components/ui'
 import { siteDetailPath } from '../../constants'
-import { usePortfolioOverview } from '../../hooks'
+import { usePortfolioOverview, usePortfolioTrend } from '../../hooks'
 import type { FuelHealthSummary, PortfolioSite } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
@@ -46,6 +48,7 @@ export function Overview() {
   const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
 
   const overviewQuery = usePortfolioOverview({ region, ...periodToDateRange(period) })
+  const trendQuery = usePortfolioTrend({ region, ...periodToTrendRange(period) })
   const sites = overviewQuery.data?.sites ?? NO_SITES
 
   const fuelHealth = useMemo(() => buildFuelHealthSummary(sites), [sites])
@@ -117,12 +120,22 @@ export function Overview() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SiteAttentionBanner sites={sites} />
+      <SiteAttentionBanner sites={sites} />
+
+      {trendQuery.isLoading ? (
+        <SkeletonChartRow />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="min-w-0 rounded-lg border border-border bg-surface p-5 lg:col-span-2">
+            <h2 className="text-base font-semibold text-text">Performance over time</h2>
+            <p className="mb-4 text-sm text-text-muted">
+              Daily availability across your active sites
+            </p>
+            <PerformanceTrendChart points={trendQuery.data?.points ?? []} />
+          </div>
+          <FuelHealthCard summary={fuelHealth} />
         </div>
-        <FuelHealthCard summary={fuelHealth} />
-      </div>
+      )}
 
       <div>
         <div className="mb-3 flex items-center gap-2">

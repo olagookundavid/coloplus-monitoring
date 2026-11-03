@@ -6,6 +6,8 @@ export interface MySiteCardProps {
   site: MySiteRow
   onReport: () => void
   onDetails: () => void
+  /** Rendered only when passed -- a page without fuel permissions omits it. */
+  onFuel?: () => void
 }
 
 const BAR_CLASS: Record<DayBar['color'], string> = {
@@ -33,7 +35,7 @@ function formatAvailability(pct: number | null): string {
   return pct == null ? '—' : `${Math.round(pct)}%`
 }
 
-export function MySiteCard({ site, onReport, onDetails }: MySiteCardProps) {
+export function MySiteCard({ site, onReport, onDetails, onFuel }: MySiteCardProps) {
   const { label, tone } = statusLabel(site.todayStatus?.status)
   const { label: actionLabel, mode } = actionFor(site)
   const reportedDays = site.bars.filter((bar) => bar.color !== 'red').length
@@ -79,8 +81,8 @@ export function MySiteCard({ site, onReport, onDetails }: MySiteCardProps) {
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap gap-2">
+        <div className="min-w-28 flex-1">
           <Button variant={mode === 'view' ? 'outline' : 'primary'} fullWidth onClick={onReport}>
             {mode === 'create'
               ? 'Report today'
@@ -89,11 +91,18 @@ export function MySiteCard({ site, onReport, onDetails }: MySiteCardProps) {
                 : 'View report'}
           </Button>
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-28 flex-1">
           <Button variant="outline" fullWidth onClick={onDetails}>
             Site details
           </Button>
         </div>
+        {onFuel && (
+          <div className="min-w-28 flex-1">
+            <Button variant="outline" fullWidth onClick={onFuel}>
+              Fuel
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

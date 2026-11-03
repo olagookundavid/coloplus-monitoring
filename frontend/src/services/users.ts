@@ -13,9 +13,6 @@ interface UserDTO {
   last_login_at?: string
 }
 
-// GET /users and GET /users/:id both return this shape -- the list endpoint
-// batch-loads every row's site assignments in one query server-side, so
-// there's no separate per-user fetch needed to get them.
 interface UserDetailDTO extends UserDTO {
   site_ids: string[]
 }
@@ -104,5 +101,13 @@ export async function resetUserMfa(id: string): Promise<void> {
     await getApi().post(`/users/${id}/reset-mfa`, {})
   } catch (error) {
     throw mapAxiosError(error, "Could not reset that person's two-step verification.")
+  }
+}
+
+export async function resendInvite(id: string): Promise<void> {
+  try {
+    await getApi().post(`/users/${id}/invite`, {})
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not resend that invitation.')
   }
 }

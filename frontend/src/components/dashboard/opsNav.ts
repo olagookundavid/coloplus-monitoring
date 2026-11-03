@@ -4,6 +4,7 @@ import {
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
+  EnvelopeIcon,
   ExclamationTriangleIcon,
   MapIcon,
   Squares2X2Icon,
@@ -15,10 +16,11 @@ import { SiteMastIcon } from '../icons'
 import type { NavGroup } from './navTypes'
 
 // Overview/Users/Site assignments/Settings/Approvals are admin-only
-// (users.manage), and Audit log for anyone holding audit.read -- each gated
-// on the real permission that controls its data, not users.manage, via its
-// own RequireRole block in App.tsx. Formulas isn't here yet — no page
-// exists for it, and a nav link to nothing is a dead link, not a feature.
+// (users.manage), Audit log for anyone holding audit.read, and Email log for
+// anyone holding notifications.read -- each gated on the real permission
+// that controls its data, not users.manage, via its own RequireRole block in
+// App.tsx. Formulas isn't here yet — no page exists for it, and a nav link
+// to nothing is a dead link, not a feature.
 //
 // The third "Workspace" group below is the supervisor's own portal
 // (reports.review) -- same group label as admin's and the reporter's above
@@ -51,6 +53,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           permission: 'users.manage',
         },
         {
+          label: 'Sites',
+          to: ROUTES.OPS_SITES,
+          icon: MapIcon,
+          permission: 'users.manage',
+        },
+        {
           label: 'Site assignments',
           to: ROUTES.OPS_SITE_ASSIGNMENTS,
           icon: SiteMastIcon,
@@ -67,6 +75,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           to: ROUTES.OPS_AUDIT_LOG,
           icon: ClipboardDocumentListIcon,
           permission: 'audit.read',
+        },
+        {
+          label: 'Email log',
+          to: ROUTES.OPS_EMAIL_LOG,
+          icon: EnvelopeIcon,
+          permission: 'notifications.read',
         },
       ],
     },

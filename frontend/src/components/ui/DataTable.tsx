@@ -49,6 +49,8 @@ export interface DataTableProps<T> {
   getRowHref?: (row: T) => string
   className?: string
   rowClassName?: (row: T) => string
+  /** No min-width constraint, for a table in a dialog or narrow card. */
+  compact?: boolean
 }
 
 const ALIGN_CLASS: Record<NonNullable<Column<unknown>['align']>, string> = {
@@ -73,6 +75,7 @@ export function DataTable<T>({
   getRowHref,
   className = '',
   rowClassName,
+  compact = false,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [globalFilter, setGlobalFilter] = useState('')
@@ -142,7 +145,7 @@ export function DataTable<T>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-160 border-collapse text-sm">
+        <table className={`w-full border-collapse text-sm ${compact ? '' : 'min-w-160'}`}>
           <thead>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="border-b border-border">

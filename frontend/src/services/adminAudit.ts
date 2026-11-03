@@ -1,8 +1,5 @@
 import { getApi } from './api'
 import { mapAxiosError } from './auth'
-// Aliased: this file already exports its own smaller AuditEvent below (used
-// by Overview.tsx's recent-activity widget) -- the richer, metadata-carrying
-// type for the Audit log page lives in types/audit.ts under the same name.
 import type { AuditEvent as AuditLogEvent } from '../types'
 
 export interface AuditEvent {

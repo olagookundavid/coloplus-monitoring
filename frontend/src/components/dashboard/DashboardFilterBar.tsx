@@ -1,6 +1,7 @@
-/* eslint-disable react-refresh/only-export-components -- PERIOD_PRESETS and
-   periodToDateRange are small static data/helpers colocated with the one
-   component that uses them, same intentional pattern as AuthContext.tsx. */
+/* eslint-disable react-refresh/only-export-components -- PERIOD_PRESETS,
+   periodToDateRange and periodToTrendRange are small static data/helpers
+   colocated with the one component that uses them, same intentional pattern
+   as AuthContext.tsx. */
 import { CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline'
 
 import type { PortfolioQueryParams } from '../../types'
@@ -46,6 +47,16 @@ export function periodToDateRange(period: string): Pick<PortfolioQueryParams, 'd
     default:
       return { date: isoDate(today) }
   }
+}
+
+// GET /dashboard/trend requires both from and to always -- periodToDateRange's
+// single-day `date` form isn't enough. Derives from periodToDateRange rather
+// than re-deriving the preset dates, so the preset->date mapping still lives
+// in exactly one place.
+export function periodToTrendRange(period: string): { from: string; to: string } {
+  const range = periodToDateRange(period)
+  if (range.date) return { from: range.date, to: range.date }
+  return { from: range.from as string, to: range.to as string }
 }
 
 export interface DashboardFilterBarProps {

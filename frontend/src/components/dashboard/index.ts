@@ -7,6 +7,7 @@ export {
   ALL_REGIONS,
   PERIOD_PRESETS,
   periodToDateRange,
+  periodToTrendRange,
 } from './DashboardFilterBar'
 export type { DashboardFilterBarProps } from './DashboardFilterBar'
 export { DataRecencyIndicator } from './DataRecencyIndicator'
@@ -24,6 +25,8 @@ export { CUSTOMER_NAV_GROUPS } from './customerNav'
 export { OPS_NAV_GROUPS, buildOpsNavGroups } from './opsNav'
 export { StatCard } from './StatCard'
 export type { StatCardProps, StatCardTrend } from './StatCard'
+export { PerformanceTrendChart } from './PerformanceTrendChart'
+export type { PerformanceTrendChartProps } from './PerformanceTrendChart'
 export { FuelHealthCard } from './FuelHealthCard'
 export type { FuelHealthCardProps } from './FuelHealthCard'
 export { SiteAttentionBanner } from './SiteAttentionBanner'
@@ -69,3 +72,7 @@ export { MyProfileModal } from './MyProfileModal'
 export type { MyProfileModalProps } from './MyProfileModal'
 export { SecurityModal } from './SecurityModal'
 export type { SecurityModalProps } from './SecurityModal'
+export { FuelPanel } from './FuelPanel'
+export type { FuelPanelProps } from './FuelPanel'
+export { SiteFormPanel } from './SiteFormPanel'
+export type { SiteFormPanelProps } from './SiteFormPanel'

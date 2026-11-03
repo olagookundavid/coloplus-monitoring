@@ -6,12 +6,13 @@ import {
   type DailyReportPanelMode,
   DashboardPageHeader,
   DataRecencyIndicator,
+  FuelPanel,
   MySiteCard,
   SiteProfilePanel,
 } from '../../components/dashboard'
 import { SkeletonCardGrid } from '../../components/skeletons'
 import { Input, Tabs, type TabItem } from '../../components/ui'
-import { useMySites } from '../../hooks'
+import { useMySites, usePermissions } from '../../hooks'
 import type { MySiteRow } from '../../types'
 import { actionFor } from '../../utils'
 
@@ -58,11 +59,14 @@ export function MySites() {
   const mySitesQuery = useMySites()
   const rows = mySitesQuery.data?.sites ?? NO_SITES
   const today = mySitesQuery.data?.date ?? new Date().toISOString().slice(0, 10)
+  const permissions = usePermissions()
+  const canSeeFuel = permissions.can(['fuel.record', 'fuel.read'])
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null)
   const [detailsSite, setDetailsSite] = useState<MySiteRow | null>(null)
+  const [fuelTarget, setFuelTarget] = useState<MySiteRow | null>(null)
 
   const regionLabel = useMemo(() => deriveRegionLabel(rows), [rows])
   const typeItems = useMemo(() => buildTypeFilterItems(rows), [rows])
@@ -122,6 +126,7 @@ export function MySites() {
               site={row}
               onReport={() => openReport(row)}
               onDetails={() => setDetailsSite(row)}
+              onFuel={canSeeFuel ? () => setFuelTarget(row) : undefined}
             />
           ))}
         </div>
@@ -144,6 +149,15 @@ export function MySites() {
         onClose={() => setDetailsSite(null)}
         onOpenReport={() => detailsSite && openReport(detailsSite)}
       />
+
+      {fuelTarget && (
+        <FuelPanel
+          open
+          onClose={() => setFuelTarget(null)}
+          siteId={fuelTarget.siteId}
+          siteName={fuelTarget.name}
+        />
+      )}
     </div>
   )
 }

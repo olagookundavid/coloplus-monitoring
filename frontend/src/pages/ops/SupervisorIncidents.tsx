@@ -15,6 +15,7 @@ import {
   ConfirmDialog,
   ConfirmSummary,
   Input,
+  Select,
   Spinner,
   StatusBadge,
   Tabs,
@@ -22,21 +23,42 @@ import {
   type StatusTone,
   type TabItem,
 } from '../../components/ui'
+import { useAuth } from '../../contexts'
 import {
   useAdminSites,
+  useApproveIncidentCorrectionMutation,
   useAssignIncidentMutation,
+  useIncidentCorrections,
   useIncidentSummary,
+  useLinkTicketIncidentMutation,
   usePermissions,
   usePublishIncidentMutation,
+  useRejectIncidentCorrectionMutation,
   useReporterIncidentDetail,
   useReporterIncidents,
+  useTickets,
   useTransitionIncidentMutation,
 } from '../../hooks'
-import type { AdminSite, IncidentWorkflowStatus, ReporterIncident } from '../../types'
-import { formatAuditWhen, severityLabel, toast } from '../../utils'
+import type {
+  AdminSite,
+  IncidentCorrection,
+  IncidentWorkflowStatus,
+  ReporterIncident,
+  Ticket,
+} from '../../types'
+import {
+  correctionFieldLabel,
+  formatAuditWhen,
+  formatDateTimeWAT,
+  severityLabel,
+  ticketStatusLabel,
+  toast,
+} from '../../utils'
 
 const NO_INCIDENTS: ReporterIncident[] = []
 const NO_SITES: AdminSite[] = []
+const NO_CORRECTIONS: IncidentCorrection[] = []
+const NO_TICKETS: Ticket[] = []
 
 // A supervisor-specific framing of the 7-stage lifecycle, distinct from
 // utils/incidentStatus.ts's describeIncidentStatus -- that one is explicitly
@@ -80,6 +102,14 @@ type PendingAction =
   | { kind: 'verify'; incident: ReporterIncident; note: string; atIso: string }
   | { kind: 'close'; incident: ReporterIncident; rootCause: string }
   | { kind: 'publish'; incident: ReporterIncident }
+  | { kind: 'approveCorrection'; incident: ReporterIncident; correction: IncidentCorrection }
+  | {
+      kind: 'rejectCorrection'
+      incident: ReporterIncident
+      correction: IncidentCorrection
+      note: string
+    }
+  | { kind: 'linkTicket'; incident: ReporterIncident; ticketId: string; ticketLabel: string }
 
 // The transition endpoint requires `at` (when the confirming observation was
 // made) to verify -- matches ReporterIncidents.tsx's own restore flow, which
@@ -95,17 +125,35 @@ interface DetailPaneProps {
   incident: ReporterIncident
   siteLabel: string
   canManage: boolean
+  canLinkTickets: boolean
+  currentUserId: string | undefined
+  pendingCorrections: IncidentCorrection[]
   onRequestAction: (action: PendingAction) => void
 }
 
-function IncidentDetailPane({ incident, siteLabel, canManage, onRequestAction }: DetailPaneProps) {
+function IncidentDetailPane({
+  incident,
+  siteLabel,
+  canManage,
+  canLinkTickets,
+  currentUserId,
+  pendingCorrections,
+  onRequestAction,
+}: DetailPaneProps) {
   const detailQuery = useReporterIncidentDetail(incident.id)
   const updates = detailQuery.data?.updates ?? []
+
+  const linkedTicketsQuery = useTickets({ incidentId: incident.id })
+  const linkedTickets = linkedTicketsQuery.data ?? NO_TICKETS
+  const siteTicketsQuery = useTickets({ siteId: incident.siteId })
+  const siteTickets = siteTicketsQuery.data ?? NO_TICKETS
 
   const [ownerId, setOwnerId] = useState(incident.ownerId ?? '')
   const [verifyNote, setVerifyNote] = useState('')
   const [verifiedAtTime, setVerifiedAtTime] = useState('')
   const [rootCause, setRootCause] = useState('')
+  const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({})
+  const [ticketToLink, setTicketToLink] = useState('')
 
   const { label: statusLabelText, tone: statusTone } = STATUS_LABEL[incident.status]
   const { label: sevLabel, tone: sevTone } = severityLabel(incident.severity)
@@ -148,6 +196,148 @@ function IncidentDetailPane({ incident, siteLabel, canManage, onRequestAction }:
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {pendingCorrections.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Correction requested
+          </p>
+          {pendingCorrections.map((correction) => {
+            const isSelf = currentUserId != null && correction.requestedBy === currentUserId
+            return (
+              <div
+                key={correction.id}
+                className="rounded-lg border border-border bg-surface-subtle p-4"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium text-text">
+                    {correctionFieldLabel(correction.field)}
+                  </p>
+                  <span className="text-xs text-text-muted">{correction.ref}</span>
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <span className="text-text-muted line-through">
+                    {formatDateTimeWAT(correction.originalValue)}
+                  </span>
+                  <span className="font-medium text-text">
+                    {formatDateTimeWAT(correction.correctedValue)}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-text">{correction.reason}</p>
+                <p className="mt-1 text-xs text-text-muted">
+                  Requested by {correction.requestedBy}
+                </p>
+
+                {canManage && !isSelf && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() =>
+                        onRequestAction({ kind: 'approveCorrection', incident, correction })
+                      }
+                    >
+                      Approve
+                    </Button>
+                    <Textarea
+                      value={rejectNotes[correction.id] ?? ''}
+                      onChange={(event) =>
+                        setRejectNotes((current) => ({
+                          ...current,
+                          [correction.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="Reason for rejecting (required)"
+                      aria-label={`Reason for rejecting ${correction.ref}`}
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={!(rejectNotes[correction.id] ?? '').trim()}
+                      onClick={() =>
+                        onRequestAction({
+                          kind: 'rejectCorrection',
+                          incident,
+                          correction,
+                          note: (rejectNotes[correction.id] ?? '').trim(),
+                        })
+                      }
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+                {canManage && isSelf && (
+                  <p className="mt-3 text-xs text-text-muted">
+                    You requested this — another supervisor must decide it.
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          Linked tickets
+        </p>
+        {linkedTicketsQuery.isLoading ? (
+          <Spinner className="h-5 w-5" />
+        ) : linkedTickets.length === 0 ? (
+          <p className="text-sm text-text-muted">No tickets linked yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {linkedTickets.map((ticket) => {
+              const { label, tone } = ticketStatusLabel(ticket.status)
+              return (
+                <li
+                  key={ticket.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-surface-subtle p-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-text">{ticket.subject}</p>
+                    <p className="text-xs text-text-muted">{ticket.ref}</p>
+                  </div>
+                  <StatusBadge label={label} tone={tone} />
+                </li>
+              )
+            })}
+          </ul>
+        )}
+
+        {canLinkTickets && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <Select
+              value={ticketToLink}
+              onChange={(event) => setTicketToLink(event.target.value)}
+              aria-label="Ticket to link"
+              className="flex-1"
+            >
+              <option value="">Select a ticket at this site</option>
+              {siteTickets.map((ticket) => (
+                <option key={ticket.id} value={ticket.id}>
+                  {ticket.ref} · {ticket.subject}
+                </option>
+              ))}
+            </Select>
+            <Button
+              variant="secondary"
+              disabled={!ticketToLink}
+              onClick={() => {
+                const ticket = siteTickets.find((candidate) => candidate.id === ticketToLink)
+                if (!ticket) return
+                onRequestAction({
+                  kind: 'linkTicket',
+                  incident,
+                  ticketId: ticket.id,
+                  ticketLabel: `${ticket.ref} · ${ticket.subject}`,
+                })
+              }}
+            >
+              Link
+            </Button>
+          </div>
         )}
       </div>
 
@@ -282,6 +472,8 @@ function IncidentDetailPane({ incident, siteLabel, canManage, onRequestAction }:
 export function SupervisorIncidents() {
   const { can } = usePermissions()
   const canManage = can('incidents.manage')
+  const canLinkTickets = can('tickets.manage')
+  const { user } = useAuth()
 
   const incidentsQuery = useReporterIncidents()
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
@@ -289,6 +481,18 @@ export function SupervisorIncidents() {
   const sites = sitesQuery.data ?? NO_SITES
   const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
   const summaryQuery = useIncidentSummary()
+  const correctionsQuery = useIncidentCorrections()
+
+  const pendingCorrectionsByIncident = useMemo(() => {
+    const map = new Map<string, IncidentCorrection[]>()
+    for (const correction of correctionsQuery.data ?? []) {
+      if (correction.status !== 'requested') continue
+      const list = map.get(correction.incidentId) ?? []
+      list.push(correction)
+      map.set(correction.incidentId, list)
+    }
+    return map
+  }, [correctionsQuery.data])
 
   const [tab, setTab] = useState<TabValue>('needsAction')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -297,8 +501,16 @@ export function SupervisorIncidents() {
   const assignMutation = useAssignIncidentMutation()
   const transitionMutation = useTransitionIncidentMutation()
   const publishMutation = usePublishIncidentMutation()
+  const approveCorrectionMutation = useApproveIncidentCorrectionMutation()
+  const rejectCorrectionMutation = useRejectIncidentCorrectionMutation()
+  const linkTicketMutation = useLinkTicketIncidentMutation()
   const mutationPending =
-    assignMutation.isPending || transitionMutation.isPending || publishMutation.isPending
+    assignMutation.isPending ||
+    transitionMutation.isPending ||
+    publishMutation.isPending ||
+    approveCorrectionMutation.isPending ||
+    rejectCorrectionMutation.isPending ||
+    linkTicketMutation.isPending
 
   const counts = useMemo(() => {
     const result = { needsAction: 0, inProgress: 0, verification: 0, closed: 0 }
@@ -359,6 +571,24 @@ export function SupervisorIncidents() {
           await publishMutation.mutateAsync(pendingAction.incident.id)
           toast.success('Published to Airtel.')
           break
+        case 'approveCorrection':
+          await approveCorrectionMutation.mutateAsync(pendingAction.correction.id)
+          toast.success('Correction approved.')
+          break
+        case 'rejectCorrection':
+          await rejectCorrectionMutation.mutateAsync({
+            id: pendingAction.correction.id,
+            note: pendingAction.note,
+          })
+          toast.success('Correction rejected.')
+          break
+        case 'linkTicket':
+          await linkTicketMutation.mutateAsync({
+            ticketId: pendingAction.ticketId,
+            incidentId: pendingAction.incident.id,
+          })
+          toast.success('Ticket linked.')
+          break
       }
       setPendingAction(null)
     } catch (err) {
@@ -387,6 +617,18 @@ export function SupervisorIncidents() {
     publish: {
       title: 'Publish to Airtel?',
       description: 'Makes this incident visible to the customer. This cannot be undone.',
+    },
+    approveCorrection: {
+      title: 'Approve this correction?',
+      description: 'Replaces the recorded time on the incident with the corrected value.',
+    },
+    rejectCorrection: {
+      title: 'Reject this correction?',
+      description: 'The original value stays unchanged.',
+    },
+    linkTicket: {
+      title: 'Link this ticket?',
+      description: 'Ties the ticket to this incident. Replaces any existing link on that ticket.',
     },
   }
 
@@ -446,6 +688,11 @@ export function SupervisorIncidents() {
                       <p className="mt-1 text-sm text-text-muted">
                         {day} · <StatusBadge label={statusText} tone={statusTone} />
                       </p>
+                      {pendingCorrectionsByIncident.has(incident.id) && (
+                        <p className="mt-1.5">
+                          <StatusBadge label="Correction requested" tone="info" />
+                        </p>
+                      )}
                     </button>
                   </li>
                 )
@@ -467,6 +714,9 @@ export function SupervisorIncidents() {
               incident={selectedIncident}
               siteLabel={siteLabelFor(sitesById, selectedIncident.siteId)}
               canManage={canManage}
+              canLinkTickets={canLinkTickets}
+              currentUserId={user?.id}
+              pendingCorrections={pendingCorrectionsByIncident.get(selectedIncident.id) ?? NO_CORRECTIONS}
               onRequestAction={setPendingAction}
             />
           )}
@@ -477,7 +727,11 @@ export function SupervisorIncidents() {
         open={Boolean(pendingAction)}
         title={pendingAction ? confirmCopy[pendingAction.kind].title : ''}
         description={pendingAction ? confirmCopy[pendingAction.kind].description : ''}
-        tone={pendingAction?.kind === 'publish' ? 'warning' : 'success'}
+        tone={
+          pendingAction?.kind === 'publish' || pendingAction?.kind === 'rejectCorrection'
+            ? 'warning'
+            : 'success'
+        }
         icon={CheckCircleIcon}
         confirmLabel="Confirm"
         pending={mutationPending}
@@ -486,6 +740,18 @@ export function SupervisorIncidents() {
             <ConfirmSummary
               title={`${pendingAction.incident.title} · ${siteLabelFor(sitesById, pendingAction.incident.siteId)}`}
               meta={pendingAction.incident.ref}
+              rows={
+                pendingAction.kind === 'approveCorrection' || pendingAction.kind === 'rejectCorrection'
+                  ? [
+                      {
+                        label: correctionFieldLabel(pendingAction.correction.field),
+                        value: formatDateTimeWAT(pendingAction.correction.correctedValue),
+                      },
+                    ]
+                  : pendingAction.kind === 'linkTicket'
+                    ? [{ label: 'Ticket', value: pendingAction.ticketLabel }]
+                    : undefined
+              }
             />
           )
         }

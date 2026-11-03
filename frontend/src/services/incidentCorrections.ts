@@ -81,3 +81,29 @@ export async function requestIncidentCorrection(
     throw mapAxiosError(error, 'Could not send this correction request.')
   }
 }
+
+export async function approveIncidentCorrection(id: string): Promise<IncidentCorrection> {
+  try {
+    const { data } = await getApi().post<IncidentCorrectionDTO>(
+      `/incident-corrections/${id}/approve`
+    )
+    return mapCorrection(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not approve this correction.')
+  }
+}
+
+export async function rejectIncidentCorrection(
+  id: string,
+  note: string
+): Promise<IncidentCorrection> {
+  try {
+    const { data } = await getApi().post<IncidentCorrectionDTO>(
+      `/incident-corrections/${id}/reject`,
+      { note }
+    )
+    return mapCorrection(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not reject this correction.')
+  }
+}

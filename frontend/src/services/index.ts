@@ -11,7 +11,7 @@ export {
   mapAxiosError,
   AuthApiError,
 } from './auth'
-export { fetchPortfolioOverview } from './airtelOverview'
+export { fetchPortfolioOverview, fetchPortfolioTrend } from './airtelOverview'
 export {
   fetchTickets,
   fetchTicketDetail,
@@ -19,6 +19,7 @@ export {
   raiseTicket,
   commentTicket,
   reopenTicket,
+  linkTicketIncident,
 } from './tickets'
 export type { TicketFilter } from './tickets'
 export {
@@ -36,13 +37,30 @@ export {
   transitionDispute,
 } from './disputes'
 export type { DisputeFilter, TransitionDisputeInput } from './disputes'
-export { fetchAcceptances, fetchSiteAcceptance, transitionAcceptance } from './acceptance'
-export type { AcceptanceFilter } from './acceptance'
+export {
+  fetchAcceptances,
+  fetchSiteAcceptance,
+  transitionAcceptance,
+  requestAcceptance,
+} from './acceptance'
+export type { AcceptanceFilter, RequestAcceptanceInput } from './acceptance'
 export { downloadDailySummariesCsv, downloadIncidentRegisterCsv } from './exports'
 export type { ExportDateRange } from './exports'
-export { fetchUsers, createUser, updateUserSites, updateUser, resetUserMfa } from './users'
+export {
+  fetchUsers,
+  createUser,
+  updateUserSites,
+  updateUser,
+  resetUserMfa,
+  resendInvite,
+} from './users'
 export type { CreateUserRequest, UpdateUserPatch } from './users'
-export { fetchAdminSites } from './adminSites'
+export {
+  fetchAdminSites,
+  fetchSiteProfiles,
+  createSiteProfile,
+  updateSiteProfile,
+} from './adminSites'
 export {
   fetchPendingApprovals,
   fetchReports,
@@ -77,4 +95,17 @@ export { fetchSiteOverview } from './siteOverview'
 export type { SiteOverview } from './siteOverview'
 export { fetchRecentAuditEvents, fetchAuditEvents } from './adminAudit'
 export type { AuditEvent } from './adminAudit'
-export { fetchIncidentCorrections, requestIncidentCorrection } from './incidentCorrections'
+export {
+  fetchIncidentCorrections,
+  requestIncidentCorrection,
+  approveIncidentCorrection,
+  rejectIncidentCorrection,
+} from './incidentCorrections'
+export { fetchFuelStatus, recordFuel, voidFuelEntry } from './fuel'
+export { fetchAttachments, fetchDownloadUrl, uploadAndRegisterAttachment } from './attachments'
+export type { UploadAttachmentInput } from './attachments'
+export { fetchNotifications, retryNotification } from './notifications'
+export type { NotificationFilter } from './notifications'
+export { fetchAlerts, acknowledgeAlert, acknowledgeAllAlerts } from './alerts'
+export type { AlertFilter } from './alerts'
+export { fetchDigestPreference, updateDigestPreference } from './digestPreference'

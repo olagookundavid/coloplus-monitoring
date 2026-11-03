@@ -30,11 +30,11 @@ These are not new features. The backend now answers differently, and today's scr
 - [ ] On dashboard rows `fuel` is `{ litres, hours_remaining, low, empty, provisional }`; show a low or empty badge. Absent for people who may not see fuel. (050, 052)
 
 ### Alert centre
-- [ ] Bell with an unread count: `GET /alerts?unread=true` returns `unread`. List, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all`. Everyone has it; each person sees only their own. (056)
-- [ ] Report anomaly alerts arrive in the alert centre and by email as kind `report.anomaly` ("Worth a look"). Show them like any alert; do not turn them into badges on the report or imply a fault. (066)
+- [x] Bell with an unread count: `GET /alerts?unread=true` returns `unread`. List, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all`. Everyone has it; each person sees only their own. (056)
+- [x] Report anomaly alerts arrive in the alert centre and by email as kind `report.anomaly` ("Worth a look"). Show them like any alert; do not turn them into badges on the report or imply a fault. (066)
 
 ### Weekly summary email setting
-- [ ] A toggle in the user's settings: `GET` / `PUT /digest/preference` `{ weekly: true|false }`. On by default; the email itself is switched on by the owner on the server. (060)
+- [x] A toggle in the user's settings: `GET` / `PUT /digest/preference` `{ weekly: true|false }`. On by default; the email itself is switched on by the owner on the server. (060)
 
 ### Tickets (Airtel raise, Coloplus work them)
 - [ ] Raise from a site (`POST /sites/:id/tickets`: `category`, `subject`, `description`, `priority`, `contact_email?`, `client_key`), list (`GET /tickets`, filters in swagger), summary counts (`GET /tickets/summary`), detail with history (`GET /tickets/:id`), comment (`POST /tickets/:id/comments`, `internal: true` is Coloplus-only), transition (`POST /tickets/:id/transition`), link an incident (`POST /tickets/:id/incident`, Coloplus). Airtel never sees internal notes, staff ids or a linked incident until it is published. The priority is the requester's wish, not an incident severity. (046)
@@ -67,7 +67,8 @@ These are not new features. The backend now answers differently, and today's scr
 - [ ] A read-only role (`auditor`): sees everything in scope, can export and read the audit log, can change nothing. Hide every write control when the permission is missing; do not hide by role name. (045)
 
 ### Acceptance and disputes
-- [ ] Every acceptance step now has a `due_at` (a default per stage when none is set); show it and mark an overdue one. Overdue acceptances also email administrators after 7 days (`acceptance.escalated`) and a dispute waiting on Coloplus for over 72 hours alerts its managers (`dispute.overdue`); both arrive in the alert centre. Show them as ordinary alerts. (067)
+- [ ] Every acceptance step now has a `due_at` (a default per stage when none is set); show it and mark an overdue one. (067)
+- [x] Overdue acceptances also email administrators after 7 days (`acceptance.escalated`) and a dispute waiting on Coloplus for over 72 hours alerts its managers (`dispute.overdue`); both arrive in the alert centre. Show them as ordinary alerts. (067)
 
 ## 2. Rules to keep in mind
 

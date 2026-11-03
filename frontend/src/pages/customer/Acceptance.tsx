@@ -3,10 +3,20 @@ import { ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader } from '../../components/dashboard'
 import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
-import { Button, Spinner, StatusBadge, Tabs, Textarea, type TabItem } from '../../components/ui'
+import {
+  AttachmentList,
+  Button,
+  FileDropZone,
+  Spinner,
+  StatusBadge,
+  Tabs,
+  Textarea,
+  type TabItem,
+} from '../../components/ui'
 import {
   useAcceptances,
   useAdminSites,
+  useAttachments,
   usePermissions,
   useSiteAcceptance,
   useTransitionAcceptanceMutation,
@@ -43,6 +53,7 @@ function AcceptanceDetailPane({
   const events = detailQuery.data?.events ?? []
   const [rejectReason, setRejectReason] = useState('')
   const transitionMutation = useTransitionAcceptanceMutation()
+  const attachmentsQuery = useAttachments('acceptance', acceptance.siteId)
 
   const { label, tone } = acceptanceStageLabel(acceptance.stage)
   const canActNow = canAct && acceptance.waitingOn === 'airtel'
@@ -110,6 +121,17 @@ function AcceptanceDetailPane({
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <AttachmentList
+          attachments={attachmentsQuery.data ?? []}
+          loading={attachmentsQuery.isLoading}
+          emptyMessage="No evidence attached yet."
+        />
+        {canAct && (
+          <FileDropZone ownerType="acceptance" ownerId={acceptance.siteId} isStaff={false} />
         )}
       </div>
 

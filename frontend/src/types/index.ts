@@ -18,8 +18,24 @@ export type {
   PortfolioSite,
   PortfolioOverview,
   PortfolioQueryParams,
+  PortfolioTrendPoint,
+  PortfolioTrend,
+  PortfolioTrendQueryParams,
 } from './site'
 export type { AdminSite } from './adminSite'
+export type {
+  SiteStatus,
+  PowerSource,
+  UnreportedTimePolicy,
+  SiteProfile,
+  SiteProfileInput,
+} from './siteProfile'
+export {
+  SITE_STATUSES,
+  SITE_STATUS_LABELS,
+  POWER_SOURCES,
+  POWER_SOURCE_LABELS,
+} from './siteProfile'
 export type { StaffRole, ManagedUser } from './user'
 export { STAFF_ROLE_LABELS, STAFF_ROLES } from './user'
 export type {
@@ -35,7 +51,16 @@ export type {
   PublishedIncidentUpdate,
   PublishedIncident,
 } from './incident'
-export type { FuelHealthSite, FuelHealthSummary } from './fuel'
+export type {
+  FuelHealthSite,
+  FuelHealthSummary,
+  FuelEntryKind,
+  FuelVariance,
+  FuelEntry,
+  FuelEstimate,
+  FuelStatus,
+  RecordFuelInput,
+} from './fuel'
 export type {
   Ticket,
   TicketStatus,
@@ -93,3 +118,13 @@ export type {
   CorrectionTab,
   CorrectionListItem,
 } from './correction'
+export type {
+  AttachmentOwnerType,
+  AttachmentStatus,
+  AttachmentParty,
+  Attachment,
+  UploadTarget,
+  RequestUploadInput,
+} from './attachment'
+export type { NotificationStatus, Notification, NotificationListResult } from './notification'
+export type { Alert, AlertListResult, DigestPreference } from './alert'

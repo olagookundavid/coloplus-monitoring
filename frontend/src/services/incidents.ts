@@ -9,14 +9,6 @@ import type {
   PublishedIncidentUpdate,
 } from '../types'
 
-/**
- * Real backend (replacing the old mock Incident pipeline): GET /incidents,
- * GET /incidents/:id. Neither airtel_viewer nor airtel_reviewer holds
- * incidents.read, so the server always returns the published shape here --
- * no description, owner, notes, root cause or author, and only the updates
- * written for the customer.
- */
-
 interface PublishedUpdateDTO {
   at: string
   body: string

@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { EnvelopeIcon } from '@heroicons/react/24/outline'
 
-import { useResetUserMfaMutation, useUpdateUserMutation } from '../../hooks'
+import { useResendInviteMutation, useResetUserMfaMutation, useUpdateUserMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
 import {
   STAFF_ROLES,
@@ -47,6 +48,7 @@ export function UserDetailPanel({
 }: UserDetailPanelProps) {
   const updateMutation = useUpdateUserMutation()
   const resetMfaMutation = useResetUserMfaMutation()
+  const resendInviteMutation = useResendInviteMutation()
   const [confirmSuspend, setConfirmSuspend] = useState(false)
 
   if (!user) return null
@@ -66,6 +68,16 @@ export function UserDetailPanel({
       toast.success(`${user.name}'s role is now ${STAFF_ROLE_LABELS[role]}.`)
     } catch (error) {
       toast.error(error instanceof AuthApiError ? error.message : 'Could not change that role.')
+    }
+  }
+
+  async function handleResendInvite() {
+    if (!user) return
+    try {
+      await resendInviteMutation.mutateAsync(user.id)
+      toast.success(`Invitation resent to ${user.name}.`)
+    } catch (error) {
+      toast.error(error instanceof AuthApiError ? error.message : 'Could not resend that invitation.')
     }
   }
 
@@ -123,6 +135,16 @@ export function UserDetailPanel({
         subtitle={<span className="pl-14">{user.email}</span>}
         footer={
           <>
+            {user.invited && (
+              <Button
+                variant="outline"
+                icon={EnvelopeIcon}
+                onClick={() => void handleResendInvite()}
+                loading={resendInviteMutation.isPending}
+              >
+                Resend invite
+              </Button>
+            )}
             <Button variant="outline" onClick={handleResetMfa} loading={resetMfaMutation.isPending}>
               Reset 2-step login
             </Button>

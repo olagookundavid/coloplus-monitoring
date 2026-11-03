@@ -11,13 +11,6 @@ import type {
   TicketSummary,
 } from '../types'
 
-/**
- * Real backend (replacing the old mock/localStorage pipeline): GET /tickets,
- * POST /sites/:id/tickets, POST /tickets/:id/comments,
- * POST /tickets/:id/transition. Both airtel_viewer and airtel_reviewer hold
- * tickets.raise -- unlike disputes/acceptance, this is not reviewer-gated.
- */
-
 interface TicketDTO {
   id: string
   ref: string
@@ -96,6 +89,7 @@ export interface TicketFilter {
   siteId?: string
   status?: TicketStatus
   openOnly?: boolean
+  incidentId?: string
 }
 
 export async function fetchTickets(filter: TicketFilter = {}): Promise<Ticket[]> {
@@ -105,6 +99,7 @@ export async function fetchTickets(filter: TicketFilter = {}): Promise<Ticket[]>
         site_id: filter.siteId,
         status: filter.status,
         open: filter.openOnly ? 'true' : undefined,
+        incident_id: filter.incidentId,
         limit: 200,
       },
     })
@@ -165,6 +160,17 @@ export async function commentTicket(id: string, body: string): Promise<TicketEve
     return mapEvent(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not add this comment.')
+  }
+}
+
+export async function linkTicketIncident(ticketId: string, incidentId: string): Promise<Ticket> {
+  try {
+    const { data } = await getApi().post<TicketDTO>(`/tickets/${ticketId}/incident`, {
+      incident_id: incidentId,
+    })
+    return mapTicket(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not link this ticket to that incident.')
   }
 }
 

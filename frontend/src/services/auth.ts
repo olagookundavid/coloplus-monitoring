@@ -28,10 +28,6 @@ export class AuthApiError extends Error implements AuthApiErrorShape {
   }
 }
 
-// The backend's generic envelope is {error, request_id}, but the one
-// pre-auth case of a missing/invalid token, and every rate-limit 429,
-// come from a different helper that only sends {error} — request_id is
-// genuinely optional, not a bug to work around.
 export function mapAxiosError(error: unknown, fallback: string): AuthApiError {
   if (error instanceof AxiosError) {
     if (!error.response) {

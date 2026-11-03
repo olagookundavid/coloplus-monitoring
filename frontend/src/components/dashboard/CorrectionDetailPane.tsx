@@ -4,7 +4,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 
-import { AlertBanner, Button, FileDropZone, Spinner, StatusBadge } from '../ui'
+import { AlertBanner, Button, Spinner, StatusBadge } from '../ui'
 import { useReportDetail } from '../../hooks'
 import type { CorrectionListItem, DailyReport, IncidentCorrection, MySiteRow } from '../../types'
 import { correctionFieldLabel, formatDateTimeWAT } from '../../utils'
@@ -221,8 +221,6 @@ function IncidentCorrectionBody({
           {correction.reason}
         </div>
       </div>
-
-      <FileDropZone label="Evidence" />
 
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">History</p>

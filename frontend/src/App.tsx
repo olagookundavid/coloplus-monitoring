@@ -19,10 +19,7 @@ import { lazyNamed } from './utils'
 const CustomerLayout = lazyNamed(() => import('./pages/customer/CustomerLayout'), 'CustomerLayout')
 const Overview = lazyNamed(() => import('./pages/customer/Overview'), 'Overview')
 const Sites = lazyNamed(() => import('./pages/customer/Sites'), 'Sites')
-const CustomerIncidents = lazyNamed(
-  () => import('./pages/customer/Incidents'),
-  'Incidents'
-)
+const CustomerIncidents = lazyNamed(() => import('./pages/customer/Incidents'), 'Incidents')
 const Disputes = lazyNamed(() => import('./pages/customer/Disputes'), 'Disputes')
 const Acceptance = lazyNamed(() => import('./pages/customer/Acceptance'), 'Acceptance')
 const SupportTickets = lazyNamed(() => import('./pages/customer/SupportTickets'), 'SupportTickets')
@@ -31,9 +28,11 @@ const Reports = lazyNamed(() => import('./pages/customer/Reports'), 'Reports')
 const OpsLayout = lazyNamed(() => import('./pages/ops/OpsLayout'), 'OpsLayout')
 const OpsOverview = lazyNamed(() => import('./pages/ops/Overview'), 'Overview')
 const OpsUsers = lazyNamed(() => import('./pages/ops/Users'), 'Users')
+const OpsSites = lazyNamed(() => import('./pages/ops/Sites'), 'Sites')
 const OpsSiteAssignments = lazyNamed(() => import('./pages/ops/SiteAssignments'), 'SiteAssignments')
 const OpsApprovals = lazyNamed(() => import('./pages/ops/Approvals'), 'Approvals')
 const OpsAuditLog = lazyNamed(() => import('./pages/ops/AuditLog'), 'AuditLog')
+const OpsEmailLog = lazyNamed(() => import('./pages/ops/EmailLog'), 'EmailLog')
 const OpsSettings = lazyNamed(() => import('./pages/ops/Settings'), 'Settings')
 const ReporterOverview = lazyNamed(() => import('./pages/ops/ReporterOverview'), 'ReporterOverview')
 const MySites = lazyNamed(() => import('./pages/ops/MySites'), 'MySites')
@@ -125,6 +124,7 @@ export function App() {
         >
           <Route path={ROUTES.OPS_OVERVIEW} element={<OpsOverview />} />
           <Route path={ROUTES.OPS_USERS} element={<OpsUsers />} />
+          <Route path={ROUTES.OPS_SITES} element={<OpsSites />} />
           <Route path={ROUTES.OPS_SITE_ASSIGNMENTS} element={<OpsSiteAssignments />} />
           <Route path={ROUTES.OPS_SETTINGS} element={<OpsSettings />} />
         </Route>
@@ -165,7 +165,25 @@ export function App() {
           <Route path={ROUTES.OPS_AUDIT_LOG} element={<OpsAuditLog />} />
         </Route>
 
-        {/* A fourth, separate block: reports.create is the field reporter's
+        {/* notifications.read is its own permission too, admin-only today
+            via the same migration that grants audit.read -- own block
+            rather than widening the audit.read list, same reasoning as
+            above: the two aren't guaranteed to stay bundled. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="notifications.read">
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_EMAIL_LOG} element={<OpsEmailLog />} />
+        </Route>
+
+        {/* A fifth, separate block: reports.create is the field reporter's
             own permission, held by no other ops role (App.tsx's existing
             pattern -- Approvals and Audit log each get their own block
             rather than widening an existing permission list). */}
@@ -187,7 +205,7 @@ export function App() {
           <Route path={ROUTES.OPS_CORRECTIONS} element={<Corrections />} />
         </Route>
 
-        {/* A fifth, separate block: the operations supervisor portal.
+        {/* A sixth, separate block: the operations supervisor portal.
             reports.review is the door key (same reasoning as the Approvals
             block above) -- it's the one permission this codebase already
             uses to mean "supervisor-flavored actor," and admin explicitly

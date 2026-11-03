@@ -1,10 +1,17 @@
 import { useState } from 'react'
 import { MapPinIcon } from '@heroicons/react/24/outline'
 
-import { useAdminSites, useCommentTicketMutation, useReopenTicketMutation, useTicketDetail } from '../../hooks'
+import {
+  useAdminSites,
+  useAttachments,
+  useCommentTicketMutation,
+  usePermissions,
+  useReopenTicketMutation,
+  useTicketDetail,
+} from '../../hooks'
 import type { Ticket } from '../../types'
 import { formatDateTimeWAT, ticketPriorityLabel, ticketStatusLabel, toast } from '../../utils'
-import { Button, Input, SidePanel, Spinner, StatusBadge, Textarea } from '../ui'
+import { AttachmentList, Button, FileDropZone, Input, SidePanel, Spinner, StatusBadge, Textarea } from '../ui'
 
 export interface TicketDetailPanelProps {
   ticket: Ticket | null
@@ -20,6 +27,11 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
   const events = detailQuery.data?.events ?? []
   const commentMutation = useCommentTicketMutation()
   const reopenMutation = useReopenTicketMutation()
+
+  const { can } = usePermissions()
+  const canAttach = can(['tickets.raise', 'tickets.manage'])
+  const isStaff = !can('published.read')
+  const attachmentsQuery = useAttachments('ticket', ticket?.id)
 
   const [commentBody, setCommentBody] = useState('')
   const [reopenReason, setReopenReason] = useState('')
@@ -78,6 +90,15 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
         <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
           <h3 className="text-base font-semibold text-text">What happened?</h3>
           <p className="mt-3 text-sm text-text-muted">{ticket.description}</p>
+        </div>
+
+        <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
+          <h3 className="text-base font-semibold text-text">Attachments</h3>
+          <AttachmentList
+            attachments={attachmentsQuery.data ?? []}
+            loading={attachmentsQuery.isLoading}
+          />
+          {canAttach && <FileDropZone ownerType="ticket" ownerId={ticketId} isStaff={isStaff} />}
         </div>
 
         <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">

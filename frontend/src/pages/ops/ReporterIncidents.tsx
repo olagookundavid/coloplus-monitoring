@@ -4,6 +4,7 @@ import { CheckCircleIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { DashboardPageHeader, LogIncidentModal } from '../../components/dashboard'
 import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
 import {
+  AttachmentList,
   Button,
   ConfirmDialog,
   ConfirmSummary,
@@ -17,7 +18,9 @@ import {
 } from '../../components/ui'
 import {
   useAddIncidentUpdateMutation,
+  useAttachments,
   useMySites,
+  usePermissions,
   useReporterIncidentDetail,
   useReporterIncidents,
   useRestoreIncidentMutation,
@@ -64,6 +67,11 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
   const detailQuery = useReporterIncidentDetail(incident.id)
   const updates = detailQuery.data?.updates ?? []
   const addUpdateMutation = useAddIncidentUpdateMutation()
+
+  const { can } = usePermissions()
+  const canAttach = can(['incidents.create', 'incidents.manage'])
+  const isStaff = !can('published.read')
+  const attachmentsQuery = useAttachments('incident', incident.id)
 
   const [updateText, setUpdateText] = useState('')
   const [restoredAtTime, setRestoredAtTime] = useState('')
@@ -127,6 +135,22 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
         )}
       </div>
 
+      <div className="flex flex-col gap-3">
+        <AttachmentList
+          attachments={attachmentsQuery.data ?? []}
+          loading={attachmentsQuery.isLoading}
+          emptyMessage="No evidence attached yet."
+        />
+        {bucket === 'open' && canAttach && (
+          <FileDropZone
+            ownerType="incident"
+            ownerId={incident.id}
+            isStaff={isStaff}
+            label="Add evidence"
+          />
+        )}
+      </div>
+
       {bucket === 'open' && (
         <>
           <div>
@@ -162,7 +186,6 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
                   onChange={(event) => setRestoredAtTime(event.target.value)}
                 />
               </Field>
-              <FileDropZone label="Add evidence" hint="Evidence upload coming soon." />
               <Button onClick={handleSubmitForReview} disabled={!restoredAtTime} fullWidth>
                 Submit for review
               </Button>
