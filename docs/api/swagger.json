@@ -161,7 +161,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "ticket, incident, dispute or acceptance",
+                        "description": "ticket, incident, dispute, report or acceptance",
                         "name": "owner_type",
                         "in": "query",
                         "required": true

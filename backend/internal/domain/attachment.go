@@ -19,11 +19,12 @@ const (
 	AttachIncident   AttachmentOwner = "incident"
 	AttachDispute    AttachmentOwner = "dispute"
 	AttachAcceptance AttachmentOwner = "acceptance"
+	AttachReport     AttachmentOwner = "report"
 )
 
 func ValidAttachmentOwner(o AttachmentOwner) bool {
 	switch o {
-	case AttachTicket, AttachIncident, AttachDispute, AttachAcceptance:
+	case AttachTicket, AttachIncident, AttachDispute, AttachAcceptance, AttachReport:
 		return true
 	}
 	return false

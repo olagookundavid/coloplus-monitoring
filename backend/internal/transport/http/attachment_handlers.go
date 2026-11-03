@@ -84,7 +84,7 @@ func (a *api) completeUpload(c *gin.Context) {
 //	@Description	Received files only. Coloplus's internal files are left out for Airtel. For acceptance, owner_id is the site's id.
 //	@Tags			attachments
 //	@Produce		json
-//	@Param			owner_type	query		string	true	"ticket, incident, dispute or acceptance"
+//	@Param			owner_type	query		string	true	"ticket, incident, dispute, report or acceptance"
 //	@Param			owner_id	query		string	true	"Its id"
 //	@Success		200			{object}	dto.AttachmentListResponse
 //	@Router			/api/v1/attachments [get]

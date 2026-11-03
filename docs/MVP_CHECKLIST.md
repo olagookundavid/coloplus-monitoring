@@ -18,11 +18,11 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Rate limiting (tighter on sign-in and recovery), CORS allow-list, security headers, JSON-only writes (CSRF guard)
 - [x] Swagger generated at build (`make swag`); `make openapi` writes the committed contract `docs/api/swagger.json` for the front end (Swagger 2.0)
 - [x] Site has a responsible team (a team name, shown to Airtel; never a person)
-- [x] Dockerfile and a CI workflow exist (**not yet checked that CI is green on GitHub**)
-- [ ] Production Docker Compose, Caddy, Cloudflare setup. **needs input** (domain, server access). Ask before touching infrastructure
-- [ ] Deploy pipeline (ghcr.io, forced-command SSH, health-gated). **needs input**
-- [ ] Backups to R2 and a restore exercise (AT11). **new dependency** (R2)
-- [ ] UptimeRobot on `/healthcheck`. **needs input**
+- [x] Dockerfile and a CI workflow; CI is green on GitHub (lint, unit, integration against Postgres, build, deploy)
+- [x] Production Docker Compose, Caddy and Cloudflare are live at `api.remotems.com` (front end `www.remotems.com`)
+- [x] Deploy pipeline: a push to main tests, builds to ghcr.io and deploys over a forced-command SSH key, running migrations first; a docs-only or front-end-only push does not deploy
+- [ ] Backups to R2 and a restore exercise (AT11): step B7 in `deploy/CHECKLIST.md` (extend the server's backup script to dump `coloplus`) is the owner's to do on the server
+- [ ] UptimeRobot on `/healthcheck`: step E3 in `deploy/CHECKLIST.md`, the owner's to do
 
 ## 2. People and access (PRD 4)
 
@@ -135,7 +135,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Overdue-report alert to the site's reporters and supervisors, once a day while late; says "stale or missing", never "outage"
 - [x] Weekly digest email with a per-user opt-out (DECISIONS 060). Daily digests, repeat reminders and approved recipient lists not built
 - [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
-- [ ] Runtime anomaly alerts
+- [~] Report anomaly alerts: generator hours at a site with no generator, more generator hours than the service window, an outage with no incident opened. Emailed once per report to the people who review it, as "worth a look" (DECISIONS 066). The rules are proposals; no statistical or per-site baselines
 - [x] Bounce handling: Resend webhook `POST /webhooks/resend` (signature-checked), a bounced or spam-reported email is marked not delivered in the admin list (DECISIONS 057). Needs the webhook created in Resend and `RESEND_WEBHOOK_SECRET` set
 
 ## 11. Evidence and files (PRD 6)
@@ -143,7 +143,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Tested against the live bucket on 2 November: upload with the signed link, checksum enforced, signed download and delete all passed
 - [x] Abandoned-upload cleanup, off by default (`ATTACHMENT_GC_ENABLED`), reports what it would delete
 - [x] No virus scanner, by decision: only an allow-list of file types is accepted (photos, PDF, text, CSV, Word, Excel), the name's extension must match the type, and files are always downloaded, never displayed (DECISIONS 047)
-- [ ] Attach to daily reports
+- [x] Evidence on daily reports (`owner_type=report`): Coloplus-only whatever is asked, never visible to the customer, closed once the report is approved (DECISIONS 066)
 
 ## 12. Reports and exports (PRD 10)
 
@@ -166,7 +166,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 14. Non-functional targets (PRD 11) and AT11
 
 - [x] Dashboard p95 under 3 s at 1,000 sites and 50 concurrent users: measured on a laptop, in-process (no network), 30 days of reports per site. One person: 30-day overview 0.3 s. 50 requests at the same instant: worst p95 0.52 s coalesced, 0.12 s with the 10 s cache (it was 3.8 s before; DECISIONS 048). Re-run on the live server (0.75 CPU) with `go test -tags perf` against a scratch database before relying on it
-- [ ] Approved entry reflected on the dashboard within 60 s. Computed on read, plus up to `DASHBOARD_CACHE_TTL` (10 s) of reuse, so within 60 s; re-check once calculation runs are stored
+- [x] Approved entry reflected on the dashboard within 60 s: figures are computed on read, plus at most `DASHBOARD_CACHE_TTL` (10 s) of reuse; stored runs are snapshots and sit outside the live path, so nothing waits on them
 - [ ] Backup restore exercise (RPO 24 h, RTO 8 h). Script written (`deploy/restore-test.sh`); needs one run on the server and its time recorded here
 - [ ] Notification-failure test, access-control test at scale
 

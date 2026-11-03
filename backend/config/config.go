@@ -205,6 +205,7 @@ type Jobs struct {
 	// because it emails every user.
 	WeeklyDigestEnabled bool
 	RetentionCron       string
+	AnomalyAlertsCron   string
 }
 
 type Swagger struct {
@@ -312,6 +313,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			WeeklyDigestCron:     r.str("JOB_WEEKLY_DIGEST_CRON", "0 7 * * 1"),
 			WeeklyDigestEnabled:  r.boolean("WEEKLY_DIGEST_ENABLED", false),
 			RetentionCron:        r.str("JOB_RETENTION_CRON", "37 3 * * *"),
+			AnomalyAlertsCron:    r.str("JOB_ANOMALY_ALERTS_CRON", "*/30 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}

@@ -132,3 +132,37 @@ func TestAttachments_OnlyTheRightPeopleSeeTheRightFiles(t *testing.T) {
 	}
 	w.expect(w.call("POST", "/api/v1/attachments", body("incident", inc, "x.jpg", "image/jpeg", 4, sha("zzzz"), true), w.airtel), 403)
 }
+
+// Evidence on a daily report is Coloplus's own whatever the sender asks for, the
+// customer can neither add nor see it, and an approved report takes no more.
+func TestAttachments_ReportEvidenceIsInternalAndFrozenOnApproval(t *testing.T) {
+	w := newWorkflow(t)
+	id := w.draft(1)
+	const photo = "meter-photo"
+	req := map[string]any{
+		"owner_type": "report", "owner_id": id, "filename": "meter.jpg", "content_type": "image/jpeg",
+		"size_bytes": int64(len(photo)), "sha256": sha(photo), "shared": true, // asking to share is ignored
+	}
+	w.expect(w.call("POST", "/api/v1/attachments", req, w.airtel), 403)
+	w.expect(w.call("POST", "/api/v1/attachments", req, w.ot), 404) // a reporter on no site cannot find it
+
+	r := w.expect(w.call("POST", "/api/v1/attachments", req, w.reporter), 201)
+	att := r.Body["attachment"].(map[string]any)
+	if att["internal"] != true {
+		t.Fatalf("report evidence must stay internal: %v", att)
+	}
+	key := strings.TrimPrefix(r.Body["upload"].(map[string]any)["url"].(string), "https://store.test/up/")
+	w.store.put(key, int64(len(photo)), sha(photo))
+	w.expect(w.call("POST", "/api/v1/attachments/"+att["id"].(string)+"/complete", nil, w.reporter), 200)
+
+	list := "/api/v1/attachments?owner_type=report&owner_id=" + id
+	if got := w.expect(w.call("GET", list, nil, w.supervisor), 200); len(got.list("attachments")) != 1 {
+		t.Fatalf("staff should see the file: %s", got.Raw)
+	}
+	w.expect(w.call("GET", list, nil, w.airtel), 403)
+
+	// Once approved the report is frozen: no more evidence.
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
+	w.expect(w.call("POST", "/api/v1/attachments", req, w.reporter), 409)
+}

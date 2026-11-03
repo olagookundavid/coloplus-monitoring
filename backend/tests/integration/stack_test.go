@@ -71,6 +71,7 @@ type stack struct {
 	acceptance    *services.AcceptanceService
 	fuel          *services.FuelService
 	digest        *services.DigestService
+	anomalies     *services.AnomalyService
 }
 
 // fakeMailer records what would have been sent, and fails on demand.
@@ -172,6 +173,7 @@ func newStack(t *testing.T) *stack {
 	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, true)
 	dashboard := services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24).WithAdjustments(adjustments)
 	digest := services.NewDigestService(userRepo, postgres.NewDigestPreferenceRepository(db), auth, dashboard, incidentRepo, notifications, clock, loc, "https://app.test")
+	anomalies := services.NewAnomalyService(siteRepo, reportRepo, incidentRepo, userRepo, notifications, clock, loc, "https://app.test")
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	corrections := services.NewCorrectionService(incidentCorrectionRepo, incidentRepo, tx, audit, clock)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
@@ -185,7 +187,7 @@ func newStack(t *testing.T) *stack {
 	attachments := services.NewAttachmentService(attachmentRepo, store, ticketRepo, incidentRepo, disputeRepo, acceptanceRepo,
 		tx, audit, clock, services.AttachmentConfig{
 			MaxBytes: 10 << 20, UploadTTL: 15 * time.Minute, DownloadTTL: 2 * time.Minute, PendingTTL: 24 * time.Hour,
-		})
+		}).WithReports(reportRepo)
 	fuel := services.NewFuelService(fuelRepo, siteRepo, reportRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test", 24)
 	rlCtx, cancel := context.WithCancel(ctx)
 	t.Cleanup(cancel)
@@ -220,7 +222,7 @@ func newStack(t *testing.T) *stack {
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
-		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance, fuel: fuel, digest: digest}
+		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance, fuel: fuel, digest: digest, anomalies: anomalies}
 }
 
 // reply is a decoded response.

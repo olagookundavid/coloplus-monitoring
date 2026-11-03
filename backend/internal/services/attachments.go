@@ -32,10 +32,12 @@ type AttachmentService struct {
 	incidents   ports.IncidentRepository
 	disputes    ports.DisputeRepository
 	acceptances ports.AcceptanceRepository
-	tx          ports.TxManager
-	audit       *AuditService
-	clock       ports.Clock
-	cfg         AttachmentConfig
+	// reports is set with WithReports, for evidence on daily reports.
+	reports ports.ReportRepository
+	tx      ports.TxManager
+	audit   *AuditService
+	clock   ports.Clock
+	cfg     AttachmentConfig
 }
 
 func NewAttachmentService(
@@ -47,6 +49,12 @@ func NewAttachmentService(
 		attachments: attachments, store: store, tickets: tickets, incidents: incidents, disputes: disputes,
 		acceptances: acceptances, tx: tx, audit: audit, clock: clock, cfg: cfg,
 	}
+}
+
+// WithReports lets files be attached to daily reports.
+func (s *AttachmentService) WithReports(r ports.ReportRepository) *AttachmentService {
+	s.reports = r
+	return s
 }
 
 // IsStaff says whether the caller sees Coloplus's side: internal files and who
@@ -93,6 +101,8 @@ type owner struct {
 	canWrite bool
 	// frozen owners (a closed incident or dispute) take no new evidence.
 	frozen bool
+	// coloplusOnly owners keep every file internal, whatever the sender asked.
+	coloplusOnly bool
 }
 
 // resolve finds the owner and applies the caller's right to see it. A thing
@@ -157,8 +167,28 @@ func (s *AttachmentService) resolve(ctx context.Context, actor domain.Actor, typ
 			return owner{}, err
 		}
 		return owner{siteID: id, canWrite: actor.Can(domain.PermAcceptanceManage) || actor.Can(domain.PermAcceptanceReview)}, nil
+
+	case domain.AttachReport:
+		// Evidence for a daily report is Coloplus's own. The customer reaches a
+		// report only once approved, and never its evidence.
+		if s.reports == nil || !actor.Can(domain.PermReportsRead) {
+			return owner{}, apperrors.ErrForbidden
+		}
+		r, err := s.reports.GetByID(ctx, id, false)
+		if err != nil {
+			return owner{}, err
+		}
+		if !actor.CanAccessSite(r.SiteID) {
+			return owner{}, apperrors.ErrNotFound
+		}
+		return owner{
+			siteID: r.SiteID, coloplusOnly: true,
+			// An approved report is frozen; a correction is a new revision.
+			frozen:   r.Status == domain.ReportApproved || r.Status == domain.ReportSuperseded,
+			canWrite: actor.Can(domain.PermReportsCreate),
+		}, nil
 	}
-	return owner{}, invalid("choose what the file belongs to: a ticket, incident, dispute or acceptance")
+	return owner{}, invalid("choose what the file belongs to: a ticket, incident, dispute, daily report or acceptance")
 }
 
 // Request starts an upload: it checks the file is acceptable and that the
@@ -206,6 +236,9 @@ func (s *AttachmentService) Request(ctx context.Context, actor domain.Actor, in 
 			return conflict("you have %d uploads waiting to be confirmed; finish those first", n)
 		}
 		a.SiteID = o.siteID
+		if o.coloplusOnly {
+			a.Internal = true
+		}
 		if a.StorageKey, err = domain.NewStorageKey(o.siteID); err != nil {
 			return err
 		}

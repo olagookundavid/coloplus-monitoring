@@ -189,7 +189,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		acceptanceRepo, txManager, audit, clock, services.AttachmentConfig{
 			MaxBytes: cfg.Storage.MaxUploadBytes, UploadTTL: cfg.Storage.UploadTTL,
 			DownloadTTL: cfg.Storage.DownloadTTL, PendingTTL: cfg.Storage.PendingTTL,
-		})
+		}).WithReports(reportRepo)
 	fuelService := services.NewFuelService(fuelRepo, siteRepo, reportRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL, cfg.Fuel.LowHours)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
@@ -201,6 +201,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	periodRepo := postgres.NewPeriodClosureRepository(db)
 	exportService := services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), objectStore).WithRuns(postgres.NewCalculationRunRepository(db)).WithSLA(sla).WithAdjustments(adjustments)
 	periods := services.NewPeriodService(periodRepo, exportService, txManager, audit, clock, loc, cfg.Periods.CloseGraceDays)
+	anomalies := services.NewAnomalyService(siteRepo, reportRepo, incidentRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
 	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
 		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, recoveryRepo, txManager, notifications, audit, clock, cfg.Auth.AccessTokenTTL, log)
@@ -252,6 +253,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		n, err := fuelService.AlertLow(ctx)
 		if n > 0 {
 			log.Info("low fuel alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("anomaly-alerts", cfg.Jobs.AnomalyAlertsCron, func(ctx context.Context) error {
+		n, err := anomalies.Check(ctx)
+		if n > 0 {
+			log.Info("report anomaly alerts queued", "emails", n)
 		}
 		return err
 	}); err != nil {
