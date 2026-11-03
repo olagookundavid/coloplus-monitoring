@@ -194,12 +194,21 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		notifications, loc, cfg.Mail.BaseURL, cfg.Fuel.LowHours)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL)
+	sla := domain.SLA{TargetPercent: cfg.SLA.TargetPercent, AtRiskPoints: cfg.SLA.AtRiskPoints}
+	maintenanceRepo := postgres.NewMaintenanceRepository(db)
+	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, cfg.Figures.MidnightCarryOver)
+	dashboard := services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours).WithSLA(sla).WithAdjustments(adjustments)
+	periodRepo := postgres.NewPeriodClosureRepository(db)
+	exportService := services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), objectStore).WithRuns(postgres.NewCalculationRunRepository(db)).WithSLA(sla).WithAdjustments(adjustments)
+	periods := services.NewPeriodService(periodRepo, exportService, txManager, audit, clock, loc, cfg.Periods.CloseGraceDays)
 	reportAlerts := services.NewReportAlertService(siteRepo, reportRepo, userRepo, notifications, clock, loc, cfg.Mail.BaseURL)
 	authService, err := services.NewAuthService(userRepo, hasher, security.NewPasetoIssuer(tokenMaker),
 		security.NewTOTP(cfg.Auth.MFAIssuer), secretBox, recoveryRepo, txManager, notifications, audit, clock, cfg.Auth.AccessTokenTTL, log)
 	if err != nil {
 		return err
 	}
+	digest := services.NewDigestService(userRepo, postgres.NewDigestPreferenceRepository(db), authService, dashboard, incidentRepo,
+		notifications, clock, loc, cfg.Mail.BaseURL)
 
 	// Scheduled jobs register here; a bad cron spec fails the boot.
 	scheduler := jobs.NewScheduler(log)
@@ -248,6 +257,27 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	}); err != nil {
 		return err
 	}
+	if err := scheduler.Add("retention", cfg.Jobs.RetentionCron, func(ctx context.Context) error {
+		dryRun := !cfg.Retention.Enabled
+		n, err := notifications.ApplyRetention(ctx, cfg.Retention.NotificationDays, dryRun)
+		if n > 0 {
+			log.Info("old emails", "count", n, "dry_run", dryRun, "older_than_days", cfg.Retention.NotificationDays)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if cfg.Jobs.WeeklyDigestEnabled {
+		if err := scheduler.Add("weekly-digest", cfg.Jobs.WeeklyDigestCron, func(ctx context.Context) error {
+			n, err := digest.SendWeekly(ctx)
+			if n > 0 {
+				log.Info("weekly digests queued", "emails", n)
+			}
+			return err
+		}); err != nil {
+			return err
+		}
+	}
 	if err := scheduler.Add("attachment-gc", cfg.Jobs.AttachmentGCCron, func(ctx context.Context) error {
 		dryRun := !cfg.Storage.GCEnabled
 		n, err := attachments.ExpireAbandoned(ctx, dryRun)
@@ -291,7 +321,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Notifications: notifications,
 		Users:         services.NewUserService(userRepo, siteRepo, hasher, txManager, audit, clock, accounts, recoveryRepo, notifications),
 		Sites:         services.NewSiteService(siteRepo, txManager, audit),
-		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc),
+		Reports:       services.NewReportService(reportRepo, siteRepo, txManager, audit, clock, loc).WithPeriods(periodRepo).WithAdjustments(adjustments),
 		Incidents:     incidents,
 		Corrections:   corrections,
 		Disputes:      disputes,
@@ -301,9 +331,13 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Alerts:        services.NewAlertService(alertRepo, clock),
 		Audit:         audit,
 		Acceptance:    acceptance,
-		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), objectStore),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours),
+		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc).WithAdjustments(adjustments),
+		Maintenance: services.NewMaintenanceService(maintenanceRepo, siteRepo, userRepo, txManager, audit, clock, notifications, loc, cfg.Mail.BaseURL,
+			domain.MaintenanceRules{NoticeHours: cfg.Figures.MaintenanceNoticeHours, MaxHours: cfg.Figures.MaintenanceMaxHours, MonthlyCapHours: cfg.Figures.MaintenanceMonthlyCapHours}),
+		Exports:   exportService,
+		Periods:   periods,
+		Dashboard: dashboard,
+		Digest:    digest,
 	})
 	srv := &http.Server{
 		Addr:              cfg.App.HTTPAddr,

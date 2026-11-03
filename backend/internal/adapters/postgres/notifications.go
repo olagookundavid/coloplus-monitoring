@@ -87,7 +87,7 @@ func (r *NotificationRepository) MarkFailed(ctx context.Context, id, reason stri
 func (r *NotificationRepository) Requeue(ctx context.Context, id string, at time.Time) error {
 	tag, err := r.db.q(ctx).Exec(ctx,
 		`UPDATE notifications SET status = 'pending', attempts = 0, next_attempt_at = $2, last_error = ''
-		 WHERE id = $1 AND status = 'failed'`, id, at.UTC())
+		 WHERE id = $1 AND status = 'failed' AND recipient <> ''`, id, at.UTC())
 	if err != nil {
 		return mapErr(err, "")
 	}
@@ -144,4 +144,19 @@ func (r *NotificationRepository) MarkBounced(ctx context.Context, providerID, re
 		return "", false, mapErr(err, "")
 	}
 	return id, true, nil
+}
+
+func (r *NotificationRepository) Anonymise(ctx context.Context, before time.Time, dryRun bool) (int, error) {
+	const where = `status IN ('sent', 'failed') AND created_at < $1 AND recipient <> ''`
+	if dryRun {
+		var n int
+		err := r.db.q(ctx).QueryRow(ctx, `SELECT count(*) FROM notifications WHERE `+where, before.UTC()).Scan(&n)
+		return n, mapErr(err, "")
+	}
+	tag, err := r.db.q(ctx).Exec(ctx,
+		`UPDATE notifications SET recipient = '', subject = '', body = '', last_error = '' WHERE `+where, before.UTC())
+	if err != nil {
+		return 0, mapErr(err, "")
+	}
+	return int(tag.RowsAffected()), nil
 }

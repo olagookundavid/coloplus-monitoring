@@ -193,6 +193,12 @@ func (s *AuthService) Authenticate(ctx context.Context, userID string, issuedAt 
 		return domain.Actor{}, apperrors.ErrUnauthorized
 	}
 
+	return s.ActorFor(ctx, user)
+}
+
+// ActorFor builds the Actor for a user already loaded: their role's
+// permissions and site scope, as every request would see them.
+func (s *AuthService) ActorFor(ctx context.Context, user domain.User) (domain.Actor, error) {
 	// A role that needs two-step sign-in holds no permissions until the
 	// person has turned it on, so every service refuses them by default.
 	if !user.TOTPEnabled {

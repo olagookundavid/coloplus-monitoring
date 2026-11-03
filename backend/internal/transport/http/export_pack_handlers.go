@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"coloplus-backend/internal/domain"
 	"coloplus-backend/internal/services"
 
 	"github.com/gin-gonic/gin"
@@ -66,10 +67,10 @@ func utcTime(t *time.Time) string {
 var monthlyHeader = []string{
 	"site_id", "airtel_code", "coloplus_code", "site_name", "region", "responsible_team", "site_status",
 	"period_from", "period_to", "time_zone",
-	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes", "assumed_available_minutes",
+	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes", "assumed_available_minutes", "assumed_outage_minutes", "excluded_maintenance_minutes",
 	"reported_availability_percent", "confirmed_served_share_percent", "coverage_percent", "source_minutes", "generator_hours",
 	"days", "days_reported", "days_without_report", "late_reports", "corrections", "data_quality", "unconfirmed_share_percent",
-	"incidents_started", "availability_basis", "formula", "formula_version", "generated_at_utc", "assumptions",
+	"incidents_started", "sla_target_percent", "sla_status", "sla_confirmed_meets_target", "availability_basis", "formula", "formula_version", "generated_at_utc", "assumptions",
 }
 
 // exportMonthly godoc
@@ -102,19 +103,29 @@ func (a *api) exportMonthly(c *gin.Context) {
 		if r.Site.DefaultAvailable() {
 			basis = "available by default"
 		}
+		sla := slaCells(r.SLA)
 		rows = append(rows, []string{
 			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
 			safeCell(r.Site.ResponsibleTeam), string(r.Site.Status),
 			pack.From.Format("2006-01-02"), pack.To.Format("2006-01-02"), pack.Timezone,
-			itoa(s.EligibleMinutes), itoa(s.ServedMinutes), itoa(s.OutageMinutes), itoa(s.UnknownMinutes), itoa(s.AssumedMinutes),
+			itoa(s.EligibleMinutes), itoa(s.ServedMinutes), itoa(s.OutageMinutes), itoa(s.UnknownMinutes), itoa(s.AssumedMinutes), itoa(s.CarriedMinutes), itoa(s.ExcludedMinutes),
 			percent(s.ReportedAvailability), percent(s.ConfirmedServedShare), percent(s.Coverage), sourceMinutesCell(s.SourceMinutes), hours1(r.GeneratorHours),
 			itoa(r.Quality.Days), itoa(r.Quality.ReportedDays), itoa(r.Quality.Days - r.Quality.ReportedDays), itoa(r.Quality.LateReports),
 			itoa(r.Quality.Corrections), string(r.Quality.Level), strconv.FormatFloat(r.Quality.UnconfirmedShare, 'f', 1, 64),
-			itoa(r.IncidentsStarted), basis, pack.Formula, pack.Version, gen, services.ExportAssumptions,
+			itoa(r.IncidentsStarted), sla[0], sla[1], sla[2], basis, pack.Formula, pack.Version, gen, services.ExportAssumptions,
 		})
 	}
 	a.issueCSV(c, "monthly_performance", fmt.Sprintf("coloplus-monthly-performance_%s.csv", pack.From.Format("2006-01")),
 		map[string]any{"month": pack.From.Format("2006-01"), "region": c.Query("region")}, monthlyHeader, rows)
+}
+
+// slaCells are the target, the status and whether confirmed time alone meets
+// it; blank when no target is set or the figure does not apply.
+func slaCells(r *domain.SLAResult) [3]string {
+	if r == nil {
+		return [3]string{}
+	}
+	return [3]string{strconv.FormatFloat(r.TargetPercent, 'f', 2, 64), string(r.Status), yesNo(r.ConfirmedMeetsTarget)}
 }
 
 var weeklyHeader = []string{

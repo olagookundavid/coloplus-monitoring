@@ -68,6 +68,12 @@ const (
 	PermFuelRecord Permission = "fuel.record"
 	PermFuelManage Permission = "fuel.manage"
 
+	PermPeriodsManage Permission = "periods.manage"
+
+	PermMaintenanceRead    Permission = "maintenance.read"
+	PermMaintenanceRequest Permission = "maintenance.request"
+	PermMaintenanceApprove Permission = "maintenance.approve"
+
 	PermAcceptanceRead   Permission = "acceptance.read"
 	PermAcceptanceManage Permission = "acceptance.manage"
 	PermAcceptanceReview Permission = "acceptance.review"

@@ -122,6 +122,12 @@ type SummaryDTO struct {
 	// reported_availability_pct but never of confirmed_served_share_pct, so the
 	// confirmed and the assumed parts can always be told apart.
 	AssumedAvailableMinutes int `json:"assumed_available_minutes"`
+	// ExcludedMaintenanceMinutes is approved planned maintenance, already taken
+	// out of eligible_minutes. AssumedOutageMinutes is an outage assumed to
+	// continue from the day before until someone reported; it counts against
+	// reported availability but is not confirmed and not part of coverage.
+	ExcludedMaintenanceMinutes int `json:"excluded_maintenance_minutes"`
+	AssumedOutageMinutes       int `json:"assumed_outage_minutes"`
 	// SourceMinutes is how long each power source was reported serving the site
 	// (grid, generator, battery, ...), each counted once. Sources can overlap,
 	// so they need not add up to served_minutes. Absent when none was reported.
@@ -191,6 +197,8 @@ type OverviewResponse struct {
 	SiteDaysWithoutReport int `json:"site_days_without_report"`
 	// DataQuality is the indicator for the active sites together.
 	DataQuality DataQualityDTO `json:"data_quality"`
+	// SLA judges the portfolio's figure against the target; absent when none is set.
+	SLA *SLADTO `json:"sla,omitempty"`
 	// OutagesThisWeek counts distinct site/day pairs in the trailing 7 days
 	// (inclusive of the requested date) whose current report has an outage.
 	// An approximation, not a full weekly aggregation.
@@ -225,6 +233,9 @@ type SiteRowDTO struct {
 	DaysWithoutReport int `json:"days_without_report"`
 	// DataQuality says how much of the figure rests on reports.
 	DataQuality DataQualityDTO `json:"data_quality"`
+	// SLA judges the figure against the agreed target; absent when no target is set
+	// or the figure does not apply.
+	SLA *SLADTO `json:"sla,omitempty"`
 	// Fuel is the site's estimated diesel; absent when you may not see fuel, or
 	// the site has no agreed rate or nothing recorded.
 	Fuel *FuelBriefDTO `json:"fuel,omitempty"`
@@ -329,6 +340,16 @@ type DataQualityDTO struct {
 	Corrections int `json:"corrections"`
 	// UnconfirmedSharePct is the share of eligible time no report confirmed.
 	UnconfirmedSharePct float64 `json:"unconfirmed_share_pct"`
+}
+
+// SLADTO judges an availability figure against the agreed target. Status is
+// met, at_risk or missed. The figure judged is the reported availability, which
+// may include time that was only assumed; confirmed_meets_target says whether
+// the reported time alone, assuming nothing, reaches the target.
+type SLADTO struct {
+	TargetPercent        float64 `json:"target_percent" example:"99.5"`
+	Status               string  `json:"status" example:"met"`
+	ConfirmedMeetsTarget bool    `json:"confirmed_meets_target"`
 }
 
 // FuelBriefDTO is a site's estimated diesel on one line. An estimate, never a

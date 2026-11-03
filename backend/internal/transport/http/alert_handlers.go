@@ -69,3 +69,42 @@ func (a *api) acknowledgeAllAlerts(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, dto.AcknowledgeAllResponse{Acknowledged: n})
 }
+
+// getDigestPreference godoc
+//
+//	@Summary		Do you get the weekly summary email?
+//	@Description	On by default for everyone with access. The summary covers the last full week (Monday to Sunday), arrives on Monday morning, and shows only what you can see in the app.
+//	@Tags			alerts
+//	@Produce		json
+//	@Success		200	{object}	dto.DigestPreferenceDTO
+//	@Router			/api/v1/digest/preference [get]
+func (a *api) getDigestPreference(c *gin.Context) {
+	on, err := a.digest.Preference(c.Request.Context(), actorFrom(c))
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.DigestPreferenceDTO{Weekly: on})
+}
+
+// setDigestPreference godoc
+//
+//	@Summary	Turn your weekly summary email on or off
+//	@Tags		alerts
+//	@Accept		json
+//	@Produce	json
+//	@Param		body	body		dto.DigestPreferenceDTO	true	"Preference"
+//	@Success	200		{object}	dto.DigestPreferenceDTO
+//	@Router		/api/v1/digest/preference [put]
+func (a *api) setDigestPreference(c *gin.Context) {
+	var req dto.DigestPreferenceDTO
+	if err := bindJSON(c, &req); err != nil {
+		a.fail(c, err)
+		return
+	}
+	if err := a.digest.SetPreference(c.Request.Context(), actorFrom(c), req.Weekly); err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, req)
+}

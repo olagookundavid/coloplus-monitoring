@@ -70,6 +70,7 @@ type stack struct {
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	fuel          *services.FuelService
+	digest        *services.DigestService
 }
 
 // fakeMailer records what would have been sent, and fails on demand.
@@ -167,6 +168,10 @@ func newStack(t *testing.T) *stack {
 		t.Fatal(err)
 	}
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
+	maintenanceRepo := postgres.NewMaintenanceRepository(db)
+	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, true)
+	dashboard := services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24).WithAdjustments(adjustments)
+	digest := services.NewDigestService(userRepo, postgres.NewDigestPreferenceRepository(db), auth, dashboard, incidentRepo, notifications, clock, loc, "https://app.test")
 	incidents := services.NewIncidentService(incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	corrections := services.NewCorrectionService(incidentCorrectionRepo, incidentRepo, tx, audit, clock)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
@@ -174,6 +179,9 @@ func newStack(t *testing.T) *stack {
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test")
 	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, tx, audit, clock, notifications, "https://app.test")
 	store := newFakeStore()
+	periodRepo := postgres.NewPeriodClosureRepository(db)
+	exportService := services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), store).WithRuns(postgres.NewCalculationRunRepository(db)).WithAdjustments(adjustments)
+	periods := services.NewPeriodService(periodRepo, exportService, tx, audit, clock, loc, 5)
 	attachments := services.NewAttachmentService(attachmentRepo, store, ticketRepo, incidentRepo, disputeRepo, acceptanceRepo,
 		tx, audit, clock, services.AttachmentConfig{
 			MaxBytes: 10 << 20, UploadTTL: 15 * time.Minute, DownloadTTL: 2 * time.Minute, PendingTTL: 24 * time.Hour,
@@ -193,7 +201,7 @@ func newStack(t *testing.T) *stack {
 		Accounts: accounts, Notifications: notifications,
 		Users:         services.NewUserService(userRepo, siteRepo, hasher, tx, audit, clock, accounts, recoveryRepo, notifications),
 		Sites:         services.NewSiteService(siteRepo, tx, audit),
-		Reports:       services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc),
+		Reports:       services.NewReportService(reportRepo, siteRepo, tx, audit, clock, loc).WithPeriods(periodRepo).WithAdjustments(adjustments),
 		Incidents:     incidents,
 		Corrections:   corrections,
 		Disputes:      disputes,
@@ -203,13 +211,16 @@ func newStack(t *testing.T) *stack {
 		Alerts:        services.NewAlertService(alertRepo, clock),
 		Audit:         audit,
 		Acceptance:    acceptance,
-		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc),
-		Exports:       services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, tx, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), store),
-		Dashboard:     services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24),
+		SiteOverviews: services.NewSiteOverviewService(siteRepo, reportRepo, incidentRepo, disputeRepo, acceptanceRepo, clock, loc).WithAdjustments(adjustments),
+		Maintenance:   services.NewMaintenanceService(maintenanceRepo, siteRepo, userRepo, tx, audit, clock, notifications, loc, "https://app.test", domain.MaintenanceRules{NoticeHours: 48, MaxHours: 8, MonthlyCapHours: 12}),
+		Exports:       exportService,
+		Periods:       periods,
+		Dashboard:     dashboard,
+		Digest:        digest,
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,
 		box: box, authenticator: map[string]string{},
-		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance, fuel: fuel}
+		store: store, mailer: mailer, notifications: notifications, incidents: incidents, corrections: corrections, reportAlerts: reportAlerts, audit: audit, acceptance: acceptance, fuel: fuel, digest: digest}
 }
 
 // reply is a decoded response.

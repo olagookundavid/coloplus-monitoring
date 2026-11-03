@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"coloplus-backend/internal/domain"
@@ -26,6 +29,10 @@ type PerformanceRow struct {
 	// GeneratorHours are the hours the approved reports show the generator ran.
 	GeneratorHours   float64
 	IncidentsStarted int
+	// Fingerprint identifies the approved reports the figures came from.
+	Fingerprint string
+	// SLA judges the month's figure against the target; nil when none is set.
+	SLA *domain.SLAResult
 }
 
 // PerformancePack is the monthly performance pack: one row per site.
@@ -47,6 +54,19 @@ func (s *ExportService) today() time.Time {
 // (the current month runs to today). Availability follows each site's own
 // reading of unreported time, with the assumed minutes shown beside it.
 func (s *ExportService) MonthlyPerformance(ctx context.Context, actor domain.Actor, month time.Time, region string) (PerformancePack, error) {
+	out, err := s.performance(ctx, actor, month, region)
+	if err != nil {
+		return PerformancePack{}, err
+	}
+	if err := s.auditExport(ctx, actor, "monthly_performance", out.From, out.To, region, len(out.Rows)); err != nil {
+		return PerformancePack{}, err
+	}
+	return out, nil
+}
+
+// performance works the month out without recording anything; the export and
+// the stored run both build on it.
+func (s *ExportService) performance(ctx context.Context, actor domain.Actor, month time.Time, region string) (PerformancePack, error) {
 	if !actor.Can(domain.PermExportsCreate) {
 		return PerformancePack{}, apperrors.ErrForbidden
 	}
@@ -84,6 +104,10 @@ func (s *ExportService) MonthlyPerformance(ctx context.Context, actor domain.Act
 	if err != nil {
 		return PerformancePack{}, err
 	}
+	adj, err := s.adjust.For(ctx, ids, from, to, byDay)
+	if err != nil {
+		return PerformancePack{}, err
+	}
 
 	out := PerformancePack{
 		From: from, To: to, Timezone: s.loc.String(), GeneratedAt: s.clock.Now(),
@@ -93,9 +117,9 @@ func (s *ExportService) MonthlyPerformance(ctx context.Context, actor domain.Act
 		var sums []domain.DailySummary
 		for d := from; !d.After(to); d = d.AddDate(0, 0, 1) {
 			if r, ok := byDay[ports.DayKey(site.ID, d)]; ok {
-				sums = append(sums, domain.Summarise(site, d, r.Intervals, s.loc))
+				sums = append(sums, adj.summarise(s.loc, site, d, r.Intervals, true))
 			} else {
-				sums = append(sums, domain.Summarise(site, d, nil, s.loc))
+				sums = append(sums, adj.summarise(s.loc, site, d, nil, false))
 			}
 		}
 		pooled := domain.PortfolioSummary(sums)
@@ -103,13 +127,16 @@ func (s *ExportService) MonthlyPerformance(ctx context.Context, actor domain.Act
 			Site: site, Summary: pooled, IncidentsStarted: started[site.ID],
 			Quality: domain.AssessQuality(days, bySite[site.ID], pooled),
 		}
+		ids := make([]string, 0, len(bySite[site.ID]))
 		for _, r := range bySite[site.ID] {
 			row.GeneratorHours += domain.GeneratorHoursOf(r)
+			ids = append(ids, r.ID)
 		}
+		sort.Strings(ids)
+		sum := sha256.Sum256([]byte(strings.Join(ids, ",")))
+		row.Fingerprint = hex.EncodeToString(sum[:])
+		row.SLA = s.sla.Assess(pooled)
 		out.Rows = append(out.Rows, row)
-	}
-	if err := s.auditExport(ctx, actor, "monthly_performance", from, to, region, len(out.Rows)); err != nil {
-		return PerformancePack{}, err
 	}
 	return out, nil
 }

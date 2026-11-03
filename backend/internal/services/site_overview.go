@@ -22,6 +22,15 @@ type SiteOverviewService struct {
 	acceptances ports.AcceptanceRepository
 	clock       ports.Clock
 	loc         *time.Location
+	// adjust adds planned maintenance and the midnight carry-over to the figures.
+	adjust *Adjustments
+}
+
+// WithAdjustments makes the figures take planned maintenance and the midnight
+// carry-over into account.
+func (s *SiteOverviewService) WithAdjustments(a *Adjustments) *SiteOverviewService {
+	s.adjust = a
+	return s
 }
 
 func NewSiteOverviewService(
@@ -121,11 +130,19 @@ func (s *SiteOverviewService) Overview(ctx context.Context, actor domain.Actor, 
 			return SiteOverview{}, err
 		}
 	}
+	flat := make(map[string]domain.DailyReport, len(reps))
+	for _, r := range reps {
+		flat[ports.DayKey(r.SiteID, r.Date)] = r
+	}
+	adj, err := s.adjust.For(ctx, []string{siteID}, first, today, flat)
+	if err != nil {
+		return SiteOverview{}, err
+	}
 	for i := 0; i < days; i++ {
 		date := today.AddDate(0, 0, -i)
 		day := SiteDay{Date: date}
 		if r, ok := byDate[date.Format("2006-01-02")]; ok {
-			sum := domain.Summarise(site, date, r.Intervals, s.loc)
+			sum := adj.summarise(s.loc, site, date, r.Intervals, true)
 			day.ReportID, day.Revision, day.Summary, day.OpenDisputes = r.ID, r.Revision, &sum, disputed[r.ID]
 		}
 		out.Days = append(out.Days, day)

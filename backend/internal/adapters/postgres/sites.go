@@ -190,3 +190,20 @@ func unreportedOrDefault(p domain.UnreportedPolicy) domain.UnreportedPolicy {
 	}
 	return p
 }
+
+func (r *SiteRepository) CodeIndex(ctx context.Context) ([]ports.SiteCodes, error) {
+	rows, err := r.db.q(ctx).Query(ctx, `SELECT id::text, airtel_code, coloplus_code FROM sites`)
+	if err != nil {
+		return nil, mapErr(err, "")
+	}
+	defer rows.Close()
+	out := []ports.SiteCodes{}
+	for rows.Next() {
+		var c ports.SiteCodes
+		if err := rows.Scan(&c.ID, &c.AirtelCode, &c.ColoplusCode); err != nil {
+			return nil, fmt.Errorf("scanning site codes: %w", err)
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}

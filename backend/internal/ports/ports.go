@@ -155,6 +155,13 @@ type SiteRepository interface {
 	GetMany(ctx context.Context, ids []string) ([]domain.Site, error)
 	// CountExisting reports how many of the ids are real sites.
 	CountExisting(ctx context.Context, ids []string) (int, error)
+	// CodeIndex lists every site's id and codes, for matching an import file.
+	CodeIndex(ctx context.Context) ([]SiteCodes, error)
+}
+
+// SiteCodes identifies a site by its two business codes.
+type SiteCodes struct {
+	ID, AirtelCode, ColoplusCode string
 }
 
 // ReportFilter narrows a report listing. Scope works as in SiteFilter.
@@ -401,6 +408,10 @@ type NotificationStore interface {
 	// MarkBounced records that an email already sent was bounced or reported as
 	// spam, found by the provider's id for it. False when none matches.
 	MarkBounced(ctx context.Context, providerID, reason string) (id string, ok bool, err error)
+	// Anonymise blanks the recipient, subject, body and error text of emails
+	// sent or failed before the given time, keeping the row and its dedupe key so
+	// the same reason is never emailed twice. With dryRun it only counts them.
+	Anonymise(ctx context.Context, before time.Time, dryRun bool) (int, error)
 	GetByID(ctx context.Context, id string) (domain.Notification, error)
 	List(ctx context.Context, f NotificationFilter) (items []domain.Notification, total int, err error)
 }
@@ -582,4 +593,66 @@ type IssuedExportRepository interface {
 	GetByID(ctx context.Context, id string) (domain.IssuedExport, error)
 	// List returns issued exports newest first; issuedBy narrows to one person.
 	List(ctx context.Context, issuedBy string, limit, offset int) (items []domain.IssuedExport, total int, err error)
+}
+
+// DigestPreferenceRepository keeps who has turned the weekly digest off.
+type DigestPreferenceRepository interface {
+	// OptedOut returns the ids of the people who turned the digest off.
+	OptedOut(ctx context.Context) (map[string]bool, error)
+	// Weekly says whether the person gets the digest (the default).
+	Weekly(ctx context.Context, userID string) (bool, error)
+	SetWeekly(ctx context.Context, userID string, on bool) error
+}
+
+// CalculationRunRepository keeps stored calculation runs. They are never
+// changed or removed.
+type CalculationRunRepository interface {
+	// Create stores the run and all its rows together.
+	Create(ctx context.Context, r domain.CalculationRun) (domain.CalculationRun, error)
+	// Get loads a run with its rows.
+	Get(ctx context.Context, id string) (domain.CalculationRun, error)
+	// List returns runs newest first, without rows.
+	List(ctx context.Context, limit, offset int) ([]domain.CalculationRun, int, error)
+}
+
+// PeriodClosureRepository keeps which months are closed.
+type PeriodClosureRepository interface {
+	// Close records the closure; a month already closed is a conflict.
+	Close(ctx context.Context, c domain.PeriodClosure) (domain.PeriodClosure, error)
+	// Reopen lifts the month's closure; ErrNotFound when it is not closed.
+	Reopen(ctx context.Context, month time.Time, by, reason string, at time.Time) (domain.PeriodClosure, error)
+	// IsClosed says whether the month (any day in it) is closed now.
+	IsClosed(ctx context.Context, month time.Time) (bool, error)
+	// List returns closures newest first, reopened ones included.
+	List(ctx context.Context, limit int) ([]domain.PeriodClosure, error)
+}
+
+// MaintenanceFilter narrows a window listing. Scope works as in SiteFilter.
+type MaintenanceFilter struct {
+	AllSites bool
+	SiteIDs  []string
+	SiteID   string
+	Status   domain.MaintenanceStatus
+	// From and To keep windows that start in [From, To).
+	From, To      *time.Time
+	Limit, Offset int
+}
+
+// MaintenanceRepository keeps planned maintenance windows.
+type MaintenanceRepository interface {
+	Create(ctx context.Context, w domain.MaintenanceWindow) (domain.MaintenanceWindow, error)
+	GetByID(ctx context.Context, id string, forUpdate bool) (domain.MaintenanceWindow, error)
+	// Decide moves a requested window to approved or rejected, and an approved
+	// or requested one to cancelled. False when it was not in a state that can
+	// make that move, so a double click or a race changes nothing.
+	Decide(ctx context.Context, id string, from []domain.MaintenanceStatus, to domain.MaintenanceStatus, by, note string, at time.Time) (bool, error)
+	List(ctx context.Context, f MaintenanceFilter) ([]domain.MaintenanceWindow, int, error)
+	// Approved returns the approved windows of the sites that start in [from, to).
+	Approved(ctx context.Context, siteIDs []string, from, to time.Time) ([]domain.MaintenanceWindow, error)
+	// Booked is the time already requested or approved for the site in windows
+	// that start in [from, to); a rejected or cancelled window does not count.
+	Booked(ctx context.Context, siteID string, from, to time.Time) (time.Duration, error)
+	// Overlapping counts the site's requested or approved windows that overlap
+	// the given time.
+	Overlapping(ctx context.Context, siteID string, start, end time.Time) (int, error)
 }

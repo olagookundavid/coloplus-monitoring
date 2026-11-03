@@ -3,6 +3,7 @@
 Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and the acceptance tests AT01 to AT11. Updated 29 Oct 2026, after disputes, audit search, overdue-report alerts, acceptance and the site overview. Update this file in the same change that finishes an item.
 
 - `[x]` built, lint clean, and the risky parts have tests
+- `[~]` built in the recommended form; the rule or number still needs the customer's or the owner's manager's confirmation, or part of it is left out (the line says which)
 - `[ ]` not done. A tag says why: **partial** (some of it exists), **needs input** (waiting on a decision, credential or domain from outside), **new dependency** (needs your yes before I start)
 - The PRD's "recommended first release" (section 13) is marked **FR** where an item belongs to it: site condition, a complete fault register, downtime, accountability and recovery updates, with energy and fuel estimates only where inputs are adequate.
 
@@ -53,13 +54,13 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Observed versus declared intervals; only observed counts
 - [x] Airtel sees a published view of approved reports only (no notes, authors, review comments)
 - [x] Explanation required for late submissions (a correction already requires its reason) (DECISIONS 049)
-- [ ] Automatic splitting of events that cross midnight (DECISIONS 027). The reporter still splits by hand, but the error now names the exact two parts to enter. Automatic splitting writes into another day's report, which may already be approved: **needs input** (DECISIONS 049)
-- [ ] CSV/XLSX import: preview, row errors, duplicate detection, explicit commit, batch id and idempotency key. **new dependency** (an XLSX reader)
+- [~] Events that cross midnight: an outage still going at the end of a day is assumed to continue into the next until it reports otherwise, shown as assumed outage (DECISIONS 060; switch `MIDNIGHT_CARRY_OVER`). Automatic splitting of one entry into two days' reports is not built, since it writes into another day's report; the reporter still splits by hand
+- [x] CSV site import: dry run, row-by-row errors, duplicate detection on the Airtel code, all-or-nothing commit, safe to repeat (`POST /sites/import`, DECISIONS 057). XLSX and importing reports or users not built; XLSX **needs a new dependency**
 - [x] Source hours on the daily summary (`source_minutes`, in the API and the CSV export)
-- [ ] Maintenance and open-issue fields on the daily summary. **partial** (open issues are on the incident register; planned maintenance has no record yet)
+- [x] Planned maintenance on the daily summary (`excluded_maintenance_minutes`); open issues are on the incident register
 - [x] Fuel the manual way: per-site agreed litres per hour and tank size, engineers record deliveries and tank readings, the level is estimated from reported generator hours and labelled an estimate (DECISIONS 050)
 - [ ] Load and generator-asset inputs beyond runtime hours (section 6 tables)
-- [ ] Controlled reopening of a closed reporting period. There is no "closed period" yet: an approved day is changed only by a linked correction. **needs input**: does a month close, and who may reopen it?
+- [x] Closing and reopening a month: administrators only, after a grace period, reopening needs a reason, closing stores the month's run (`/periods`, DECISIONS 062). The rule is the recommended one and awaits confirmation
 - [ ] Provisional view of unapproved entries (only if Airtel and Coloplus jointly enable it). **needs input**
 
 ## 5. Calculations (PRD 7, 8)
@@ -67,12 +68,12 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Daily metrics: eligible minutes, served, outage, unknown, coverage, reported availability, confirmed served share. Missing data is unknown, never available, never zero
 - [x] Portfolio availability pooled by eligible minutes, not an average of percentages
 - [x] "How calculated" payload: formula and version, input report and revision, window, time zone, warnings, plain-language explanation
-- [ ] Store calculation runs with their inputs, so a result can be reproduced and queued/failed/superseded runs shown (DECISIONS 028). **partial** (returned on read, not stored)
+- [x] Calculation runs stored with formula version and a fingerprint of the reports behind them; comparison with today (`/calculation-runs`, DECISIONS 059). Month-end automation and queued/failed run states not built (runs are computed in the request)
 - [ ] Formula versions, parameter sets, draft, test, independent approval, effective-dated activation (AT07)
 - [ ] Source runtime; estimated energy; modelled fuel use; fuel balance and variance; battery autonomy (AT02, AT08). Each labelled as an estimate
 - [x] Weekly and monthly aggregation: `GET /dashboard/trend?grain=week|month`, pooled by eligible minutes (DECISIONS 053)
-- [ ] Planned-maintenance exclusions where the contract allows. **needs input** (contract)
-- [ ] An SLA compliance figure. **needs input**: the PRD says to show operational metrics only until Airtel and Coloplus agree the treatment of unknown time
+- [x] Planned-maintenance exclusions, with notice, a cap and a second person's approval (DECISIONS 060). Awaits confirmation of the rules and whether the customer must agree
+- [~] SLA status (met, at risk, missed) beside the confirmed-only reading, off until `SLA_TARGET_PERCENT` is set (DECISIONS 061). The target and the treatment of assumed time are not agreed
 
 ## 6. Portfolio and site screens, as API (PRD 5)
 
@@ -94,11 +95,11 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Publication to Airtel does not wait for the daily report; Airtel sees published facts and customer updates only **FR**
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
 - [x] Link an incident to the outage intervals of daily reports without duplicating downtime: `GET /incidents/:id/outages` (DECISIONS 053)
-- [ ] Automatic midnight split (needs the neighbouring-day policy)
+- [~] Midnight: carry-over built (DECISIONS 060); automatic split into the neighbouring day not built
 - [x] Evidence attachments on incidents (DECISIONS 047)
 - [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
 - [x] Ticket attachments (DECISIONS 047)
-- [ ] Link planned maintenance and approval references
+- [x] Planned maintenance is a record with its request, approver and note (`/maintenance`, DECISIONS 060)
 - [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
 ## 8. Disputes (PRD 9)
@@ -132,7 +133,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Verified sending domain and live Resend key. **needs input** (domain)
 - [x] In-app alert centre with acknowledgement: `GET /alerts`, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all` (DECISIONS 054)
 - [x] Overdue-report alert to the site's reporters and supervisors, once a day while late; says "stale or missing", never "outage"
-- [ ] Daily and weekly digests; repeat reminders; approved recipient lists; per-user preferences
+- [x] Weekly digest email with a per-user opt-out (DECISIONS 058). Daily digests, repeat reminders and approved recipient lists not built
 - [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
 - [ ] Runtime anomaly alerts
 - [x] Bounce handling: Resend webhook `POST /webhooks/resend` (signature-checked), a bounced or spam-reported email is marked not delivered in the admin list (DECISIONS 055). Needs the webhook created in Resend and `RESEND_WEBHOOK_SECRET` set
@@ -147,7 +148,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 ## 12. Reports and exports (PRD 10)
 
 - [x] Daily site summaries, incident register, weekly exception report, monthly performance pack and commissioning backlog (CSV; DECISIONS 054)
-- [ ] Maintenance log: planned maintenance has no record yet
+- [x] Maintenance log: every window with who asked, who decided and why (`GET /maintenance`)
 - [x] CSV export of daily summaries; gaps stay blank rows
 - [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)
@@ -160,7 +161,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Authentication, approvals, corrections, publications, disputes, user changes recorded; append-only
 - [x] Audit search (`GET /audit`): by actor, action, entity, time; needs `audit.read`; site-scoped readers see only their sites
 - [x] Audit of exports (`export.daily_summaries`, `export.incident_register`, in a transaction)
-- [ ] 24-month online retention and a deletion policy. **needs input** (joint approval)
+- [~] Retention: emails are anonymised after 90 days (report-only until `RETENTION_ENABLED`); reports and the audit log are kept; deleting evidence and a 24-month archive are not built (DECISIONS 063). The period needs agreeing
 
 ## 14. Non-functional targets (PRD 11) and AT11
 
@@ -177,7 +178,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 | AT02 | A known input gives the expected energy estimate with its inputs and formula version | Not started (no energy model) |
 | AT03 | An overdue or missing entry shows stale ("Awaiting update"); unreported time is assumed, never confirmed (owner's default-available rule, DECISIONS 051) | Done, tested. Changed from the PRD wording; the customer should agree to it |
 | AT04 | Overlapping, duplicate, cross-midnight intervals give correct unions and allocations | Unions, overlap rejection and coverage: done. Cross-midnight splitting: not built |
-| AT05 | Re-submitting an import or draft creates no duplicate; concurrent edits conflict | Concurrent edits: done, tested. Imports: not built |
+| AT05 | Re-submitting an import or draft creates no duplicate; concurrent edits conflict | Concurrent edits: done, tested. Site import: done, tested (reports are not imported, by design) |
 | AT06 | Reporter cannot self-approve; a correction keeps the original and makes a new revision | Done, tested |
 | AT07 | Formula activation needs approval; old results reproduce exactly | Not started |
 | AT08 | Fuel movements reconcile; missing values block a false variance | Not started |

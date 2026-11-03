@@ -23,8 +23,12 @@ type DashboardService struct {
 	fuel      ports.FuelRepository
 	// fuelLowHours is the run time left at or under which a tank counts as low.
 	fuelLowHours float64
-	clock        ports.Clock
-	loc          *time.Location
+	// sla is the availability target; the zero value judges nothing.
+	sla domain.SLA
+	// adjust adds planned maintenance and the midnight carry-over to the figures.
+	adjust *Adjustments
+	clock  ports.Clock
+	loc    *time.Location
 
 	// Identical questions asked at the same moment are computed once, and an
 	// answer is kept for a few seconds. The key is the caller's exact site
@@ -87,6 +91,8 @@ type SiteRow struct {
 	Fuel *FuelBrief
 	// Quality says how much of the figure rests on reports.
 	Quality domain.DataQuality
+	// SLA judges the site's figure against the target; nil when none is set.
+	SLA *domain.SLAResult
 	// TodayReport/YesterdayReport are the report that best represents the
 	// period's last day and the day before (in-progress if there is one, else
 	// approved); nil when nothing has ever been filed. This is the reporter's
@@ -108,6 +114,19 @@ type FuelBrief struct {
 
 type StatusCounts struct {
 	Active, PendingAcceptance, Suspended int
+}
+
+// WithAdjustments makes the figures take planned maintenance and the midnight
+// carry-over into account.
+func (s *DashboardService) WithAdjustments(a *Adjustments) *DashboardService {
+	s.adjust = a
+	return s
+}
+
+// WithSLA sets the availability target the dashboard judges figures against.
+func (s *DashboardService) WithSLA(sla domain.SLA) *DashboardService {
+	s.sla = sla
+	return s
 }
 
 // Period is an inclusive range of reporting days, optionally narrowed to one
@@ -139,6 +158,8 @@ type Overview struct {
 	SiteDaysWithoutReport int
 	// Quality is the indicator for the active sites together.
 	Quality domain.DataQuality
+	// SLA judges the portfolio's figure against the target; nil when none is set.
+	SLA *domain.SLAResult
 	// OutagesThisWeek counts distinct site/day pairs in the 7 days ending on
 	// the period's last day whose current report has an outage. An
 	// approximation, not a full weekly aggregation.
@@ -214,6 +235,7 @@ type scope struct {
 	sites   []domain.Site
 	regions []string
 	byDay   map[string]domain.DailyReport
+	adj     *dayAdjuster
 	now     time.Time
 }
 
@@ -277,6 +299,9 @@ func (s *DashboardService) load(ctx context.Context, actor domain.Actor, p Perio
 	for _, r := range reps {
 		sc.byDay[ports.DayKey(r.SiteID, r.Date)] = r
 	}
+	if sc.adj, err = s.adjust.For(ctx, ids, p.From, p.To, sc.byDay); err != nil {
+		return scope{}, err
+	}
 	return sc, nil
 }
 
@@ -284,9 +309,9 @@ func (s *DashboardService) load(ctx context.Context, actor domain.Actor, p Perio
 // is the whole window unknown.
 func (s *DashboardService) daySummary(sc scope, site domain.Site, date time.Time) (sum domain.DailySummary, reported bool) {
 	if r, ok := sc.byDay[ports.DayKey(site.ID, date)]; ok {
-		return domain.Summarise(site, date, r.Intervals, s.loc), true
+		return sc.adj.summarise(s.loc, site, date, r.Intervals, true), true
 	}
-	return domain.Summarise(site, date, nil, s.loc), false
+	return sc.adj.summarise(s.loc, site, date, nil, false), false
 }
 
 // Overview summarises every site in the caller's scope for a period.
@@ -378,6 +403,7 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 		pooled := domain.PortfolioSummary(days)
 		row.DaysWithoutReport = p.Days() - row.DaysReported
 		row.Quality = domain.AssessQuality(p.Days(), reportsBySite[site.ID], pooled)
+		row.SLA = s.sla.Assess(pooled)
 		if f, ok := fuels[site.ID]; ok && f.Estimate.Available {
 			row.Fuel = &FuelBrief{
 				Litres: f.Estimate.Litres, HoursRemaining: f.Estimate.HoursRemaining, Low: f.Estimate.Low(s.fuelLowHours),
@@ -419,6 +445,7 @@ func (s *DashboardService) overview(ctx context.Context, actor domain.Actor, p P
 	}
 	out.Portfolio = domain.PortfolioSummary(kpi)
 	out.Quality = domain.AssessQuality(activeDays, activeReports, out.Portfolio)
+	out.SLA = s.sla.Assess(out.Portfolio)
 	return out, nil
 }
 
@@ -559,6 +586,15 @@ func (s *DashboardService) MySites(ctx context.Context, actor domain.Actor) (MyS
 		bySite[r.SiteID][r.Date.Format("2006-01-02")] = r
 	}
 
+	flat := make(map[string]domain.DailyReport, len(approved))
+	for _, r := range approved {
+		flat[ports.DayKey(r.SiteID, r.Date)] = r
+	}
+	adj, err := s.adjust.For(ctx, ids, first, today, flat)
+	if err != nil {
+		return MySites{}, err
+	}
+
 	statusByDay, err := s.reports.StatusForSitesOnDates(ctx, ids, []time.Time{today})
 	if err != nil {
 		return MySites{}, err
@@ -581,7 +617,7 @@ func (s *DashboardService) MySites(ctx context.Context, actor domain.Actor) (MyS
 			if reported {
 				intervals = r.Intervals
 			}
-			sum := domain.Summarise(site, date, intervals, s.loc)
+			sum := adj.summarise(s.loc, site, date, intervals, reported)
 			pooled = append(pooled, sum)
 			if day < mySitesBarDays {
 				bars[mySitesBarDays-1-day] = DayBarEntry{Date: date, Color: domain.DayBar(reported, sum.OutageMinutes)}

@@ -644,6 +644,158 @@
                 }
             }
         },
+        "/api/v1/calculation-runs": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-runs"
+                ],
+                "summary": "Stored calculation runs, newest first",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CalculationRunListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Works out the month for every site (or one region) and stores it, with the formula version and a fingerprint of the approved reports behind each site's figures. A later correction does not change a stored run; it shows when the run is compared with now. Running it again makes a separate run. Coloplus staff who see every site and can export; recorded in the audit log.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-runs"
+                ],
+                "summary": "Freeze a month's figures",
+                "parameters": [
+                    {
+                        "description": "Month",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CalculationRunRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CalculationRunDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/calculation-runs/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-runs"
+                ],
+                "summary": "One stored run with every site's figures",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Run id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.CalculationRunDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/calculation-runs/{id}/compare": {
+            "get": {
+                "description": "Works the run's month out again now and lists only the sites whose figures differ, each with what the run said then and what is true now, and whether the approved reports behind it have changed (a correction or a later approval). If the formula version has changed since, formula_changed says so, because then a difference may come from the formula rather than from the reports. A run of a month still in progress cannot be compared once the month has moved on.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-runs"
+                ],
+                "summary": "Set a stored run against today",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Run id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.RunComparisonDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/daily-reports": {
             "get": {
                 "produces": [
@@ -1153,6 +1305,57 @@
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/digest/preference": {
+            "get": {
+                "description": "On by default for everyone with access. The summary covers the last full week (Monday to Sunday), arrives on Monday morning, and shows only what you can see in the app.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Do you get the weekly summary email?",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DigestPreferenceDTO"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Turn your weekly summary email on or off",
+                "parameters": [
+                    {
+                        "description": "Preference",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DigestPreferenceDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.DigestPreferenceDTO"
                         }
                     }
                 }
@@ -2257,6 +2460,196 @@
                 }
             }
         },
+        "/api/v1/maintenance": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "maintenance"
+                ],
+                "summary": "Planned maintenance windows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "One site",
+                        "name": "site_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "requested, approved, rejected or cancelled",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Windows starting on or after this day, 2026-12-01",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Windows starting before the end of this day",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}/approve": {
+            "post": {
+                "description": "Never the person who asked. From approval the time is taken out of the site's eligible time.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "maintenance"
+                ],
+                "summary": "Approve a planned maintenance window",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Window id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional note",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDecisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDTO"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}/cancel": {
+            "post": {
+                "description": "Before it starts. The person who asked, or an approver, may cancel; the reason is required. An approved window that is cancelled gives its time back to the site's eligible time.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "maintenance"
+                ],
+                "summary": "Cancel a planned maintenance window",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Window id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Why",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDecisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/maintenance/{id}/reject": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "maintenance"
+                ],
+                "summary": "Reject a planned maintenance window",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Window id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Why",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDecisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDTO"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/notifications": {
             "get": {
                 "description": "Failed emails stay here until someone retries them. The message text is never returned.",
@@ -2324,6 +2717,114 @@
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/periods": {
+            "get": {
+                "description": "Every closure, newest first, reopened ones included (locked says which still hold).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "periods"
+                ],
+                "summary": "Closed months",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PeriodListResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/periods/{month}/close": {
+            "post": {
+                "description": "Locks a finished month once the grace period after its end has passed (PERIOD_CLOSE_GRACE_DAYS, default 5): no report for any of its days can then be added, corrected or approved until an administrator reopens it. Closing stores the month's calculation run first. Administrators only; recorded in the audit log.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "periods"
+                ],
+                "summary": "Close a month",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Month, 2026-10",
+                        "name": "month",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PeriodClosureDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/periods/{month}/reopen": {
+            "post": {
+                "description": "Lifts the lock so reports for the month can be corrected. The reason is required and kept in the audit log. Closing the month again stores a new run, and comparing it with the first shows what changed. Administrators only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "periods"
+                ],
+                "summary": "Reopen a closed month",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Month, 2026-10",
+                        "name": "month",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ReopenPeriodRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.PeriodClosureDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2461,6 +2962,52 @@
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/import": {
+            "post": {
+                "description": "Creates new sites and updates existing ones, matched on the Airtel code. Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: airtel_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sites"
+                ],
+                "summary": "Import sites from CSV",
+                "parameters": [
+                    {
+                        "description": "File text",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.SiteImportResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -2897,6 +3444,59 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/sites/{id}/maintenance": {
+            "post": {
+                "description": "Asks for a window of planned work at a site. Once another person approves it, the time is taken out of the site's eligible time, so it is held to rules: asked for at least notice_hours ahead, at most max_hours long, within one day, within monthly_cap_hours a month for the site, and not overlapping another window. The rules are returned by the list. Another person has to approve it, never the one who asked.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "maintenance"
+                ],
+                "summary": "Ask for planned maintenance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Site id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Window",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dto.MaintenanceDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/dto.ErrorResponse"
                         }
@@ -3848,6 +4448,89 @@
                 }
             }
         },
+        "dto.CalculationRunDTO": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "formula": {
+                    "type": "string"
+                },
+                "formula_version": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string",
+                    "example": "monthly_performance"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "period_from": {
+                    "type": "string",
+                    "example": "2026-10-01"
+                },
+                "period_to": {
+                    "type": "string",
+                    "example": "2026-10-31"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.RunRowDTO"
+                    }
+                },
+                "site_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.CalculationRunListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "runs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.CalculationRunDTO"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.CalculationRunRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "example": "October close"
+                },
+                "month": {
+                    "type": "string",
+                    "example": "2026-10"
+                },
+                "region": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CorrectionRequest": {
             "type": "object",
             "properties": {
@@ -3956,6 +4639,14 @@
                 "date": {
                     "type": "string",
                     "example": "2026-10-31"
+                }
+            }
+        },
+        "dto.DigestPreferenceDTO": {
+            "type": "object",
+            "properties": {
+                "weekly": {
+                    "type": "boolean"
                 }
             }
         },
@@ -4858,6 +5549,107 @@
                 }
             }
         },
+        "dto.MaintenanceDTO": {
+            "type": "object",
+            "properties": {
+                "decided_at": {
+                    "type": "string"
+                },
+                "decided_by": {
+                    "type": "string"
+                },
+                "decision_note": {
+                    "type": "string"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "minutes": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "requested_at": {
+                    "type": "string"
+                },
+                "requested_by": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "starts_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "approved"
+                }
+            }
+        },
+        "dto.MaintenanceDecisionRequest": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MaintenanceListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "rules": {
+                    "$ref": "#/definitions/dto.MaintenanceRulesDTO"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "windows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.MaintenanceDTO"
+                    }
+                }
+            }
+        },
+        "dto.MaintenanceRequest": {
+            "type": "object",
+            "properties": {
+                "ends_at": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "starts_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.MaintenanceRulesDTO": {
+            "type": "object",
+            "properties": {
+                "max_hours": {
+                    "type": "integer"
+                },
+                "monthly_cap_hours": {
+                    "type": "integer"
+                },
+                "notice_hours": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.MeResponse": {
             "type": "object",
             "properties": {
@@ -5180,6 +5972,14 @@
                 "sites_reported": {
                     "type": "integer"
                 },
+                "sla": {
+                    "description": "SLA judges the portfolio's figure against the target; absent when none is set.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SLADTO"
+                        }
+                    ]
+                },
                 "suspended_sites": {
                     "type": "integer"
                 },
@@ -5188,6 +5988,51 @@
                 },
                 "to": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.PeriodClosureDTO": {
+            "type": "object",
+            "properties": {
+                "closed_at": {
+                    "type": "string"
+                },
+                "closed_by": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "locked": {
+                    "type": "boolean"
+                },
+                "month": {
+                    "type": "string",
+                    "example": "2026-10"
+                },
+                "reopen_reason": {
+                    "type": "string"
+                },
+                "reopened_at": {
+                    "type": "string"
+                },
+                "reopened_by": {
+                    "type": "string"
+                },
+                "run_id": {
+                    "description": "RunID is the calculation run stored when the month was closed.",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.PeriodListResponse": {
+            "type": "object",
+            "properties": {
+                "periods": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.PeriodClosureDTO"
+                    }
                 }
             }
         },
@@ -5412,6 +6257,14 @@
             }
         },
         "dto.RejectRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ReopenPeriodRequest": {
             "type": "object",
             "properties": {
                 "reason": {
@@ -5677,6 +6530,125 @@
                 }
             }
         },
+        "dto.RunChangeDTO": {
+            "type": "object",
+            "properties": {
+                "airtel_code": {
+                    "type": "string"
+                },
+                "now": {
+                    "$ref": "#/definitions/dto.RunRowDTO"
+                },
+                "reports_changed": {
+                    "description": "ReportsChanged: the approved reports behind the figures are not the same\nones any more (a correction, or a report approved after the run).",
+                    "type": "boolean"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
+                },
+                "then": {
+                    "$ref": "#/definitions/dto.RunRowDTO"
+                }
+            }
+        },
+        "dto.RunComparisonDTO": {
+            "type": "object",
+            "properties": {
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.RunChangeDTO"
+                    }
+                },
+                "current_formula_version": {
+                    "type": "string"
+                },
+                "formula_changed": {
+                    "type": "boolean"
+                },
+                "generated_at": {
+                    "type": "string"
+                },
+                "run": {
+                    "$ref": "#/definitions/dto.CalculationRunDTO"
+                },
+                "unchanged": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.RunRowDTO": {
+            "type": "object",
+            "properties": {
+                "airtel_code": {
+                    "type": "string"
+                },
+                "assumed_minutes": {
+                    "type": "integer"
+                },
+                "confirmed_served_share_percent": {
+                    "type": "number"
+                },
+                "coverage_percent": {
+                    "type": "number"
+                },
+                "days_in_period": {
+                    "type": "integer"
+                },
+                "days_reported": {
+                    "type": "integer"
+                },
+                "eligible_minutes": {
+                    "type": "integer"
+                },
+                "generator_hours": {
+                    "type": "number"
+                },
+                "incidents_started": {
+                    "type": "integer"
+                },
+                "outage_minutes": {
+                    "type": "integer"
+                },
+                "reported_availability_percent": {
+                    "type": "number"
+                },
+                "reports_fingerprint": {
+                    "type": "string"
+                },
+                "served_minutes": {
+                    "type": "integer"
+                },
+                "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
+                },
+                "unknown_minutes": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SLADTO": {
+            "type": "object",
+            "properties": {
+                "confirmed_meets_target": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "met"
+                },
+                "target_percent": {
+                    "type": "number",
+                    "example": 99.5
+                }
+            }
+        },
         "dto.SaveReportRequest": {
             "type": "object",
             "properties": {
@@ -5839,6 +6811,68 @@
                 },
                 "summary": {
                     "$ref": "#/definitions/dto.SummaryDTO"
+                }
+            }
+        },
+        "dto.SiteImportRequest": {
+            "type": "object",
+            "properties": {
+                "csv": {
+                    "type": "string"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dto.SiteImportResponse": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "rejected": {
+                    "type": "integer"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SiteImportRowDTO"
+                    }
+                },
+                "unchanged": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.SiteImportRowDTO": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "example": "create"
+                },
+                "airtel_code": {
+                    "type": "string"
+                },
+                "line": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "problems": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -6061,6 +7095,14 @@
                 "site_type": {
                     "type": "string"
                 },
+                "sla": {
+                    "description": "SLA judges the figure against the agreed target; absent when no target is set\nor the figure does not apply.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.SLADTO"
+                        }
+                    ]
+                },
                 "state": {
                     "type": "string"
                 },
@@ -6104,6 +7146,9 @@
                     "description": "AssumedAvailableMinutes is time counted as available because nobody\nreported otherwise (a site is available by default). It is part of\nreported_availability_pct but never of confirmed_served_share_pct, so the\nconfirmed and the assumed parts can always be told apart.",
                     "type": "integer"
                 },
+                "assumed_outage_minutes": {
+                    "type": "integer"
+                },
                 "confirmed_served_share_pct": {
                     "type": "number"
                 },
@@ -6112,6 +7157,10 @@
                     "type": "number"
                 },
                 "eligible_minutes": {
+                    "type": "integer"
+                },
+                "excluded_maintenance_minutes": {
+                    "description": "ExcludedMaintenanceMinutes is approved planned maintenance, already taken\nout of eligible_minutes. AssumedOutageMinutes is an outage assumed to\ncontinue from the day before until someone reported; it counts against\nreported availability but is not confirmed and not part of coverage.",
                     "type": "integer"
                 },
                 "outage_minutes": {

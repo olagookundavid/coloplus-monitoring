@@ -99,3 +99,29 @@ type SiteOverviewResponse struct {
 	OpenDisputes       *int                   `json:"open_disputes,omitempty"`
 	Acceptance         *AcceptanceDTO         `json:"acceptance,omitempty"`
 }
+
+// SiteImportRowDTO is the outcome for one row of an import file.
+type SiteImportRowDTO struct {
+	Line       int      `json:"line" example:"2"`
+	AirtelCode string   `json:"airtel_code"`
+	Action     string   `json:"action" example:"create"`
+	Problems   []string `json:"problems,omitempty"`
+}
+
+// SiteImportResponse says what an import did or, for a dry run or a rejected
+// file, what it would do. Nothing is written unless applied is true.
+type SiteImportResponse struct {
+	DryRun    bool               `json:"dry_run"`
+	Applied   bool               `json:"applied"`
+	Created   int                `json:"created"`
+	Updated   int                `json:"updated"`
+	Unchanged int                `json:"unchanged"`
+	Rejected  int                `json:"rejected"`
+	Rows      []SiteImportRowDTO `json:"rows"`
+}
+
+// SiteImportRequest carries the text of a CSV file.
+type SiteImportRequest struct {
+	CSV    string `json:"csv"`
+	DryRun bool   `json:"dry_run"`
+}

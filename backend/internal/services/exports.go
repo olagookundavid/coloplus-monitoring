@@ -25,10 +25,16 @@ type ExportService struct {
 	// issued and snapshots keep the register of issued exports and their files.
 	issued    ports.IssuedExportRepository
 	snapshots ports.ObjectStore
-	tx        ports.TxManager
-	audit     *AuditService
-	clock     ports.Clock
-	loc       *time.Location
+	// runs keeps stored calculation runs; set with WithRuns.
+	runs ports.CalculationRunRepository
+	// sla is the availability target shown in the monthly pack; zero judges nothing.
+	sla domain.SLA
+	// adjust adds planned maintenance and the midnight carry-over to the figures.
+	adjust *Adjustments
+	tx     ports.TxManager
+	audit  *AuditService
+	clock  ports.Clock
+	loc    *time.Location
 }
 
 func NewExportService(
@@ -48,7 +54,9 @@ const (
 		"Time outside the service window is not counted. " +
 		"Served and outage minutes are confirmed by a report. " +
 		"For a site that is available by default, time not reported as an outage is counted as available and shown as assumed_available_minutes: assumed, not confirmed. " +
-		"A day without an approved report has no served or outage figures; its availability is assumed."
+		"A day without an approved report has no served or outage figures; its availability is assumed. " +
+		"Approved planned maintenance is taken out of the eligible time (excluded_maintenance_minutes). " +
+		"An outage still going at the end of the day before is assumed to continue until a report says otherwise (assumed_outage_minutes): assumed, not confirmed."
 )
 
 // DailySummaryRow is one site and one reporting day. Summary is nil when the
@@ -150,6 +158,10 @@ func (s *ExportService) DailySummaries(ctx context.Context, actor domain.Actor, 
 	for _, r := range reps {
 		byDay[ports.DayKey(r.SiteID, r.Date)] = r
 	}
+	adj, err := s.adjust.For(ctx, ids, in.From, in.To, byDay)
+	if err != nil {
+		return DailySummaryExport{}, err
+	}
 	disputed, err := s.disputes.ByDay(ctx, ids, in.From, in.To)
 	if err != nil {
 		return DailySummaryExport{}, err
@@ -167,11 +179,11 @@ func (s *ExportService) DailySummaries(ctx context.Context, actor domain.Actor, 
 			if r, ok := byDay[key]; ok {
 				rep := r
 				row.Report = &rep
-				row.Summary = domain.Summarise(site, date, r.Intervals, s.loc)
+				row.Summary = adj.summarise(s.loc, site, date, r.Intervals, true)
 				row.DeclaredIgnored = countDeclared(r.Intervals)
 			} else {
 				// No approved report: the whole window is unknown.
-				row.Summary = domain.Summarise(site, date, nil, s.loc)
+				row.Summary = adj.summarise(s.loc, site, date, nil, false)
 			}
 			out.Rows = append(out.Rows, row)
 		}

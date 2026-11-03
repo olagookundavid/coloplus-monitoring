@@ -31,6 +31,10 @@ type Config struct {
 	Storage   Storage
 	Dashboard Dashboard
 	Fuel      Fuel
+	SLA       SLA
+	Periods   Periods
+	Figures   Figures
+	Retention Retention
 	Jobs      Jobs
 	Swagger   Swagger
 }
@@ -121,6 +125,39 @@ type Dashboard struct {
 }
 
 // Fuel tunes the low-fuel alert and the "low" flag on the dashboard.
+// SLA is the availability target. TargetPercent 0 means none is set and
+// nothing is judged; the number is for the customer to agree.
+type SLA struct {
+	TargetPercent float64
+	AtRiskPoints  float64
+}
+
+// Retention configures how long operational data is kept. With Enabled off the
+// retention job only reports what it would blank.
+type Retention struct {
+	Enabled          bool
+	NotificationDays int
+}
+
+// Figures configures how figures are adjusted beyond a day's own report. The
+// numbers are proposals until the customer agrees them.
+type Figures struct {
+	// MidnightCarryOver assumes an outage still going at the end of the day
+	// continues into the next day until a report says otherwise.
+	MidnightCarryOver bool
+	// MaintenanceNoticeHours, MaintenanceMaxHours and MaintenanceMonthlyCapHours
+	// bound planned maintenance, which is taken out of the eligible time.
+	MaintenanceNoticeHours     int
+	MaintenanceMaxHours        int
+	MaintenanceMonthlyCapHours int
+}
+
+// Periods configures closing reporting months.
+type Periods struct {
+	// CloseGraceDays are the days after a month ends before it may be closed.
+	CloseGraceDays int
+}
+
 type Fuel struct {
 	// LowHours is the estimated run time left, at or under which a tank counts
 	// as low. The default is a proposal, not an agreed figure.
@@ -163,6 +200,11 @@ type Jobs struct {
 	AcceptanceAlertsCron string
 	AttachmentGCCron     string
 	FuelAlertsCron       string
+	WeeklyDigestCron     string
+	// WeeklyDigestEnabled turns the Monday email on; it is off until switched on
+	// because it emails every user.
+	WeeklyDigestEnabled bool
+	RetentionCron       string
 }
 
 type Swagger struct {
@@ -237,6 +279,15 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			BaseURL:             strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
 		Fuel:      Fuel{LowHours: float64(r.integer("FUEL_LOW_HOURS", 24))},
+		Retention: Retention{Enabled: r.boolean("RETENTION_ENABLED", false), NotificationDays: r.integer("NOTIFICATION_RETENTION_DAYS", 90)},
+		Figures: Figures{
+			MidnightCarryOver:          r.boolean("MIDNIGHT_CARRY_OVER", true),
+			MaintenanceNoticeHours:     r.integer("MAINTENANCE_NOTICE_HOURS", 48),
+			MaintenanceMaxHours:        r.integer("MAINTENANCE_MAX_HOURS", 8),
+			MaintenanceMonthlyCapHours: r.integer("MAINTENANCE_MONTHLY_CAP_HOURS", 12),
+		},
+		Periods:   Periods{CloseGraceDays: r.integer("PERIOD_CLOSE_GRACE_DAYS", 5)},
+		SLA:       SLA{TargetPercent: r.float("SLA_TARGET_PERCENT", 0), AtRiskPoints: r.float("SLA_AT_RISK_POINTS", 0.2)},
 		Dashboard: Dashboard{CacheTTL: r.duration("DASHBOARD_CACHE_TTL", 10*time.Second)},
 		Storage: Storage{
 			AccountID:       r.str("R2_ACCOUNT_ID", ""),
@@ -258,6 +309,9 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			AcceptanceAlertsCron: r.str("JOB_ACCEPTANCE_ALERTS_CRON", "*/30 * * * *"),
 			AttachmentGCCron:     r.str("JOB_ATTACHMENT_GC_CRON", "17 3 * * *"),
 			FuelAlertsCron:       r.str("JOB_FUEL_ALERTS_CRON", "*/30 * * * *"),
+			WeeklyDigestCron:     r.str("JOB_WEEKLY_DIGEST_CRON", "0 7 * * 1"),
+			WeeklyDigestEnabled:  r.boolean("WEEKLY_DIGEST_ENABLED", false),
+			RetentionCron:        r.str("JOB_RETENTION_CRON", "37 3 * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}
@@ -350,6 +404,22 @@ func (c Config) validate() []error {
 			bad("R2_ENDPOINT must be https in production")
 		}
 	}
+	if f := c.Figures; f.MaintenanceNoticeHours < 0 || f.MaintenanceNoticeHours > 720 || f.MaintenanceMaxHours < 1 || f.MaintenanceMaxHours > 24 ||
+		f.MonthlyCapOutOfRange() {
+		bad("MAINTENANCE_NOTICE_HOURS must be 0 to 720, MAINTENANCE_MAX_HOURS 1 to 24 and MAINTENANCE_MONTHLY_CAP_HOURS 1 to 720 (and at least the maximum)")
+	}
+	if c.Retention.NotificationDays < 30 || c.Retention.NotificationDays > 3650 {
+		bad("NOTIFICATION_RETENTION_DAYS must be between 30 and 3650")
+	}
+	if c.Periods.CloseGraceDays < 0 || c.Periods.CloseGraceDays > 60 {
+		bad("PERIOD_CLOSE_GRACE_DAYS must be between 0 and 60")
+	}
+	if c.SLA.TargetPercent < 0 || c.SLA.TargetPercent >= 100 {
+		bad("SLA_TARGET_PERCENT must be 0 (none set) or a percentage below 100, such as 99.5")
+	}
+	if c.SLA.AtRiskPoints < 0 || c.SLA.AtRiskPoints > 10 {
+		bad("SLA_AT_RISK_POINTS must be between 0 and 10")
+	}
 	if c.Fuel.LowHours < 1 || c.Fuel.LowHours > 720 {
 		bad("FUEL_LOW_HOURS must be between 1 and 720")
 	}
@@ -438,6 +508,19 @@ func (r *reader) integer(key string, def int) int {
 	return n
 }
 
+func (r *reader) float(key string, def float64) float64 {
+	v := r.str(key, "")
+	if v == "" {
+		return def
+	}
+	n, err := strconv.ParseFloat(v, 64)
+	if err != nil {
+		r.errs = append(r.errs, fmt.Errorf("%s must be a number, got %q", key, v))
+		return def
+	}
+	return n
+}
+
 func (r *reader) boolean(key string, def bool) bool {
 	v := r.str(key, "")
 	if v == "" {
@@ -476,4 +559,9 @@ func (r *reader) list(key string) []string {
 		}
 	}
 	return out
+}
+
+// MonthlyCapOutOfRange reports an unusable monthly cap for planned maintenance.
+func (f Figures) MonthlyCapOutOfRange() bool {
+	return f.MaintenanceMonthlyCapHours < f.MaintenanceMaxHours || f.MaintenanceMonthlyCapHours > 720
 }

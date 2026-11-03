@@ -25,3 +25,8 @@ type AlertListResponse struct {
 type AcknowledgeAllResponse struct {
 	Acknowledged int `json:"acknowledged"`
 }
+
+// DigestPreferenceDTO is whether the person gets the weekly summary email.
+type DigestPreferenceDTO struct {
+	Weekly bool `json:"weekly"`
+}

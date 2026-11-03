@@ -50,6 +50,9 @@ type Deps struct {
 	Attachments   *services.AttachmentService
 	Fuel          *services.FuelService
 	Alerts        *services.AlertService
+	Digest        *services.DigestService
+	Periods       *services.PeriodService
+	Maintenance   *services.MaintenanceService
 	Audit         *services.AuditService
 	Acceptance    *services.AcceptanceService
 	SiteOverviews *services.SiteOverviewService
@@ -76,6 +79,9 @@ type api struct {
 	attachments   *services.AttachmentService
 	fuel          *services.FuelService
 	alerts        *services.AlertService
+	digest        *services.DigestService
+	periods       *services.PeriodService
+	maintenance   *services.MaintenanceService
 	audit         *services.AuditService
 	acceptance    *services.AcceptanceService
 	siteOverviews *services.SiteOverviewService
@@ -119,7 +125,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, alerts: d.Alerts, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, alerts: d.Alerts, digest: d.Digest, periods: d.Periods, maintenance: d.Maintenance, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())
@@ -158,6 +164,7 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.POST("/notifications/:id/retry", h.retryNotification)
 
 	authed.POST("/sites", h.createSite)
+	authed.POST("/sites/import", h.importSites)
 	authed.GET("/sites", h.listSites)
 	authed.GET("/sites/:id", h.getSite)
 	authed.GET("/sites/:id/overview", h.siteOverview)
@@ -204,6 +211,20 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.GET("/alerts", h.listAlerts)
 	authed.POST("/alerts/acknowledge-all", h.acknowledgeAllAlerts)
 	authed.POST("/alerts/:id/acknowledge", h.acknowledgeAlert)
+	authed.POST("/sites/:id/maintenance", h.requestMaintenance)
+	authed.GET("/maintenance", h.listMaintenance)
+	authed.POST("/maintenance/:id/approve", h.approveMaintenance)
+	authed.POST("/maintenance/:id/reject", h.rejectMaintenance)
+	authed.POST("/maintenance/:id/cancel", h.cancelMaintenance)
+	authed.GET("/periods", h.listPeriods)
+	authed.POST("/periods/:month/close", h.closePeriod)
+	authed.POST("/periods/:month/reopen", h.reopenPeriod)
+	authed.POST("/calculation-runs", h.storeRun)
+	authed.GET("/calculation-runs", h.listRuns)
+	authed.GET("/calculation-runs/:id", h.getRun)
+	authed.GET("/calculation-runs/:id/compare", h.compareRun)
+	authed.GET("/digest/preference", h.getDigestPreference)
+	authed.PUT("/digest/preference", h.setDigestPreference)
 
 	authed.POST("/sites/:id/fuel", h.recordFuel)
 	authed.GET("/sites/:id/fuel", h.fuelStatus)

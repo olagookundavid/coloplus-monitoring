@@ -21,6 +21,10 @@ type ReportService struct {
 	audit   *AuditService
 	clock   ports.Clock
 	loc     *time.Location
+	// periods, when set, makes a closed month refuse changes.
+	periods ports.PeriodClosureRepository
+	// adjust adds planned maintenance and the midnight carry-over to the figures.
+	adjust *Adjustments
 }
 
 func NewReportService(
@@ -56,7 +60,11 @@ const (
 	formulaDailyAvailability = "daily-availability"
 	// Version 2: time not reported as an outage counts as available for a site
 	// that is available by default (DECISIONS 051). Version 1 left it unknown.
-	formulaVersion = "2"
+	//
+	// Version 3: approved planned maintenance leaves the eligible time, and an
+	// outage still going at the end of the day before is assumed to continue
+	// until a report says otherwise (DECISIONS 060).
+	formulaVersion = "3"
 )
 
 type ReportInput struct {
@@ -119,6 +127,9 @@ func (s *ReportService) CreateDraft(ctx context.Context, actor domain.Actor, sit
 	}
 	if date.After(s.today()) {
 		return domain.DailyReport{}, invalid("a report cannot be for a future date")
+	}
+	if err := s.ensureOpen(ctx, date); err != nil {
+		return domain.DailyReport{}, err
 	}
 	intervals, hadOutage := s.resolveIntervals(site, date, in)
 	var problems []string
@@ -315,6 +326,11 @@ func (s *ReportService) review(ctx context.Context, actor domain.Actor, id strin
 		if r.AuthorID == actor.UserID {
 			return forbidden("you cannot review your own entry")
 		}
+		if outcome == domain.ReportApproved {
+			if err := s.ensureOpen(ctx, r.Date); err != nil {
+				return err
+			}
+		}
 		site, err := s.sites.GetByID(ctx, r.SiteID)
 		if err != nil {
 			return err
@@ -374,6 +390,9 @@ func (s *ReportService) StartCorrection(ctx context.Context, actor domain.Actor,
 		if orig.Status != domain.ReportApproved {
 			return conflict("only an approved report can be corrected; this one is %s", orig.Status)
 		}
+		if err := s.ensureOpen(ctx, orig.Date); err != nil {
+			return err
+		}
 		rev, err := s.reports.NextRevision(ctx, orig.SiteID, orig.Date)
 		if err != nil {
 			return err
@@ -412,7 +431,13 @@ func (s *ReportService) Get(ctx context.Context, actor domain.Actor, id string) 
 	if err != nil {
 		return ReportView{}, err
 	}
-	return s.view(r, site), nil
+	v := s.view(r, site)
+	adj, err := s.adjust.For(ctx, []string{site.ID}, r.Date, r.Date, map[string]domain.DailyReport{})
+	if err != nil {
+		return ReportView{}, err
+	}
+	v.Summary = adj.summarise(s.loc, site, r.Date, r.Intervals, true)
+	return v, nil
 }
 
 func (s *ReportService) view(r domain.DailyReport, site domain.Site) ReportView {

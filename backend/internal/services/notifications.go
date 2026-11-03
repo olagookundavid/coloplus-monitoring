@@ -121,6 +121,13 @@ func (s *NotificationService) EnqueueFor(ctx context.Context, users []domain.Use
 	return queued, nil
 }
 
+// ApplyRetention blanks the address, subject and error text of emails older than
+// the given number of days. The rows stay, with their dedupe keys, so a job that
+// runs again does not email the same reason twice. With dryRun it only counts.
+func (s *NotificationService) ApplyRetention(ctx context.Context, days int, dryRun bool) (int, error) {
+	return s.store.Anonymise(ctx, s.clock.Now().AddDate(0, 0, -days), dryRun)
+}
+
 // DispatchResult says what one dispatcher run did.
 type DispatchResult struct {
 	Sent, Retrying, Failed int

@@ -128,7 +128,7 @@ func toSummaryDTO(s domain.DailySummary) dto.SummaryDTO {
 		EligibleMinutes: s.EligibleMinutes, ServedMinutes: s.ServedMinutes,
 		OutageMinutes: s.OutageMinutes, UnknownMinutes: s.UnknownMinutes,
 		CoveragePct: round2(s.Coverage), ReportedAvailabilityPct: round2(s.ReportedAvailability),
-		AssumedAvailableMinutes: s.AssumedMinutes, SourceMinutes: sourceMinutesDTO(s.SourceMinutes),
+		AssumedAvailableMinutes: s.AssumedMinutes, ExcludedMaintenanceMinutes: s.ExcludedMinutes, AssumedOutageMinutes: s.CarriedMinutes, SourceMinutes: sourceMinutesDTO(s.SourceMinutes),
 		ConfirmedServedSharePct: round2(s.ConfirmedServedShare), Provisional: s.Provisional(),
 	}
 }
@@ -163,7 +163,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			SiteType: r.Site.SiteType, State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
 			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported, DaysWithoutReport: r.DaysWithoutReport,
-			DataQuality: toDataQualityDTO(r.Quality),
+			DataQuality: toDataQualityDTO(r.Quality), SLA: toSLADTO(r.SLA),
 			TodayStatus: toReportStatusDTO(r.TodayReport), YesterdayStatus: toReportStatusDTO(r.YesterdayReport),
 		}
 		if r.AsOf != nil {
@@ -193,7 +193,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 		ActiveSites: o.Counts.Active, PendingSites: o.Counts.PendingAcceptance, SuspendedSites: o.Counts.Suspended,
 		SitesReported: o.SitesReported, SitesNotReported: o.SitesNotReported,
 		SitesAwaitingUpdate: o.SitesAwaitingUpdate, SitesOutageReported: o.SitesOutageReported,
-		SiteDaysWithoutReport: o.SiteDaysWithoutReport, DataQuality: toDataQualityDTO(o.Quality),
+		SiteDaysWithoutReport: o.SiteDaysWithoutReport, DataQuality: toDataQualityDTO(o.Quality), SLA: toSLADTO(o.SLA),
 		OutagesThisWeek: o.OutagesThisWeek,
 		Portfolio:       toSummaryDTO(o.Portfolio), Sites: rows,
 	}
@@ -383,12 +383,24 @@ const calculationCommon = "Eligible minutes are the site's service window on thi
 // calculationExplanation says how the availability figure was reached, and for
 // a site that is available by default, which part of it is assumed.
 func calculationExplanation(defaultAvailable bool) string {
+	return calculationExplanationBase(defaultAvailable) + " Approved planned maintenance is taken out of the eligible time. " +
+		"An outage still going at the end of the day before is assumed to continue until a report says otherwise; those minutes are shown as assumed outage, never as reported."
+}
+
+func calculationExplanationBase(defaultAvailable bool) string {
 	if defaultAvailable {
 		return calculationCommon + " This site is available by default: time not reported as an outage counts as available, " +
 			"and those minutes are shown as assumed, not confirmed. Reported availability is (eligible - outage) / eligible."
 	}
 	return calculationCommon + " Unknown minutes are what remains: they are neither confirmed uptime nor confirmed downtime. " +
 		"Reported availability is served / (served + outage)."
+}
+
+func toSLADTO(r *domain.SLAResult) *dto.SLADTO {
+	if r == nil {
+		return nil
+	}
+	return &dto.SLADTO{TargetPercent: r.TargetPercent, Status: string(r.Status), ConfirmedMeetsTarget: r.ConfirmedMeetsTarget}
 }
 
 func toDataQualityDTO(q domain.DataQuality) dto.DataQualityDTO {

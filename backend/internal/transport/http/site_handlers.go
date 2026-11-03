@@ -184,3 +184,36 @@ func (a *api) siteOverview(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, resp)
 }
+
+// importSites godoc
+//
+//	@Summary		Import sites from CSV
+//	@Description	Creates new sites and updates existing ones, matched on the Airtel code. Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: airtel_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.
+//	@Tags			sites
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		dto.SiteImportRequest	true	"File text"
+//	@Success		200		{object}	dto.SiteImportResponse
+//	@Failure		400		{object}	dto.ErrorResponse
+//	@Failure		403		{object}	dto.ErrorResponse
+//	@Router			/api/v1/sites/import [post]
+func (a *api) importSites(c *gin.Context) {
+	var req dto.SiteImportRequest
+	if err := bindJSON(c, &req); err != nil {
+		a.fail(c, err)
+		return
+	}
+	res, err := a.sites.ImportCSV(c.Request.Context(), actorFrom(c), []byte(req.CSV), req.DryRun)
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	out := dto.SiteImportResponse{
+		DryRun: res.DryRun, Applied: res.Applied, Created: res.Created, Updated: res.Updated,
+		Unchanged: res.Unchanged, Rejected: res.Rejected, Rows: make([]dto.SiteImportRowDTO, len(res.Rows)),
+	}
+	for i, r := range res.Rows {
+		out.Rows[i] = dto.SiteImportRowDTO{Line: r.Line, AirtelCode: r.AirtelCode, Action: string(r.Action), Problems: r.Problems}
+	}
+	c.JSON(http.StatusOK, out)
+}

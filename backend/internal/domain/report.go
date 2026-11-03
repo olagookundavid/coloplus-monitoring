@@ -277,6 +277,11 @@ type DailySummary struct {
 	// site is available by default (X, for such a site; 0 otherwise). It is
 	// never confirmed: ConfirmedServedShare still counts only observed time.
 	AssumedMinutes int
+	// ExcludedMinutes is approved planned maintenance taken out of the eligible
+	// time. CarriedMinutes is an outage assumed to continue from the day before
+	// until someone reported; it is not confirmed and not counted as coverage.
+	ExcludedMinutes int
+	CarriedMinutes  int
 	// SourceMinutes is how long each source was reported serving the site, each
 	// counted once however its intervals overlap. Sources can overlap each
 	// other, so the figures need not add up to ServedMinutes.
@@ -304,10 +309,20 @@ func Summarise(site Site, date time.Time, intervals []PowerInterval, loc *time.L
 	dayStart, _ := DayBounds(date, loc)
 	from := dayStart.Add(time.Duration(site.ServiceStartMinute) * time.Minute)
 	to := dayStart.Add(time.Duration(site.ServiceEndMinute) * time.Minute)
-	return summarise(from, to, intervals, site.DefaultAvailable())
+	return summarise(from, to, intervals, site.DefaultAvailable(), DayAdjust{})
 }
 
-func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable bool) DailySummary {
+// SummariseAdjusted is Summarise with the facts that live outside the day's
+// own report: planned maintenance taken out, and an outage carried over from
+// the day before.
+func SummariseAdjusted(site Site, date time.Time, intervals []PowerInterval, loc *time.Location, adj DayAdjust) DailySummary {
+	dayStart, _ := DayBounds(date, loc)
+	from := dayStart.Add(time.Duration(site.ServiceStartMinute) * time.Minute)
+	to := dayStart.Add(time.Duration(site.ServiceEndMinute) * time.Minute)
+	return summarise(from, to, intervals, site.DefaultAvailable(), adj)
+}
+
+func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable bool, adj DayAdjust) DailySummary {
 	var served, outage []Span
 	bySource := map[PowerSource][]Span{}
 	for _, iv := range intervals {
@@ -325,12 +340,36 @@ func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable b
 		}
 	}
 
-	s := int(to.Sub(from) / time.Minute)
-	u := clipMinutes(served, from, to)
-	d := clipMinutes(outage, from, to)
-	sum := DailySummary{EligibleMinutes: s, ServedMinutes: u, OutageMinutes: d, UnknownMinutes: s - u - d}
+	// Planned maintenance is taken out of the window and out of what was
+	// reported inside it. The windows never overlap one another (they are
+	// refused when requested), so each is removed separately.
+	excluded := 0
+	excl := adj.clippedExclusions(from, to)
+	for _, e := range excl {
+		excluded += int(e.End.Sub(e.Start) / time.Minute)
+	}
+	minusExcluded := func(spans []Span, total int) int {
+		for _, e := range excl {
+			total -= clipMinutes(spans, e.Start, e.End)
+		}
+		return total
+	}
+
+	s := int(to.Sub(from)/time.Minute) - excluded
+	u := minusExcluded(served, clipMinutes(served, from, to))
+	d := minusExcluded(outage, clipMinutes(outage, from, to))
+	// An outage carried over from the day before is assumed, not reported.
+	carried := 0
+	if adj.Carried != nil {
+		c := []Span{*adj.Carried}
+		carried = minusExcluded(c, clipMinutes(c, from, to))
+	}
+	sum := DailySummary{
+		EligibleMinutes: s, ServedMinutes: u, OutageMinutes: d, UnknownMinutes: s - u - d - carried,
+		ExcludedMinutes: excluded, CarriedMinutes: carried,
+	}
 	for src, spans := range bySource {
-		if m := clipMinutes(spans, from, to); m > 0 {
+		if m := minusExcluded(spans, clipMinutes(spans, from, to)); m > 0 {
 			if sum.SourceMinutes == nil {
 				sum.SourceMinutes = map[PowerSource]int{}
 			}
@@ -343,10 +382,10 @@ func summarise(from, to time.Time, intervals []PowerInterval, defaultAvailable b
 		sum.ConfirmedServedShare = pct(u, s)
 	}
 	if defaultAvailable {
-		sum.AssumedMinutes = s - u - d
-		sum.availNum, sum.availDen = s-d, s
+		sum.AssumedMinutes = s - u - d - carried
+		sum.availNum, sum.availDen = s-d-carried, s
 	} else {
-		sum.availNum, sum.availDen = u, u+d
+		sum.availNum, sum.availDen = u, u+d+carried
 	}
 	if sum.availDen > 0 {
 		sum.ReportedAvailability = pct(sum.availNum, sum.availDen)
@@ -369,6 +408,8 @@ func PortfolioSummary(sites []DailySummary) DailySummary {
 		total.OutageMinutes += s.OutageMinutes
 		total.UnknownMinutes += s.UnknownMinutes
 		total.AssumedMinutes += s.AssumedMinutes
+		total.ExcludedMinutes += s.ExcludedMinutes
+		total.CarriedMinutes += s.CarriedMinutes
 		for src, m := range s.SourceMinutes {
 			if total.SourceMinutes == nil {
 				total.SourceMinutes = map[PowerSource]int{}
