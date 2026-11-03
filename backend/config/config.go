@@ -126,15 +126,15 @@ type Dashboard struct {
 }
 
 // Fuel tunes the low-fuel alert and the "low" flag on the dashboard.
-// SLA is the availability target. TargetPercent 0 means none is set and
-// nothing is judged; the number is for the customer to agree.
+// SLA is the availability target. It defaults to the recommended 99.5 percent
+// (DECISIONS 063); 0 means none is set and nothing is judged.
 type SLA struct {
 	TargetPercent float64
 	AtRiskPoints  float64
 }
 
 // Retention configures how long operational data is kept. With Enabled off the
-// retention job only reports what it would blank.
+// retention job only reports what it would blank. On by default (DECISIONS 065).
 type Retention struct {
 	Enabled          bool
 	NotificationDays int
@@ -213,8 +213,8 @@ type Jobs struct {
 	AttachmentGCCron     string
 	FuelAlertsCron       string
 	WeeklyDigestCron     string
-	// WeeklyDigestEnabled turns the Monday email on; it is off until switched on
-	// because it emails every user.
+	// WeeklyDigestEnabled turns the Monday email on (the default, DECISIONS 060);
+	// every user can opt out of it.
 	WeeklyDigestEnabled bool
 	RetentionCron       string
 	AnomalyAlertsCron   string
@@ -293,7 +293,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			BaseURL:             strings.TrimRight(r.str("APP_BASE_URL", "http://localhost:5173"), "/"),
 		},
 		Fuel:      Fuel{LowHours: float64(r.integer("FUEL_LOW_HOURS", 24))},
-		Retention: Retention{Enabled: r.boolean("RETENTION_ENABLED", false), NotificationDays: r.integer("NOTIFICATION_RETENTION_DAYS", 90)},
+		Retention: Retention{Enabled: r.boolean("RETENTION_ENABLED", true), NotificationDays: r.integer("NOTIFICATION_RETENTION_DAYS", 90)},
 		Response:  Response{DisputeHours: r.integer("DISPUTE_RESPONSE_HOURS", 72), AcceptanceEscalateDays: r.integer("ACCEPTANCE_ESCALATE_DAYS", 7)},
 		Figures: Figures{
 			MidnightCarryOver:          r.boolean("MIDNIGHT_CARRY_OVER", true),
@@ -302,7 +302,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			MaintenanceMonthlyCapHours: r.integer("MAINTENANCE_MONTHLY_CAP_HOURS", 12),
 		},
 		Periods:   Periods{CloseGraceDays: r.integer("PERIOD_CLOSE_GRACE_DAYS", 5)},
-		SLA:       SLA{TargetPercent: r.float("SLA_TARGET_PERCENT", 0), AtRiskPoints: r.float("SLA_AT_RISK_POINTS", 0.2)},
+		SLA:       SLA{TargetPercent: r.float("SLA_TARGET_PERCENT", 99.5), AtRiskPoints: r.float("SLA_AT_RISK_POINTS", 0.2)},
 		Dashboard: Dashboard{CacheTTL: r.duration("DASHBOARD_CACHE_TTL", 10*time.Second)},
 		Storage: Storage{
 			AccountID:       r.str("R2_ACCOUNT_ID", ""),
@@ -325,7 +325,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			AttachmentGCCron:     r.str("JOB_ATTACHMENT_GC_CRON", "17 3 * * *"),
 			FuelAlertsCron:       r.str("JOB_FUEL_ALERTS_CRON", "*/30 * * * *"),
 			WeeklyDigestCron:     r.str("JOB_WEEKLY_DIGEST_CRON", "0 7 * * 1"),
-			WeeklyDigestEnabled:  r.boolean("WEEKLY_DIGEST_ENABLED", false),
+			WeeklyDigestEnabled:  r.boolean("WEEKLY_DIGEST_ENABLED", true),
 			RetentionCron:        r.str("JOB_RETENTION_CRON", "37 3 * * *"),
 			AnomalyAlertsCron:    r.str("JOB_ANOMALY_ALERTS_CRON", "*/30 * * * *"),
 			DisputeAlertsCron:    r.str("JOB_DISPUTE_ALERTS_CRON", "*/30 * * * *"),

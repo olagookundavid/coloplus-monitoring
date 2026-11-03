@@ -83,8 +83,8 @@ These are not new features. The backend now answers differently, and today's scr
 
 These are settings, not code. You may see different behaviour depending on them:
 
-- `SLA_TARGET_PERCENT`: no `sla` block until it is set.
-- `WEEKLY_DIGEST_ENABLED`: the weekly email is off until it is switched on.
+- `SLA_TARGET_PERCENT`: 99.5 by default, so the `sla` block is present; it is absent only if the owner sets 0.
+- `WEEKLY_DIGEST_ENABLED`: the weekly email is on by default; each user can opt out with `PUT /digest/preference`.
 - `MIDNIGHT_CARRY_OVER`: `assumed_outage_minutes` is always 0 when it is off.
-- `RETENTION_ENABLED`: old emails are only counted, not blanked, until it is on.
+- `RETENTION_ENABLED`: on by default; emails older than 90 days lose their address and text. Off means they are only counted.
 - File storage (`R2_*`): attachments and kept export copies answer 503 / `stored: false` without it.
