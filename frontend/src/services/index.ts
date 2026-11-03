@@ -11,10 +11,35 @@ export {
   mapAxiosError,
   AuthApiError,
 } from './auth'
-export { getPortfolioOverview, getSitePerformance } from './sites'
-export type { PortfolioQueryParams, PortfolioOverview } from './sites'
-export { getTickets, createTicket } from './tickets'
-export { getIncidents } from './incidents'
+export { fetchPortfolioOverview } from './airtelOverview'
+export {
+  fetchTickets,
+  fetchTicketDetail,
+  fetchTicketSummary,
+  raiseTicket,
+  commentTicket,
+  reopenTicket,
+} from './tickets'
+export type { TicketFilter } from './tickets'
+export {
+  fetchPublishedIncidents,
+  fetchPublishedIncidentDetail,
+  mapPublishedIncident,
+} from './incidents'
+export type { PublishedIncidentFilter } from './incidents'
+export {
+  fetchDisputes,
+  fetchDisputeDetail,
+  fetchDisputeSummary,
+  raiseDispute,
+  commentDispute,
+  transitionDispute,
+} from './disputes'
+export type { DisputeFilter, TransitionDisputeInput } from './disputes'
+export { fetchAcceptances, fetchSiteAcceptance, transitionAcceptance } from './acceptance'
+export type { AcceptanceFilter } from './acceptance'
+export { downloadDailySummariesCsv, downloadIncidentRegisterCsv } from './exports'
+export type { ExportDateRange } from './exports'
 export { fetchUsers, createUser, updateUserSites, updateUser, resetUserMfa } from './users'
 export type { CreateUserRequest, UpdateUserPatch } from './users'
 export { fetchAdminSites } from './adminSites'

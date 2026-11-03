@@ -1,45 +1,49 @@
 import { useState, type FormEvent } from 'react'
 import { TicketIcon } from '@heroicons/react/24/outline'
 
-import { useCreateTicketMutation, useSitePerformance } from '../../hooks'
+import { useAdminSites, useCreateTicketMutation } from '../../hooks'
 import type { TicketCategory, TicketPriority } from '../../types'
 import { createTicketSchema, getFieldErrors, toast, type CreateTicketFormValues } from '../../utils'
-import { Button, Field, Input, Modal, Select, Textarea } from '../ui'
+import { Button, Field, Input, Select, SidePanel, Textarea } from '../ui'
 
 export interface CreateTicketModalProps {
   open: boolean
   onClose: () => void
   /** Pre-selects the site when opened from that site's own detail panel. */
-  initialSiteCode?: string
+  initialSiteId?: string
 }
 
-const TICKET_CATEGORIES: TicketCategory[] = [
-  'Power outage',
-  'Low fuel / diesel',
-  'Generator fault',
-  'Equipment fault',
-  'Access restriction',
-  'Other',
+const TICKET_CATEGORIES: { value: TicketCategory; label: string }[] = [
+  { value: 'power_outage', label: 'Power outage' },
+  { value: 'low_fuel', label: 'Low fuel / diesel' },
+  { value: 'generator_fault', label: 'Generator fault' },
+  { value: 'equipment_fault', label: 'Equipment fault' },
+  { value: 'access_restriction', label: 'Access restriction' },
+  { value: 'other', label: 'Other' },
 ]
 
-const TICKET_PRIORITIES: TicketPriority[] = ['Low', 'Medium', 'High', 'Critical']
+const TICKET_PRIORITIES: { value: TicketPriority; label: string }[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+]
 
 const INITIAL_VALUES: CreateTicketFormValues = {
-  siteCode: '',
-  category: 'Power outage',
+  siteId: '',
+  category: 'power_outage',
   subject: '',
-  priority: 'Medium',
+  priority: 'medium',
   contactEmail: '',
   description: '',
 }
 
-export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTicketModalProps) {
+export function CreateTicketModal({ open, onClose, initialSiteId }: CreateTicketModalProps) {
   const [values, setValues] = useState<CreateTicketFormValues>(INITIAL_VALUES)
   const [touched, setTouched] = useState<Partial<Record<keyof CreateTicketFormValues, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
-  const [attachmentNames, setAttachmentNames] = useState<string[]>([])
 
-  const sitesQuery = useSitePerformance({})
+  const sitesQuery = useAdminSites()
   const mutation = useCreateTicketMutation()
 
   // Re-prefill every time the modal opens, not just on mount — the same
@@ -51,7 +55,7 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
-    if (open) setValues({ ...INITIAL_VALUES, siteCode: initialSiteCode ?? '' })
+    if (open) setValues({ ...INITIAL_VALUES, siteId: initialSiteId ?? '' })
   }
 
   const fieldErrors = getFieldErrors(createTicketSchema, values)
@@ -75,7 +79,6 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
     setValues(INITIAL_VALUES)
     setTouched({})
     setSubmitted(false)
-    setAttachmentNames([])
   }
 
   function handleClose() {
@@ -89,16 +92,23 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
     if (Object.keys(fieldErrors).length > 0) return
 
     try {
-      await mutation.mutateAsync({ ...values, attachmentNames })
+      await mutation.mutateAsync({
+        siteId: values.siteId,
+        category: values.category,
+        priority: values.priority,
+        subject: values.subject,
+        description: values.description,
+        contactEmail: values.contactEmail || undefined,
+      })
       toast.success('Ticket created.')
       handleClose()
-    } catch {
-      toast.error('Something went wrong. Try again.')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Try again.')
     }
   }
 
   return (
-    <Modal
+    <SidePanel
       open={open}
       onClose={handleClose}
       eyebrow="Coloplus support"
@@ -127,18 +137,18 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
         className="flex flex-col gap-4"
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Affected site" htmlFor="ticket-site" error={showError('siteCode')}>
+          <Field label="Affected site" htmlFor="ticket-site" error={showError('siteId')}>
             <Select
               id="ticket-site"
-              value={values.siteCode}
-              invalid={Boolean(showError('siteCode'))}
-              onChange={(event) => handleChange('siteCode', event.target.value)}
-              onBlur={() => handleBlur('siteCode')}
+              value={values.siteId}
+              invalid={Boolean(showError('siteId'))}
+              onChange={(event) => handleChange('siteId', event.target.value)}
+              onBlur={() => handleBlur('siteId')}
             >
               <option value="">Select a site</option>
               {(sitesQuery.data ?? []).map((site) => (
-                <option key={site.id} value={site.code}>
-                  {site.name} ({site.code})
+                <option key={site.id} value={site.id}>
+                  {site.name} ({site.airtelCode})
                 </option>
               ))}
             </Select>
@@ -150,8 +160,8 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
               onChange={(event) => handleChange('category', event.target.value as TicketCategory)}
             >
               {TICKET_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
+                <option key={category.value} value={category.value}>
+                  {category.label}
                 </option>
               ))}
             </Select>
@@ -177,13 +187,18 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
               onChange={(event) => handleChange('priority', event.target.value as TicketPriority)}
             >
               {TICKET_PRIORITIES.map((priority) => (
-                <option key={priority} value={priority}>
-                  {priority}
+                <option key={priority.value} value={priority.value}>
+                  {priority.label}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Contact email" htmlFor="ticket-email" error={showError('contactEmail')}>
+          <Field
+            label="Contact email"
+            htmlFor="ticket-email"
+            error={showError('contactEmail')}
+            hint="Leave blank to use your account's email."
+          >
             <Input
               id="ticket-email"
               type="email"
@@ -206,23 +221,7 @@ export function CreateTicketModal({ open, onClose, initialSiteCode }: CreateTick
             onBlur={() => handleBlur('description')}
           />
         </Field>
-
-        {/* Native, unstyled file input — the mockup itself shows the
-            browser's default file chooser, not a custom one, and no
-            primitive exists for file inputs (frontend/CLAUDE.md §7 doesn't
-            cover this control type). */}
-        <Field label="Supporting files" htmlFor="ticket-files">
-          <input
-            id="ticket-files"
-            type="file"
-            multiple
-            className="block w-full cursor-pointer text-sm text-text file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-border file:bg-surface-subtle file:px-3 file:py-2 file:text-sm file:font-medium file:text-text"
-            onChange={(event) =>
-              setAttachmentNames(Array.from(event.target.files ?? []).map((file) => file.name))
-            }
-          />
-        </Field>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

@@ -19,6 +19,12 @@ import { lazyNamed } from './utils'
 const CustomerLayout = lazyNamed(() => import('./pages/customer/CustomerLayout'), 'CustomerLayout')
 const Overview = lazyNamed(() => import('./pages/customer/Overview'), 'Overview')
 const Sites = lazyNamed(() => import('./pages/customer/Sites'), 'Sites')
+const CustomerIncidents = lazyNamed(
+  () => import('./pages/customer/Incidents'),
+  'Incidents'
+)
+const Disputes = lazyNamed(() => import('./pages/customer/Disputes'), 'Disputes')
+const Acceptance = lazyNamed(() => import('./pages/customer/Acceptance'), 'Acceptance')
 const SupportTickets = lazyNamed(() => import('./pages/customer/SupportTickets'), 'SupportTickets')
 const Reports = lazyNamed(() => import('./pages/customer/Reports'), 'Reports')
 
@@ -78,18 +84,29 @@ export function App() {
           }
         />
 
+        {/* published.read is the door key both airtel_viewer and
+            airtel_reviewer hold -- the one permission unique to the two
+            Airtel roles among everyone not already routed to /ops/* by
+            landingRouteFor. Reviewer-only actions (raise/comment/withdraw a
+            dispute, inspect/accept/reject acceptance) are gated per-button
+            inside Disputes/Acceptance, same pattern as Approvals.tsx. */}
         <Route
           element={
             <RequireAuth>
-              <Suspense fallback={<MainLoader />}>
-                <CustomerLayout />
-              </Suspense>
+              <RequireRole permission="published.read">
+                <Suspense fallback={<MainLoader />}>
+                  <CustomerLayout />
+                </Suspense>
+              </RequireRole>
             </RequireAuth>
           }
         >
           <Route path={ROUTES.HOME} element={<Overview />} />
           <Route path={ROUTES.CUSTOMER_SITES} element={<Sites />} />
           <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<Sites />} />
+          <Route path={ROUTES.CUSTOMER_INCIDENTS} element={<CustomerIncidents />} />
+          <Route path={ROUTES.CUSTOMER_DISPUTES} element={<Disputes />} />
+          <Route path={ROUTES.CUSTOMER_ACCEPTANCE} element={<Acceptance />} />
           <Route path={ROUTES.CUSTOMER_TICKETS} element={<SupportTickets />} />
           <Route path={ROUTES.TICKET_DETAIL_PATTERN} element={<SupportTickets />} />
           <Route path={ROUTES.CUSTOMER_REPORTS} element={<Reports />} />

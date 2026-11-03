@@ -1,12 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
-  ArrowDownTrayIcon,
-  ArrowTrendingUpIcon,
   BoltIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
   PlusIcon,
-  SignalIcon,
 } from '@heroicons/react/24/outline'
 
 import {
@@ -14,63 +11,65 @@ import {
   DashboardPageHeader,
   FuelHealthCard,
   NO_SITES,
-  PerformanceTrendChart,
+  periodToDateRange,
   SITE_COLUMNS,
   SiteAttentionBanner,
-  STATUS_FILTER_OPTIONS,
   StatCard,
 } from '../../components/dashboard'
-import { FuelIcon } from '../../components/icons'
-import { SkeletonChartRow, SkeletonStatCards } from '../../components/skeletons'
-import { Button, DataTable, Select, Tabs } from '../../components/ui'
+import { SkeletonStatCards } from '../../components/skeletons'
+import { Button, DataTable } from '../../components/ui'
 import { siteDetailPath } from '../../constants'
-import { usePortfolioOverview, useSitePerformance } from '../../hooks'
-import type { SiteStatus, TrendMetric } from '../../types'
+import { usePortfolioOverview } from '../../hooks'
+import type { FuelHealthSummary, PortfolioSite } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
+
+function buildFuelHealthSummary(sites: PortfolioSite[]): FuelHealthSummary {
+  const withFuel = sites.filter((site) => site.fuel?.litres != null)
+  const needingAttention = withFuel.filter((site) => site.fuel?.low || site.fuel?.empty)
+  return {
+    totalLitresRemaining: Math.round(
+      withFuel.reduce((sum, site) => sum + (site.fuel?.litres ?? 0), 0)
+    ),
+    sites: needingAttention.slice(0, 5).map((site) => ({
+      siteId: site.id,
+      siteName: site.name,
+      litres: site.fuel?.litres ?? null,
+      hoursRemaining: site.fuel?.hoursRemaining ?? null,
+      low: site.fuel?.low ?? false,
+      empty: site.fuel?.empty ?? false,
+    })),
+    sitesNeedingReplenishment: needingAttention.length,
+  }
+}
 
 export function Overview() {
   const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
-  const [metric, setMetric] = useState<TrendMetric>('availability')
-  const [statusFilter, setStatusFilter] = useState<SiteStatus | 'All statuses'>('All statuses')
 
-  const overviewQuery = usePortfolioOverview({ region, period })
-  const sitesQuery = useSitePerformance({ region, period })
+  const overviewQuery = usePortfolioOverview({ region, ...periodToDateRange(period) })
+  const sites = overviewQuery.data?.sites ?? NO_SITES
 
-  const filteredSites = useMemo(() => {
-    const sites = sitesQuery.data ?? NO_SITES
-    if (statusFilter === 'All statuses') return sites
-    return sites.filter((site) => site.status === statusFilter)
-  }, [sitesQuery.data, statusFilter])
+  const fuelHealth = useMemo(() => buildFuelHealthSummary(sites), [sites])
 
-  const summary = overviewQuery.data?.summary
-  const trend = overviewQuery.data?.trend ?? []
-  const fuelHealth = overviewQuery.data?.fuelHealth ?? {
-    totalLitresRemaining: 0,
-    sites: [],
-    sitesNeedingReplenishment: 0,
-  }
+  const { reportedAvailabilityPct, confirmedServedSharePct, assumedAvailableMinutes } =
+    overviewQuery.data?.portfolio ?? {}
 
   return (
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
         eyebrow="Portfolio intelligence"
         title="Portfolio overview"
-        subtitle="A clear view of your sites. Power, network and support in one place."
+        subtitle="A clear view of your sites. Power, incidents and support in one place."
         actions={
-          <>
-            <Button variant="outline" icon={ArrowDownTrayIcon}>
-              Export report
-            </Button>
-            <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
-              Create ticket
-            </Button>
-          </>
+          <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
+            Create ticket
+          </Button>
         }
       />
 
       <DashboardFilterBar
         region={region}
         onRegionChange={setRegion}
+        regionOptions={overviewQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
       />
@@ -80,136 +79,66 @@ export function Overview() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            label="Power consumption"
+            label="Active sites"
+            value={overviewQuery.data?.activeSites ?? 0}
+            icon={CheckCircleIcon}
+            caption={`${overviewQuery.data?.sitesOutageReported ?? 0} with an outage reported`}
+          />
+          <StatCard
+            label="Reported availability"
             value={
-              <>
-                {(summary?.energyConsumedKwh ?? 0).toLocaleString()}{' '}
-                <span className="text-base font-medium text-text-muted">kWh</span>
-              </>
+              reportedAvailabilityPct == null ? '—' : `${reportedAvailabilityPct.toFixed(2)}%`
             }
             icon={BoltIcon}
-            trend={{ icon: ArrowTrendingUpIcon, label: 'Estimated energy', tone: 'positive' }}
-            caption="Selected period · approved load profile"
-          />
-          <StatCard
-            label="Diesel remaining"
-            value={
-              <>
-                {(summary?.dieselRemainingLitres ?? 0).toLocaleString()}{' '}
-                <span className="text-base font-medium text-text-muted">litres</span>
-              </>
+            caption={
+              assumedAvailableMinutes && assumedAvailableMinutes > 0
+                ? 'Includes minutes nobody reported, counted as available by default'
+                : 'Confirmed by approved reports'
             }
-            icon={FuelIcon}
-            trend={{
-              icon: ExclamationTriangleIcon,
-              label: `${summary?.sitesBelowDieselThreshold ?? 0} site${summary?.sitesBelowDieselThreshold === 1 ? '' : 's'} below 25%`,
-              tone: 'caution',
-            }}
-            caption="Latest recorded tank levels"
           />
           <StatCard
-            label="Power availability"
+            label="Confirmed served share"
             value={
-              <>
-                {(summary?.powerAvailabilityPercent ?? 0).toFixed(2)}
-                <span className="text-base font-medium text-text-muted">%</span>
-              </>
+              confirmedServedSharePct == null ? '—' : `${confirmedServedSharePct.toFixed(2)}%`
             }
             icon={CheckCircleIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: `${summary?.sitesReportedAvailableCount ?? 0} sites last reported available`,
-              tone: 'positive',
-            }}
-            caption="Selected period · reported service"
+            caption="Confirmed only — never includes assumed time"
           />
           <StatCard
-            label="Radio network availability"
-            value={
-              <>
-                {(summary?.radioAvailabilityPercent ?? 0).toFixed(2)}
-                <span className="text-base font-medium text-text-muted">%</span>
-              </>
+            label="Data quality"
+            value={overviewQuery.data?.dataQuality?.level ?? '—'}
+            icon={ExclamationTriangleIcon}
+            caption={
+              overviewQuery.data?.dataQuality
+                ? `${overviewQuery.data.dataQuality.reportedDays}/${overviewQuery.data.dataQuality.days} days reported`
+                : undefined
             }
-            icon={SignalIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: `${summary?.sitesWithRadioDataCount ?? 0} of ${summary?.totalSitesInView ?? 0} sites with network data`,
-              tone: 'positive',
-            }}
-            caption="Customer network report · separate source"
           />
         </div>
       )}
 
-      {overviewQuery.isLoading ? (
-        <SkeletonChartRow />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="min-w-0 rounded-lg border border-border bg-surface p-5 lg:col-span-2">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <h2 className="text-base font-semibold text-text">Performance over time</h2>
-                <p className="text-sm text-text-muted">Today · 24 Oct 2026 · 8 sites in view</p>
-              </div>
-              <Tabs<TrendMetric>
-                aria-label="Chart metric"
-                items={[
-                  { value: 'availability', label: 'Availability' },
-                  { value: 'energy', label: 'Energy' },
-                ]}
-                value={metric}
-                onChange={setMetric}
-              />
-            </div>
-
-            <div className="mt-4">
-              <PerformanceTrendChart data={trend} metric={metric} />
-            </div>
-
-            <div className="mt-2 flex flex-col gap-1 text-xs text-text-muted sm:flex-row sm:items-center sm:justify-between">
-              <span>Portfolio trend · equal eligible service windows</span>
-              <span>Data details</span>
-            </div>
-          </div>
-
-          <FuelHealthCard summary={fuelHealth} />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <SiteAttentionBanner sites={sites} />
         </div>
-      )}
-
-      <SiteAttentionBanner sites={sitesQuery.data ?? NO_SITES} />
+        <FuelHealthCard summary={fuelHealth} />
+      </div>
 
       <div>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="text-base font-semibold text-text">Site performance</h2>
           <span className="rounded-full bg-surface-subtle px-2.5 py-1 text-xs font-medium text-text-muted">
-            {filteredSites.length} {filteredSites.length === 1 ? 'site' : 'sites'}
+            {sites.length} {sites.length === 1 ? 'site' : 'sites'}
           </span>
         </div>
         <DataTable
-          data={filteredSites}
+          data={sites}
           columns={SITE_COLUMNS}
           getRowId={(site) => site.id}
-          loading={sitesQuery.isLoading}
+          loading={overviewQuery.isLoading}
           getRowHref={(site) => siteDetailPath(site.id)}
           searchPlaceholder="Search sites or ID..."
           emptyMessage="No sites match this filter."
-          headerActions={
-            <Select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as SiteStatus | 'All statuses')
-              }
-              aria-label="Filter by status"
-              className="w-44"
-            >
-              {STATUS_FILTER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </Select>
-          }
         />
       </div>
     </div>

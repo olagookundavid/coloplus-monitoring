@@ -1,87 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  ArrowDownTrayIcon,
-  ArrowTrendingUpIcon,
-  CheckCircleIcon,
-  ClockIcon,
-  LifebuoyIcon,
-  PlusIcon,
-  TicketIcon,
-} from '@heroicons/react/24/outline'
+import { CheckCircleIcon, ClockIcon, LifebuoyIcon, PlusIcon, TicketIcon } from '@heroicons/react/24/outline'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import {
-  DashboardFilterBar,
-  DashboardPageHeader,
-  StatCard,
-  TicketDetailPanel,
-} from '../../components/dashboard'
+import { DashboardPageHeader, StatCard, TicketDetailPanel } from '../../components/dashboard'
 import { SkeletonStatCards } from '../../components/skeletons'
 import { Button, DataTable, Select, StatusBadge, type Column } from '../../components/ui'
 import { ROUTES, ticketDetailPath } from '../../constants'
-import { useTickets } from '../../hooks'
-import type { Ticket, TicketStatus } from '../../types'
-import { formatDateTimeWAT, getTicketPriorityTone, getTicketStatusTone } from '../../utils'
+import { useAdminSites, useTicketSummary, useTickets } from '../../hooks'
+import type { AdminSite, Ticket, TicketStatus } from '../../types'
+import { formatDateTimeWAT, ticketPriorityLabel, ticketStatusLabel } from '../../utils'
 import { useDashboardFilters } from './CustomerLayout'
 
 const NO_TICKETS: Ticket[] = []
+const NO_SITES: AdminSite[] = []
 
-const STATUS_FILTER_OPTIONS: Array<TicketStatus | 'All tickets'> = [
-  'All tickets',
-  'Open',
-  'In progress',
-  'Resolved',
-]
-
-const TICKET_COLUMNS: Column<Ticket>[] = [
-  {
-    header: 'Ticket / Subject',
-    accessor: (ticket) => ticket.subject,
-    cell: (ticket) => (
-      <div>
-        <p className="text-xs font-medium text-primary-600">{ticket.id}</p>
-        <p className="font-medium text-text">{ticket.subject}</p>
-      </div>
-    ),
-    sortable: true,
-  },
-  {
-    header: 'Site',
-    accessor: (ticket) => ticket.siteCode,
-    sortable: true,
-  },
-  {
-    header: 'Priority',
-    accessor: (ticket) => ticket.priority,
-    cell: (ticket) => (
-      <StatusBadge label={ticket.priority} tone={getTicketPriorityTone(ticket.priority)} />
-    ),
-    sortable: true,
-  },
-  {
-    header: 'Status',
-    accessor: (ticket) => ticket.status,
-    cell: (ticket) => (
-      <StatusBadge label={ticket.status} tone={getTicketStatusTone(ticket.status)} />
-    ),
-    sortable: true,
-  },
-  {
-    header: 'Created WAT',
-    accessor: (ticket) => ticket.createdAt,
-    cell: (ticket) => formatDateTimeWAT(ticket.createdAt),
-    sortable: true,
-  },
-]
+const STATUS_FILTER_OPTIONS: Array<TicketStatus | 'all'> = ['all', 'open', 'in_progress', 'resolved']
 
 export function SupportTickets() {
-  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'All tickets'>('All tickets')
+  const { openCreateTicket } = useDashboardFilters()
+  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all')
   const { id: selectedTicketId } = useParams<{ id?: string }>()
   const navigate = useNavigate()
 
   const ticketsQuery = useTickets()
   const tickets = ticketsQuery.data ?? NO_TICKETS
+  const summaryQuery = useTicketSummary()
+  const sitesQuery = useAdminSites()
+  const sites = sitesQuery.data ?? NO_SITES
+  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
+
   const selectedTicket = selectedTicketId
     ? (tickets.find((ticket) => ticket.id === selectedTicketId) ?? null)
     : null
@@ -95,18 +42,54 @@ export function SupportTickets() {
   }, [selectedTicketId, ticketsQuery.isLoading, selectedTicket, navigate])
 
   const filteredTickets = useMemo(() => {
-    if (statusFilter === 'All tickets') return tickets
+    if (statusFilter === 'all') return tickets
     return tickets.filter((ticket) => ticket.status === statusFilter)
   }, [tickets, statusFilter])
 
-  const stats = useMemo(
-    () => ({
-      all: tickets.length,
-      awaitingResponse: tickets.filter((ticket) => ticket.status === 'Open').length,
-      inProgress: tickets.filter((ticket) => ticket.status === 'In progress').length,
-      resolved: tickets.filter((ticket) => ticket.status === 'Resolved').length,
-    }),
-    [tickets]
+  const columns: Column<Ticket>[] = useMemo(
+    () => [
+      {
+        header: 'Ticket / Subject',
+        accessor: (ticket) => ticket.subject,
+        cell: (ticket) => (
+          <div>
+            <p className="text-xs font-medium text-primary-600">{ticket.ref}</p>
+            <p className="font-medium text-text">{ticket.subject}</p>
+          </div>
+        ),
+        sortable: true,
+      },
+      {
+        header: 'Site',
+        accessor: (ticket) => sitesById.get(ticket.siteId)?.airtelCode ?? ticket.siteId,
+        sortable: true,
+      },
+      {
+        header: 'Priority',
+        accessor: (ticket) => ticket.priority,
+        cell: (ticket) => {
+          const { label, tone } = ticketPriorityLabel(ticket.priority)
+          return <StatusBadge label={label} tone={tone} />
+        },
+        sortable: true,
+      },
+      {
+        header: 'Status',
+        accessor: (ticket) => ticket.status,
+        cell: (ticket) => {
+          const { label, tone } = ticketStatusLabel(ticket.status)
+          return <StatusBadge label={label} tone={tone} />
+        },
+        sortable: true,
+      },
+      {
+        header: 'Created WAT',
+        accessor: (ticket) => ticket.createdAt,
+        cell: (ticket) => formatDateTimeWAT(ticket.createdAt),
+        sortable: true,
+      },
+    ],
+    [sitesById]
   )
 
   return (
@@ -116,68 +99,20 @@ export function SupportTickets() {
         title="Support tickets"
         subtitle="One conversation. Clear ownership. Every issue tracked."
         actions={
-          <>
-            <Button variant="outline" icon={ArrowDownTrayIcon}>
-              Export report
-            </Button>
-            <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
-              Create ticket
-            </Button>
-          </>
+          <Button icon={PlusIcon} onClick={() => openCreateTicket()}>
+            Create ticket
+          </Button>
         }
       />
 
-      <DashboardFilterBar
-        region={region}
-        onRegionChange={setRegion}
-        period={period}
-        onPeriodChange={setPeriod}
-      />
-
-      {ticketsQuery.isLoading ? (
+      {summaryQuery.isLoading ? (
         <SkeletonStatCards count={4} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="All tickets"
-            value={stats.all}
-            icon={TicketIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: 'In the selected reporting scope',
-              tone: 'positive',
-            }}
-          />
-          <StatCard
-            label="Awaiting response"
-            value={stats.awaitingResponse}
-            icon={ClockIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: 'Received by the support queue',
-              tone: 'positive',
-            }}
-          />
-          <StatCard
-            label="In progress"
-            value={stats.inProgress}
-            icon={LifebuoyIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: 'Assigned to operations',
-              tone: 'positive',
-            }}
-          />
-          <StatCard
-            label="Resolved"
-            value={stats.resolved}
-            icon={CheckCircleIcon}
-            trend={{
-              icon: ArrowTrendingUpIcon,
-              label: 'Resolution recorded',
-              tone: 'positive',
-            }}
-          />
+          <StatCard label="All tickets" value={tickets.length} icon={TicketIcon} />
+          <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={ClockIcon} />
+          <StatCard label="In progress" value={summaryQuery.data?.inProgress ?? 0} icon={LifebuoyIcon} />
+          <StatCard label="Resolved" value={summaryQuery.data?.resolved ?? 0} icon={CheckCircleIcon} />
         </div>
       )}
 
@@ -190,7 +125,7 @@ export function SupportTickets() {
         </div>
         <DataTable
           data={filteredTickets}
-          columns={TICKET_COLUMNS}
+          columns={columns}
           getRowId={(ticket) => ticket.id}
           loading={ticketsQuery.isLoading}
           getRowHref={(ticket) => ticketDetailPath(ticket.id)}
@@ -199,15 +134,13 @@ export function SupportTickets() {
           headerActions={
             <Select
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as TicketStatus | 'All tickets')
-              }
+              onChange={(event) => setStatusFilter(event.target.value as TicketStatus | 'all')}
               aria-label="Filter by status"
               className="w-44"
             >
               {STATUS_FILTER_OPTIONS.map((option) => (
                 <option key={option} value={option}>
-                  {option}
+                  {option === 'all' ? 'All tickets' : ticketStatusLabel(option).label}
                 </option>
               ))}
             </Select>

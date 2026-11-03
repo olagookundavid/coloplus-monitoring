@@ -1,15 +1,13 @@
 import type { StatusTone } from '../components/ui'
-import type { SiteStatus } from '../types'
+import type { SiteCondition } from '../types'
 
-export function getSiteStatusTone(status: SiteStatus): StatusTone {
-  switch (status) {
-    case 'Available':
-      return 'success'
-    case 'Low diesel':
-      return 'warning'
-    case 'Power outage':
-      return 'danger'
-    case 'Update overdue':
-      return 'neutral'
+export function siteConditionLabel(condition: SiteCondition): { label: string; tone: StatusTone } {
+  switch (condition) {
+    case 'available':
+      return { label: 'Available', tone: 'success' }
+    case 'outage_reported':
+      return { label: 'Outage reported', tone: 'danger' }
+    case 'awaiting_update':
+      return { label: 'Awaiting update', tone: 'warning' }
   }
 }

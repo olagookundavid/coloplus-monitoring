@@ -34,10 +34,17 @@ function emit(): void {
   for (const listener of listeners) listener()
 }
 
+// Capitalized once, here, rather than at every call site -- a lowercase
+// first letter is common on error messages forwarded straight from a
+// backend string or a caught Error's own .message.
+function capitalizeFirst(message: string): string {
+  return message.charAt(0).toUpperCase() + message.slice(1)
+}
+
 function push(tone: ToastTone, message: string, options?: ToastOptions): string {
   const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
   const duration = options?.duration ?? DEFAULT_DURATION[tone]
-  toasts = [...toasts, { id, tone, message, duration }]
+  toasts = [...toasts, { id, tone, message: capitalizeFirst(message), duration }]
   emit()
   if (duration > 0) {
     setTimeout(() => dismiss(id), duration)

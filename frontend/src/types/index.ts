@@ -10,13 +10,19 @@ export type {
   RecoveryCodesResult,
   AuthApiErrorShape,
 } from './auth'
-export type { Site, SiteStatus, PowerSource } from './site'
+export type {
+  SiteCondition,
+  DataQuality,
+  PeriodSummary,
+  FuelBrief,
+  PortfolioSite,
+  PortfolioOverview,
+  PortfolioQueryParams,
+} from './site'
 export type { AdminSite } from './adminSite'
 export type { StaffRole, ManagedUser } from './user'
 export { STAFF_ROLE_LABELS, STAFF_ROLES } from './user'
 export type {
-  Incident,
-  IncidentStatus,
   IncidentWorkflowStatus,
   IncidentSeverity,
   IncidentCategory,
@@ -26,16 +32,42 @@ export type {
   ReporterIncident,
   ReporterIncidentDetail,
   IncidentSummary,
+  PublishedIncidentUpdate,
+  PublishedIncident,
 } from './incident'
 export type { FuelHealthSite, FuelHealthSummary } from './fuel'
-export type { PortfolioSummary, TrendMetric, PerformanceTrendPoint } from './measurement'
 export type {
   Ticket,
   TicketStatus,
   TicketPriority,
   TicketCategory,
-  CreateTicketRequest,
+  TicketEvent,
+  TicketEventKind,
+  TicketDetail,
+  TicketSummary,
+  RaiseTicketInput,
 } from './ticket'
+export type {
+  Dispute,
+  DisputeStatus,
+  DisputeCategory,
+  DisputeMetric,
+  DisputeParty,
+  DisputeOutcome,
+  DisputeEvent,
+  DisputeEventKind,
+  DisputeDetail,
+  DisputeSummary,
+  RaiseDisputeInput,
+} from './dispute'
+export type {
+  Acceptance,
+  AcceptanceStage,
+  AcceptanceParty,
+  AcceptanceEvent,
+  AcceptanceDetail,
+  TransitionAcceptanceInput,
+} from './acceptance'
 export type {
   ReportStatus,
   PowerStatus,

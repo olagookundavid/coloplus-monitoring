@@ -9,16 +9,16 @@ import {
   CreateTicketModal,
   DashboardShell,
   PERIOD_PRESETS,
-  REGION_OPTIONS,
 } from '../../components/dashboard'
-import { ROUTES } from '../../constants'
+import { usePermissions } from '../../hooks'
 
 export interface CustomerLayoutContextValue {
+  /** Empty string means every region -- the real GET /dashboard/overview's own meaning for "no filter." */
   region: string
   setRegion: (region: string) => void
   period: string
   setPeriod: (period: string) => void
-  openCreateTicket: (siteCode?: string) => void
+  openCreateTicket: (siteId?: string) => void
 }
 
 // Filter state AND "is the Create ticket modal open" both persist/apply
@@ -29,19 +29,30 @@ export interface CustomerLayoutContextValue {
 // this one layout route, read only by its own children (Overview, Sites,
 // SupportTickets), never truly global (architecture standard §4 reserves
 // contexts/ for Auth-like global state).
+// Airtel's own co-brand mark — fixed here only, never reused as an app
+// color elsewhere (frontend/CLAUDE.md §7). No real logo asset yet, same
+// provisional caveat as the Coloplus wordmark.
+const AIRTEL_BRAND_MARK = <span className="text-lg font-bold italic text-red-600">airtel</span>
+
 export function CustomerLayout() {
-  const [region, setRegion] = useState<string>(REGION_OPTIONS[0] ?? 'All regions')
+  const { can } = usePermissions()
+  // disputes.raise is the one permission that separates airtel_reviewer
+  // from airtel_viewer (Decision 034) -- every other customer-portal
+  // permission is shared, so this single check is enough.
+  const portalLabel = can('disputes.raise') ? 'Airtel reviewer portal' : 'Airtel viewer portal'
+
+  const [region, setRegion] = useState<string>('')
   const [period, setPeriod] = useState<string>(PERIOD_PRESETS[0] ?? '')
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false)
-  const [prefillSiteCode, setPrefillSiteCode] = useState<string | undefined>(undefined)
+  const [prefillSiteId, setPrefillSiteId] = useState<string | undefined>(undefined)
 
   const context: CustomerLayoutContextValue = {
     region,
     setRegion,
     period,
     setPeriod,
-    openCreateTicket: (siteCode) => {
-      setPrefillSiteCode(siteCode)
+    openCreateTicket: (siteId) => {
+      setPrefillSiteId(siteId)
       setIsCreateTicketOpen(true)
     },
   }
@@ -49,20 +60,14 @@ export function CustomerLayout() {
   return (
     <DashboardShell
       nav={CUSTOMER_NAV_GROUPS}
-      portalLabel="Customer portal"
-      orgBadge={{ initials: 'AT', name: 'Airtel Nigeria', subtitle: 'Customer workspace' }}
-      supportCard={{
-        title: 'A team behind every site.',
-        body: 'Your Coloplus operations team is here to help.',
-        to: ROUTES.CUSTOMER_TICKETS,
-        linkLabel: 'Contact support',
-      }}
+      portalLabel={portalLabel}
+      brandMark={AIRTEL_BRAND_MARK}
     >
       <Outlet context={context} />
       <CreateTicketModal
         open={isCreateTicketOpen}
         onClose={() => setIsCreateTicketOpen(false)}
-        initialSiteCode={prefillSiteCode}
+        initialSiteId={prefillSiteId}
       />
     </DashboardShell>
   )

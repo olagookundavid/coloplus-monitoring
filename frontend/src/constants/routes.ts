@@ -11,6 +11,11 @@ export const ROUTES = {
   CUSTOMER_SITES: '/sites',
   CUSTOMER_TICKETS: '/support-tickets',
   CUSTOMER_REPORTS: '/reports',
+  // "/incidents" is already OPS_INCIDENTS (the reporter's own page) below --
+  // this one is Airtel's published-incident register, a different portal.
+  CUSTOMER_INCIDENTS: '/incident-register',
+  CUSTOMER_DISPUTES: '/disputes',
+  CUSTOMER_ACCEPTANCE: '/acceptance',
   SITE_DETAIL_PATTERN: '/sites/:id',
   TICKET_DETAIL_PATTERN: '/support-tickets/:id',
   // These names stay OPS_* (the Coloplus-staff portal they belong to,

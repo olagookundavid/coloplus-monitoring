@@ -1,106 +1,85 @@
 import { useState } from 'react'
-import {
-  ArrowRightIcon,
-  ArrowTrendingUpIcon,
-  BoltIcon,
-  CheckCircleIcon,
-  ExclamationTriangleIcon,
-  MapPinIcon,
-  PlusIcon,
-  SignalIcon,
-} from '@heroicons/react/24/outline'
-import { Link } from 'react-router-dom'
+import { MapPinIcon, PlusIcon } from '@heroicons/react/24/outline'
 
-import { FuelIcon } from '../icons'
-import { Button, SidePanel, StatusBadge, Tabs, type StatusTone, type TabItem } from '../ui'
-import { ticketDetailPath } from '../../constants'
-import { useIncidents, useTickets } from '../../hooks'
-import type { Incident, IncidentStatus, Site } from '../../types'
-import { formatDateTimeWAT, getSiteStatusTone, getTicketStatusTone } from '../../utils'
+import { useSiteOverview, useTransitionAcceptanceMutation, usePermissions } from '../../hooks'
+import type { PortfolioSite } from '../../types'
+import {
+  acceptanceStageLabel,
+  disputeStatusLabel,
+  formatDateTimeWAT,
+  severityLabel,
+  siteConditionLabel,
+  toast,
+} from '../../utils'
+import { Button, ConfirmDialog, SidePanel, StatusBadge, Tabs, Textarea, type TabItem } from '../ui'
+import { RaiseDisputeModal } from './RaiseDisputeModal'
 
 export interface SiteDetailPanelProps {
-  site: Site | null
+  site: PortfolioSite | null
   open: boolean
   onClose: () => void
   onCreateTicket: () => void
 }
 
-type SiteDetailTab = 'performance' | 'faultHistory' | 'tickets'
+type SiteDetailTab = 'profile' | 'incidents' | 'disputes' | 'acceptance'
 
 const TABS: TabItem<SiteDetailTab>[] = [
-  { value: 'performance', label: 'Performance' },
-  { value: 'faultHistory', label: 'Fault history' },
-  { value: 'tickets', label: 'Tickets' },
+  { value: 'profile', label: 'Profile' },
+  { value: 'incidents', label: 'Incidents' },
+  { value: 'disputes', label: 'Disputes' },
+  { value: 'acceptance', label: 'Acceptance' },
 ]
 
-const INCIDENT_STATUS_TONE: Record<IncidentStatus, StatusTone> = {
-  Open: 'warning',
-  Resolved: 'success',
-}
-
-function formatSiteTimestamp(iso: string): string {
-  const date = new Date(iso)
-  const datePart = date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'Africa/Lagos',
-  })
-  const timePart = date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'Africa/Lagos',
-  })
-  return `${datePart} · ${timePart} WAT`
-}
-
-function IncidentRow({ incident }: { incident: Incident }) {
-  return (
-    <div className="flex gap-3">
-      <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden="true" />
-      <div className="min-w-0 flex-1">
-        <p className="font-semibold text-text">{incident.title}</p>
-        <p className="mt-1 text-sm text-text-muted">{incident.description}</p>
-        <p className="mt-1 text-sm text-text-muted">{incident.impactNote}</p>
-        <div className="mt-2">
-          <StatusBadge label={incident.status} tone={INCIDENT_STATUS_TONE[incident.status]} />
-        </div>
-        <p className="mt-2 text-xs text-text-muted">
-          {incident.id} · {formatSiteTimestamp(incident.occurredAt)} · {incident.owner}
-        </p>
-        {incident.linkedTicketId && (
-          <Link
-            to={ticketDetailPath(incident.linkedTicketId)}
-            className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:underline"
-          >
-            Open linked ticket
-            <ArrowRightIcon className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
-        )}
-      </div>
-    </div>
-  )
-}
+type PendingAcceptanceAction = { stage: 'inspected' | 'accepted' | 'rejected'; reason?: string }
 
 export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDetailPanelProps) {
-  const [tab, setTab] = useState<SiteDetailTab>('performance')
+  const [tab, setTab] = useState<SiteDetailTab>('profile')
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const [pendingAction, setPendingAction] = useState<PendingAcceptanceAction | null>(null)
 
-  const incidentsQuery = useIncidents()
-  const ticketsQuery = useTickets()
+  const { can } = usePermissions()
+  const canReview = can('disputes.raise')
+  const canReviewAcceptance = can('acceptance.review')
+
+  const overviewQuery = useSiteOverview(site?.id)
+  const overview = overviewQuery.data
+  const transitionMutation = useTransitionAcceptanceMutation()
 
   if (!site) return null
 
-  const siteIncidents = (incidentsQuery.data ?? []).filter(
-    (incident) => incident.siteCode === site.code
-  )
-  const siteTickets = (ticketsQuery.data ?? []).filter((ticket) => ticket.siteCode === site.code)
-  const remainingLitres = Math.round((site.dieselPercent / 100) * site.dieselTankCapacityLitres)
+  const condition = siteConditionLabel(site.condition)
+  const acceptance = overview?.acceptance
+  const canActOnAcceptance =
+    canReviewAcceptance && acceptance?.waitingOn === 'airtel' && !overviewQuery.isLoading
+
+  async function handleConfirmAcceptance() {
+    if (!pendingAction || !site) return
+    try {
+      await transitionMutation.mutateAsync({
+        siteId: site.id,
+        input: { stage: pendingAction.stage, note: pendingAction.reason },
+      })
+      toast.success(
+        pendingAction.stage === 'accepted'
+          ? 'Site accepted.'
+          : pendingAction.stage === 'rejected'
+            ? 'Site rejected.'
+            : 'Marked as inspected.'
+      )
+      setPendingAction(null)
+      setRejectReason('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update this acceptance record.')
+      setPendingAction(null)
+    }
+  }
 
   return (
     <SidePanel
       open={open}
       onClose={onClose}
-      eyebrow={`${site.code} · ${site.region.toUpperCase()}`}
+      eyebrow={`${site.airtelCode} · ${site.region.toUpperCase()}`}
       title={site.name}
       headerActions={
         <Button icon={PlusIcon} size="sm" onClick={onCreateTicket}>
@@ -111,184 +90,216 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
         <div className="flex flex-col gap-2">
           <span className="inline-flex items-center gap-1.5">
             <MapPinIcon className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />
-            {site.region}, Nigeria · Customer site
+            {site.state}, Nigeria
           </span>
-          <StatusBadge label={site.status} tone={getSiteStatusTone(site.status)} />
+          <StatusBadge label={condition.label} tone={condition.tone} />
         </div>
       }
     >
       <div className="flex flex-col gap-4">
         <Tabs aria-label="Site detail" items={TABS} value={tab} onChange={setTab} />
 
-        {tab === 'performance' && (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-text-muted">Power consumption</p>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-600">
-                    <BoltIcon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                </div>
-                <p className="mt-2 text-2xl font-bold text-text">
-                  {site.energyKwh.toLocaleString()}{' '}
-                  <span className="text-base font-medium text-text-muted">kWh</span>
-                </p>
-                <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
-                  <ArrowTrendingUpIcon className="h-4 w-4" aria-hidden="true" />
-                  Estimated
-                </p>
-                <p className="mt-1 text-xs text-text-muted">Selected reporting period</p>
-              </div>
-
-              <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-text-muted">Diesel remaining</p>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-600">
-                    <FuelIcon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                </div>
-                <p className="mt-2 text-2xl font-bold text-text">
-                  {remainingLitres.toLocaleString()}{' '}
-                  <span className="text-base font-medium text-text-muted">L</span>
-                </p>
-                <p
-                  className={`mt-1 inline-flex items-center gap-1 text-sm font-medium ${site.dieselPercent < 25 ? 'text-warning-700' : 'text-primary-700'}`}
-                >
-                  {site.dieselPercent < 25 ? (
-                    <ExclamationTriangleIcon className="h-4 w-4" aria-hidden="true" />
-                  ) : (
-                    <ArrowTrendingUpIcon className="h-4 w-4" aria-hidden="true" />
-                  )}
-                  {site.dieselPercent}% of {site.dieselTankCapacityLitres.toLocaleString()} L tank
-                </p>
-                <p className="mt-1 text-xs text-text-muted">Latest recorded value</p>
-              </div>
-
-              <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-text-muted">Power availability</p>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-600">
-                    <CheckCircleIcon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                </div>
-                <p className="mt-2 text-2xl font-bold text-text">
-                  {site.powerAvailabilityPercent.toFixed(2)}
-                  <span className="text-base font-medium text-text-muted">%</span>
-                </p>
-                <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
-                  <ArrowTrendingUpIcon className="h-4 w-4" aria-hidden="true" />
-                  Reported service history
-                </p>
-                <p className="mt-1 text-xs text-text-muted">
-                  {new Date(site.updatedAt).toLocaleDateString('en-GB', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    timeZone: 'Africa/Lagos',
-                  })}
-                </p>
-              </div>
-
-              <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium text-text-muted">Radio availability</p>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-600">
-                    <SignalIcon className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                </div>
-                <p className="mt-2 text-2xl font-bold text-text">
-                  {site.radioAvailabilityPercent == null ? (
-                    '—'
-                  ) : (
-                    <>
-                      {site.radioAvailabilityPercent.toFixed(2)}
-                      <span className="text-base font-medium text-text-muted">%</span>
-                    </>
-                  )}
-                </p>
-                <p className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
-                  <ArrowTrendingUpIcon className="h-4 w-4" aria-hidden="true" />
-                  {site.radioAvailabilityPercent == null
-                    ? 'Awaiting data'
-                    : 'Customer network report'}
-                </p>
-                <p className="mt-1 text-xs text-text-muted">
-                  Updated {formatSiteTimestamp(site.updatedAt)}
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
-              <h3 className="text-base font-semibold text-text">Site details</h3>
-              <dl className="mt-4 divide-y divide-border">
-                <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <dt className="text-sm text-text-muted">Current power source</dt>
-                  <dd className="text-sm font-medium text-text sm:text-right">
-                    {site.powerSource}
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <dt className="text-sm text-text-muted">Last power observation</dt>
-                  <dd className="text-sm font-medium text-text sm:text-right">
-                    {formatSiteTimestamp(site.updatedAt)}
-                  </dd>
-                </div>
-              </dl>
-            </div>
+        {tab === 'profile' && (
+          <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-text">Site details</h3>
+            <dl className="mt-4 divide-y divide-border">
+              {overview?.site && (
+                <>
+                  <ProfileRow label="Address" value={overview.site.address || '—'} />
+                  <ProfileRow label="Site type" value={overview.site.siteType} />
+                  <ProfileRow
+                    label="Power sources"
+                    value={overview.site.powerSources.join(', ') || '—'}
+                  />
+                  <ProfileRow label="Generator capacity" value={overview.site.generatorCapacity || '—'} />
+                  <ProfileRow
+                    label="Commissioning date"
+                    value={overview.site.commissioningDate ?? '—'}
+                  />
+                </>
+              )}
+              {site.asOf && (
+                <ProfileRow label="Last power observation" value={formatDateTimeWAT(site.asOf)} />
+              )}
+            </dl>
           </div>
         )}
 
-        {tab === 'faultHistory' && (
+        {tab === 'incidents' && (
           <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
             <h3 className="text-base font-semibold text-text">Fault & restoration history</h3>
-            {incidentsQuery.isLoading ? (
+            {overviewQuery.isLoading ? (
               <p className="mt-3 text-sm text-text-muted">Loading...</p>
-            ) : siteIncidents.length === 0 ? (
-              <p className="mt-3 text-sm text-text-muted">No faults recorded for this site.</p>
+            ) : (overview?.publishedIncidents.length ?? 0) === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">No incidents recorded for this site.</p>
             ) : (
-              <div className="mt-4 flex flex-col gap-5">
-                {siteIncidents.map((incident) => (
-                  <IncidentRow key={incident.id} incident={incident} />
-                ))}
+              <div className="mt-4 flex flex-col gap-4">
+                {overview?.publishedIncidents.map((incident) => {
+                  const { label, tone } = severityLabel(incident.severity)
+                  return (
+                    <div key={incident.id} className="flex gap-3">
+                      <span
+                        className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary"
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <StatusBadge label={label} tone={tone} />
+                          <span className="text-xs text-text-muted">{incident.ref}</span>
+                        </div>
+                        <p className="mt-1 font-semibold text-text">{incident.title}</p>
+                        <p className="mt-1 text-xs text-text-muted">
+                          Started {formatDateTimeWAT(incident.startedAt)}
+                          {incident.closedAt && ` · Closed ${formatDateTimeWAT(incident.closedAt)}`}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
         )}
 
-        {tab === 'tickets' && (
+        {tab === 'disputes' && (
           <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
-            <h3 className="text-base font-semibold text-text">Support requests for this site</h3>
-            {ticketsQuery.isLoading ? (
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="text-base font-semibold text-text">Disputes for this site</h3>
+              {canReview && (
+                <Button size="sm" variant="outline" onClick={() => setDisputeModalOpen(true)}>
+                  Raise a dispute
+                </Button>
+              )}
+            </div>
+            {overviewQuery.isLoading ? (
               <p className="mt-3 text-sm text-text-muted">Loading...</p>
-            ) : siteTickets.length === 0 ? (
-              <p className="mt-3 text-sm text-text-muted">No tickets yet for this site.</p>
+            ) : (overview?.disputes.length ?? 0) === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">No disputes raised for this site.</p>
             ) : (
               <div className="mt-4 flex flex-col divide-y divide-border">
-                {siteTickets.map((ticket) => (
-                  <div key={ticket.id} className="flex items-start justify-between gap-3 py-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-primary-600">{ticket.id}</p>
-                      <p className="font-medium text-text">{ticket.subject}</p>
-                      <p className="mt-1 text-xs text-text-muted">
-                        {formatDateTimeWAT(ticket.createdAt)}
-                      </p>
+                {overview?.disputes.map((dispute) => {
+                  const { label, tone } = disputeStatusLabel(dispute.status)
+                  return (
+                    <div key={dispute.id} className="flex items-start justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-primary-600">{dispute.ref}</p>
+                        <p className="font-medium text-text">{dispute.title}</p>
+                      </div>
+                      <StatusBadge label={label} tone={tone} className="shrink-0" />
                     </div>
-                    <StatusBadge
-                      label={ticket.status}
-                      tone={getTicketStatusTone(ticket.status)}
-                      className="shrink-0"
-                    />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
-            <Button icon={PlusIcon} size="sm" className="mt-4" onClick={onCreateTicket}>
-              Create ticket
-            </Button>
+          </div>
+        )}
+
+        {tab === 'acceptance' && (
+          <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-text">Commissioning and acceptance</h3>
+            {overviewQuery.isLoading ? (
+              <p className="mt-3 text-sm text-text-muted">Loading...</p>
+            ) : !acceptance ? (
+              <p className="mt-3 text-sm text-text-muted">No acceptance process for this site.</p>
+            ) : (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <StatusBadge
+                    label={acceptanceStageLabel(acceptance.stage).label}
+                    tone={acceptanceStageLabel(acceptance.stage).tone}
+                  />
+                  {acceptance.overdue && <StatusBadge label="Overdue" tone="danger" />}
+                </div>
+                <dl className="mt-4 divide-y divide-border">
+                  <ProfileRow
+                    label="Waiting on"
+                    value={acceptance.waitingOn === 'airtel' ? 'Airtel' : 'Coloplus'}
+                  />
+                  {acceptance.nextAction && (
+                    <ProfileRow label="Next action" value={acceptance.nextAction} />
+                  )}
+                  <ProfileRow
+                    label="Ready for inspection"
+                    value={`${acceptance.readyAgeHours}h ago (not operational performance)`}
+                  />
+                  {acceptance.dossier && <ProfileRow label="Dossier" value={acceptance.dossier} />}
+                </dl>
+
+                {canActOnAcceptance && acceptance.stage === 'ready_for_inspection' && (
+                  <Button
+                    className="mt-4"
+                    onClick={() => setPendingAction({ stage: 'inspected' })}
+                  >
+                    Mark inspected
+                  </Button>
+                )}
+
+                {canActOnAcceptance && acceptance.stage === 'inspected' && (
+                  <div className="mt-4 flex flex-col gap-3">
+                    <Button onClick={() => setPendingAction({ stage: 'accepted' })} fullWidth>
+                      Accept
+                    </Button>
+                    <Textarea
+                      value={rejectReason}
+                      onChange={(event) => setRejectReason(event.target.value)}
+                      placeholder="Reason for rejecting (required)"
+                      aria-label="Rejection reason"
+                    />
+                    <Button
+                      variant="outline"
+                      disabled={!rejectReason.trim()}
+                      onClick={() =>
+                        setPendingAction({ stage: 'rejected', reason: rejectReason.trim() })
+                      }
+                      fullWidth
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
+
+      <RaiseDisputeModal
+        open={disputeModalOpen}
+        onClose={() => setDisputeModalOpen(false)}
+        initialSiteId={site.id}
+      />
+
+      <ConfirmDialog
+        open={Boolean(pendingAction)}
+        title={
+          pendingAction?.stage === 'accepted'
+            ? 'Accept this site?'
+            : pendingAction?.stage === 'rejected'
+              ? 'Reject this site?'
+              : 'Mark this site inspected?'
+        }
+        description={
+          pendingAction?.stage === 'accepted'
+            ? 'This brings the site into service. Nothing else counts as acceptance.'
+            : pendingAction?.stage === 'rejected'
+              ? 'Sends the site back to Coloplus to rebuild with your reason.'
+              : 'Confirms the inspection took place. Next step is accept or reject.'
+        }
+        tone={pendingAction?.stage === 'rejected' ? 'warning' : 'success'}
+        confirmLabel="Confirm"
+        pending={transitionMutation.isPending}
+        onConfirm={handleConfirmAcceptance}
+        onCancel={() => setPendingAction(null)}
+      />
     </SidePanel>
+  )
+}
+
+function ProfileRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <dt className="text-sm text-text-muted">{label}</dt>
+      <dd className="text-sm font-medium text-text sm:text-right">{value}</dd>
+    </div>
   )
 }

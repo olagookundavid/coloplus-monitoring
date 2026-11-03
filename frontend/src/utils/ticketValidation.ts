@@ -3,7 +3,7 @@ import Joi from 'joi'
 import type { TicketCategory, TicketPriority } from '../types'
 
 export interface CreateTicketFormValues {
-  siteCode: string
+  siteId: string
   category: TicketCategory
   subject: string
   priority: TicketPriority
@@ -12,7 +12,7 @@ export interface CreateTicketFormValues {
 }
 
 export const createTicketSchema = Joi.object<CreateTicketFormValues>({
-  siteCode: Joi.string().required().messages({
+  siteId: Joi.string().required().messages({
     'string.empty': 'Select the affected site.',
   }),
   category: Joi.string().required().messages({
@@ -27,9 +27,8 @@ export const createTicketSchema = Joi.object<CreateTicketFormValues>({
   contactEmail: Joi.string()
     .trim()
     .email({ tlds: { allow: false } })
-    .required()
+    .allow('')
     .messages({
-      'string.empty': 'Enter a contact email.',
       'string.email': 'Enter a valid email address.',
     }),
   description: Joi.string().trim().required().messages({

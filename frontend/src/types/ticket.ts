@@ -1,33 +1,73 @@
-export type TicketStatus = 'Open' | 'In progress' | 'Resolved'
-export type TicketPriority = 'Low' | 'Medium' | 'High' | 'Critical'
-export type TicketCategory =
-  | 'Power outage'
-  | 'Low fuel / diesel'
-  | 'Generator fault'
-  | 'Equipment fault'
-  | 'Access restriction'
-  | 'Other'
+// Mirrors dto.TicketDTO (backend/internal/dto/tickets.go) -- real-backend-
+// shaped, replacing the old mock Ticket/localStorage pipeline.
 
-export interface Ticket {
+// Mirrors domain.TicketCategory.
+export type TicketCategory =
+  | 'power_outage'
+  | 'low_fuel'
+  | 'generator_fault'
+  | 'equipment_fault'
+  | 'access_restriction'
+  | 'other'
+
+// Mirrors domain.TicketPriority -- what the requester asked for, not an
+// incident severity; Coloplus cannot change it.
+export type TicketPriority = 'low' | 'medium' | 'high' | 'critical'
+
+// Mirrors domain.TicketStatus.
+export type TicketStatus = 'open' | 'in_progress' | 'resolved'
+
+export type TicketEventKind = 'comment' | 'status' | 'link'
+
+export interface TicketEvent {
   id: string
-  subject: string
-  siteCode: string
-  category: TicketCategory
-  priority: TicketPriority
-  status: TicketStatus
-  contactEmail: string
-  description: string
-  attachmentNames: string[]
-  /** ISO 8601. */
+  /** airtel or coloplus. */
+  party: 'airtel' | 'coloplus'
+  kind: TicketEventKind
+  fromStatus?: TicketStatus
+  toStatus?: TicketStatus
+  body: string
   createdAt: string
 }
 
-export interface CreateTicketRequest {
-  siteCode: string
+export interface Ticket {
+  id: string
+  /** Server-formatted, e.g. "TKT-000123". */
+  ref: string
+  siteId: string
   category: TicketCategory
-  subject: string
   priority: TicketPriority
-  contactEmail: string
+  subject: string
   description: string
-  attachmentNames: string[]
+  contactEmail: string
+  status: TicketStatus
+  resolution?: string
+  resolvedAt?: string
+  reopenCount: number
+  /** Absent until the linked incident has been published to Airtel. */
+  incidentId?: string
+  incidentRef?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TicketDetail {
+  ticket: Ticket
+  events: TicketEvent[]
+}
+
+export interface TicketSummary {
+  open: number
+  inProgress: number
+  resolved: number
+  criticalOpen: number
+}
+
+export interface RaiseTicketInput {
+  siteId: string
+  category: TicketCategory
+  priority: TicketPriority
+  subject: string
+  description: string
+  contactEmail?: string
 }

@@ -7,10 +7,13 @@ import { Topbar } from './Topbar'
 
 export interface DashboardShellProps {
   nav: NavGroup[]
-  /** Which portal this is — e.g. "Customer portal," "Admin portal." */
+  /** Which portal this is — e.g. "Airtel viewer portal," "Admin portal." */
   portalLabel: string
   orgBadge?: SidebarOrgBadge
   supportCard?: SidebarSupportCard
+  /** The signed-in customer's own co-brand mark, shown at the far right of
+      the topbar — only the customer portal has one. */
+  brandMark?: ReactNode
   children: ReactNode
 }
 
@@ -23,6 +26,7 @@ export function DashboardShell({
   portalLabel,
   orgBadge,
   supportCard,
+  brandMark,
   children,
 }: DashboardShellProps) {
   return (
@@ -37,7 +41,7 @@ export function DashboardShell({
           cascades a 640px+ minimum up through every ancestor and causes
           page-level horizontal scroll — frontend/CLAUDE.md §3. */}
       <div className="flex h-dvh min-w-0 flex-1 flex-col">
-        <Topbar nav={nav} />
+        <Topbar nav={nav} brandMark={brandMark} />
         {/* pb-20 clears the fixed mobile BottomNav (frontend/CLAUDE.md §3).
             This is the one scrollable region in the whole shell. */}
         <div className="min-w-0 flex-1 overflow-y-auto pb-20 lg:pb-0">

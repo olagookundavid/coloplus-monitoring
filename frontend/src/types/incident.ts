@@ -1,26 +1,3 @@
-export type IncidentStatus = 'Open' | 'Resolved'
-
-export interface Incident {
-  id: string
-  siteCode: string
-  title: string
-  description: string
-  /** The second line in the mockup ("Service remains available. Refill
-      required.") — the customer-facing impact statement, distinct from the
-      technical description above it. */
-  impactNote: string
-  status: IncidentStatus
-  /** ISO 8601. */
-  occurredAt: string
-  owner: string
-  linkedTicketId?: string
-}
-
-// Below: the real reporter-facing incident workflow (backend/internal/domain
-// /incident.go), distinctly named from the mock Incident/IncidentStatus
-// above (still used by the customer-portal SiteDetailPanel's Fault history
-// tab) so the two shapes never collide.
-
 // Mirrors domain.IncidentStatus. "assigned" is reached only via the assign
 // endpoint, not a direct transition.
 export type IncidentWorkflowStatus =
@@ -102,4 +79,30 @@ export interface IncidentSummary {
   active: number
   critical: number
   overdue: number
+}
+
+// What Airtel sees -- mirrors dto.PublishedIncidentDTO. No description,
+// owner, notes, root cause or author; neither airtel_viewer nor
+// airtel_reviewer holds incidents.read, so GET /incidents always returns
+// this shape for them, never the internal ReporterIncident above.
+export interface PublishedIncidentUpdate {
+  at: string
+  body: string
+}
+
+export interface PublishedIncident {
+  id: string
+  ref: string
+  siteId: string
+  category: IncidentCategory
+  severity: IncidentSeverity
+  impact: IncidentImpact
+  title: string
+  status: IncidentWorkflowStatus
+  startedAt: string
+  restorationTarget?: string
+  restoredAt?: string
+  verified: boolean
+  closedAt?: string
+  updates: PublishedIncidentUpdate[]
 }
