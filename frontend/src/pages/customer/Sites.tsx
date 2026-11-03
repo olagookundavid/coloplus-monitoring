@@ -1,38 +1,40 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import {
+  CONDITION_FILTER_OPTIONS,
   DashboardFilterBar,
   DashboardPageHeader,
   NO_SITES,
+  periodToDateRange,
   SITE_COLUMNS,
   SiteAttentionBanner,
   SiteDetailPanel,
-  STATUS_FILTER_OPTIONS,
 } from '../../components/dashboard'
-import { Button, DataTable, Select } from '../../components/ui'
-import { ROUTES, siteDetailPath } from '../../constants'
-import { useSitePerformance } from '../../hooks'
-import type { SiteStatus } from '../../types'
+import { DataTable, Select } from '../../components/ui'
+import { ROUTES } from '../../constants'
+import { usePortfolioOverview } from '../../hooks'
+import type { PortfolioSite } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
 export function Sites() {
   const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
-  const [statusFilter, setStatusFilter] = useState<SiteStatus | 'All statuses'>('All statuses')
+  const [conditionFilter, setConditionFilter] = useState<
+    PortfolioSite['condition'] | 'All conditions'
+  >('All conditions')
   const { id: selectedSiteId } = useParams<{ id?: string }>()
   const navigate = useNavigate()
 
-  const sitesQuery = useSitePerformance({ region, period })
-  const sites = sitesQuery.data ?? NO_SITES
+  const sitesQuery = usePortfolioOverview({ region, ...periodToDateRange(period) })
+  const sites = sitesQuery.data?.sites ?? NO_SITES
   const selectedSite = selectedSiteId
     ? (sites.find((site) => site.id === selectedSiteId) ?? null)
     : null
 
   const filteredSites = useMemo(() => {
-    if (statusFilter === 'All statuses') return sites
-    return sites.filter((site) => site.status === statusFilter)
-  }, [sites, statusFilter])
+    if (conditionFilter === 'All conditions') return sites
+    return sites.filter((site) => site.condition === conditionFilter)
+  }, [sites, conditionFilter])
 
   // A stale or mistyped site id in the URL — send the customer back to the
   // list rather than leaving the panel open with nothing to show.
@@ -47,22 +49,18 @@ export function Sites() {
       <DashboardPageHeader
         eyebrow="Site operations"
         title="Your site portfolio"
-        subtitle="Explore site performance, fuel levels and service history."
-        actions={
-          <Button variant="outline" icon={ArrowDownTrayIcon}>
-            Export report
-          </Button>
-        }
+        subtitle="Explore site condition, incidents, disputes and commissioning status."
       />
 
       <DashboardFilterBar
         region={region}
         onRegionChange={setRegion}
+        regionOptions={sitesQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
       />
 
-      <SiteAttentionBanner sites={sitesQuery.data ?? NO_SITES} />
+      <SiteAttentionBanner sites={sites} />
 
       <div>
         <div className="mb-3 flex items-center gap-2">
@@ -76,19 +74,21 @@ export function Sites() {
           columns={SITE_COLUMNS}
           getRowId={(site) => site.id}
           loading={sitesQuery.isLoading}
-          getRowHref={(site) => siteDetailPath(site.id)}
+          onRowClick={(site) => navigate(`${ROUTES.CUSTOMER_SITES}/${site.id}`)}
           searchPlaceholder="Search sites or ID..."
           emptyMessage="No sites match this filter."
           headerActions={
             <Select
-              value={statusFilter}
+              value={conditionFilter}
               onChange={(event) =>
-                setStatusFilter(event.target.value as SiteStatus | 'All statuses')
+                setConditionFilter(
+                  event.target.value as PortfolioSite['condition'] | 'All conditions'
+                )
               }
-              aria-label="Filter by status"
-              className="w-44"
+              aria-label="Filter by condition"
+              className="w-48"
             >
-              {STATUS_FILTER_OPTIONS.map((option) => (
+              {CONDITION_FILTER_OPTIONS.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
@@ -102,7 +102,7 @@ export function Sites() {
         site={selectedSite}
         open={Boolean(selectedSite)}
         onClose={() => navigate(ROUTES.CUSTOMER_SITES)}
-        onCreateTicket={() => openCreateTicket(selectedSite?.code)}
+        onCreateTicket={() => openCreateTicket(selectedSite?.id)}
       />
     </div>
   )

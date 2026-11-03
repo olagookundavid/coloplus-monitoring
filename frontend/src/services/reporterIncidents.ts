@@ -4,6 +4,7 @@ import type {
   IncidentCategory,
   IncidentImpact,
   IncidentSeverity,
+  IncidentSummary,
   IncidentUpdateEntry,
   IncidentUpdateKind,
   IncidentWorkflowStatus,
@@ -24,12 +25,23 @@ interface IncidentDTO {
   started_at: string
   detected_at: string
   owner_id?: string
+  next_action?: string
+  next_update_due?: string
+  overdue: boolean
   restored_at?: string
   verified_at?: string
   closed_at?: string
   root_cause?: string
+  published_at?: string
   created_at: string
   updated_at: string
+}
+
+interface IncidentSummaryDTO {
+  open: number
+  active: number
+  critical_open: number
+  overdue_updates: number
 }
 
 interface IncidentUpdateDTO {
@@ -54,7 +66,7 @@ interface IncidentDetailResponseDTO {
   updates?: IncidentUpdateDTO[]
 }
 
-function mapIncident(dto: IncidentDTO): ReporterIncident {
+export function mapIncident(dto: IncidentDTO): ReporterIncident {
   return {
     id: dto.id,
     ref: dto.ref,
@@ -68,10 +80,14 @@ function mapIncident(dto: IncidentDTO): ReporterIncident {
     startedAt: dto.started_at,
     detectedAt: dto.detected_at,
     ownerId: dto.owner_id,
+    nextAction: dto.next_action,
+    nextUpdateDue: dto.next_update_due,
+    overdue: dto.overdue,
     restoredAt: dto.restored_at,
     verifiedAt: dto.verified_at,
     closedAt: dto.closed_at,
     rootCause: dto.root_cause,
+    publishedAt: dto.published_at,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   }
@@ -169,5 +185,81 @@ export async function restoreIncident(
     return mapIncident(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not mark this incident restored.')
+  }
+}
+
+// Below: supervisor-only actions (incidents.manage). The reporter actions
+// above (createIncident, addIncidentUpdate, restoreIncident) stay as they
+// are -- these are additive, not a replacement.
+
+export interface AssignIncidentInput {
+  ownerId: string
+  nextAction?: string
+  note?: string
+}
+
+export async function assignIncident(
+  id: string,
+  input: AssignIncidentInput
+): Promise<ReporterIncident> {
+  try {
+    const { data } = await getApi().post<IncidentDTO>(`/incidents/${id}/assign`, {
+      owner_id: input.ownerId,
+      next_action: input.nextAction,
+      note: input.note,
+    })
+    return mapIncident(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not assign this incident.')
+  }
+}
+
+export interface TransitionIncidentInput {
+  status: IncidentWorkflowStatus
+  at?: string
+  note?: string
+  rootCause?: string
+}
+
+// Acknowledge/verify/close -- restore stays on the dedicated restoreIncident
+// above since that's the one transition a reporter (not just a supervisor)
+// can make.
+export async function transitionIncident(
+  id: string,
+  input: TransitionIncidentInput
+): Promise<ReporterIncident> {
+  try {
+    const { data } = await getApi().post<IncidentDTO>(`/incidents/${id}/transition`, {
+      status: input.status,
+      at: input.at,
+      note: input.note,
+      root_cause: input.rootCause,
+    })
+    return mapIncident(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not update this incident.')
+  }
+}
+
+export async function publishIncident(id: string): Promise<ReporterIncident> {
+  try {
+    const { data } = await getApi().post<IncidentDTO>(`/incidents/${id}/publish`)
+    return mapIncident(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not publish this incident.')
+  }
+}
+
+export async function fetchIncidentSummary(): Promise<IncidentSummary> {
+  try {
+    const { data } = await getApi().get<IncidentSummaryDTO>('/incidents/summary')
+    return {
+      open: data.open,
+      active: data.active,
+      critical: data.critical_open,
+      overdue: data.overdue_updates,
+    }
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load the incident summary.')
   }
 }

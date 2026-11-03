@@ -1,95 +1,181 @@
-import type { CreateTicketRequest, Ticket } from '../types'
+import { getApi } from './api'
+import { mapAxiosError } from './auth'
+import type {
+  RaiseTicketInput,
+  Ticket,
+  TicketCategory,
+  TicketEvent,
+  TicketEventKind,
+  TicketPriority,
+  TicketStatus,
+  TicketSummary,
+} from '../types'
 
 /**
- * Mock-backed, same pattern as services/auth.ts and services/sites.ts. One
- * addition: tickets created through the modal persist to localStorage — the
- * modal's own copy promises "Demo tickets are stored in this browser. They
- * are not sent to Coloplus," so this is a real requirement, not decoration.
+ * Real backend (replacing the old mock/localStorage pipeline): GET /tickets,
+ * POST /sites/:id/tickets, POST /tickets/:id/comments,
+ * POST /tickets/:id/transition. Both airtel_viewer and airtel_reviewer hold
+ * tickets.raise -- unlike disputes/acceptance, this is not reviewer-gated.
  */
 
-const TICKETS_STORAGE_KEY = 'coloplus.tickets.demo'
-
-const BASE_TICKETS: Ticket[] = [
-  {
-    id: 'CP-2048',
-    subject: 'Power supply interruption at Port Harcourt',
-    siteCode: 'RV0256',
-    category: 'Power outage',
-    priority: 'Critical',
-    status: 'In progress',
-    contactEmail: 'ops@airtel.example',
-    description:
-      'Site reported a power supply interruption; generator failed to start automatically.',
-    attachmentNames: [],
-    createdAt: '2026-10-24T09:12:00+01:00',
-  },
-  {
-    id: 'CP-2047',
-    subject: 'Diesel replenishment request',
-    siteCode: 'LG0307',
-    category: 'Low fuel / diesel',
-    priority: 'High',
-    status: 'Open',
-    contactEmail: 'ops@airtel.example',
-    description: 'Tank level below threshold, requesting a scheduled refill.',
-    attachmentNames: [],
-    createdAt: '2026-10-24T08:48:00+01:00',
-  },
-]
-
-function mockDelay(minMs = 400, maxMs = 800): Promise<void> {
-  const duration = minMs + Math.random() * (maxMs - minMs)
-  return new Promise((resolve) => setTimeout(resolve, duration))
+interface TicketDTO {
+  id: string
+  ref: string
+  site_id: string
+  category: TicketCategory
+  priority: TicketPriority
+  subject: string
+  description: string
+  contact_email: string
+  status: TicketStatus
+  resolution?: string
+  resolved_at?: string
+  reopen_count: number
+  incident_id?: string
+  incident_ref?: string
+  created_at: string
+  updated_at: string
 }
 
-function readStoredTickets(): Ticket[] {
+interface TicketEventDTO {
+  id: string
+  party: 'airtel' | 'coloplus'
+  kind: TicketEventKind
+  from_status?: TicketStatus
+  to_status?: TicketStatus
+  body?: string
+  created_at: string
+}
+
+interface TicketListResponseDTO {
+  tickets?: TicketDTO[]
+  total: number
+}
+
+interface TicketSummaryDTO {
+  open: number
+  in_progress: number
+  resolved: number
+  critical_open: number
+}
+
+function mapTicket(dto: TicketDTO): Ticket {
+  return {
+    id: dto.id,
+    ref: dto.ref,
+    siteId: dto.site_id,
+    category: dto.category,
+    priority: dto.priority,
+    subject: dto.subject,
+    description: dto.description,
+    contactEmail: dto.contact_email,
+    status: dto.status,
+    resolution: dto.resolution,
+    resolvedAt: dto.resolved_at,
+    reopenCount: dto.reopen_count,
+    incidentId: dto.incident_id,
+    incidentRef: dto.incident_ref,
+    createdAt: dto.created_at,
+    updatedAt: dto.updated_at,
+  }
+}
+
+function mapEvent(dto: TicketEventDTO): TicketEvent {
+  return {
+    id: dto.id,
+    party: dto.party,
+    kind: dto.kind,
+    fromStatus: dto.from_status,
+    toStatus: dto.to_status,
+    body: dto.body ?? '',
+    createdAt: dto.created_at,
+  }
+}
+
+export interface TicketFilter {
+  siteId?: string
+  status?: TicketStatus
+  openOnly?: boolean
+}
+
+export async function fetchTickets(filter: TicketFilter = {}): Promise<Ticket[]> {
   try {
-    const raw = localStorage.getItem(TICKETS_STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as Ticket[]
-  } catch {
-    return []
+    const { data } = await getApi().get<TicketListResponseDTO>('/tickets', {
+      params: {
+        site_id: filter.siteId,
+        status: filter.status,
+        open: filter.openOnly ? 'true' : undefined,
+        limit: 200,
+      },
+    })
+    return (data.tickets ?? []).map(mapTicket)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load support tickets.')
   }
 }
 
-function writeStoredTickets(tickets: Ticket[]): void {
+export async function fetchTicketDetail(
+  id: string
+): Promise<{ ticket: Ticket; events: TicketEvent[] }> {
   try {
-    localStorage.setItem(TICKETS_STORAGE_KEY, JSON.stringify(tickets))
-  } catch {
-    // Best-effort demo persistence (private browsing, storage quota) —
-    // never blocks ticket creation if it throws.
+    const { data } = await getApi().get<{ ticket: TicketDTO; events?: TicketEventDTO[] }>(
+      `/tickets/${id}`
+    )
+    return { ticket: mapTicket(data.ticket), events: (data.events ?? []).map(mapEvent) }
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load this ticket.')
   }
 }
 
-function nextTicketId(existing: Ticket[]): string {
-  const maxNumber = existing.reduce((max, ticket) => {
-    const match = /^CP-(\d+)$/.exec(ticket.id)
-    const num = match?.[1] ? Number(match[1]) : 0
-    return Math.max(max, num)
-  }, 0)
-  return `CP-${maxNumber + 1}`
-}
-
-export async function getTickets(): Promise<Ticket[]> {
-  await mockDelay()
-  return [...BASE_TICKETS, ...readStoredTickets()]
-}
-
-export async function createTicket(request: CreateTicketRequest): Promise<Ticket> {
-  await mockDelay()
-  const stored = readStoredTickets()
-  const ticket: Ticket = {
-    id: nextTicketId([...BASE_TICKETS, ...stored]),
-    subject: request.subject,
-    siteCode: request.siteCode,
-    category: request.category,
-    priority: request.priority,
-    status: 'Open',
-    contactEmail: request.contactEmail,
-    description: request.description,
-    attachmentNames: request.attachmentNames,
-    createdAt: new Date().toISOString(),
+export async function fetchTicketSummary(): Promise<TicketSummary> {
+  try {
+    const { data } = await getApi().get<TicketSummaryDTO>('/tickets/summary')
+    return {
+      open: data.open,
+      inProgress: data.in_progress,
+      resolved: data.resolved,
+      criticalOpen: data.critical_open,
+    }
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load the ticket summary.')
   }
-  writeStoredTickets([...stored, ticket])
-  return ticket
+}
+
+export async function raiseTicket(input: RaiseTicketInput): Promise<Ticket> {
+  try {
+    const clientKey =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined
+    const { data } = await getApi().post<TicketDTO>(`/sites/${input.siteId}/tickets`, {
+      category: input.category,
+      priority: input.priority,
+      subject: input.subject,
+      description: input.description,
+      contact_email: input.contactEmail,
+      client_key: clientKey,
+    })
+    return mapTicket(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not create this ticket.')
+  }
+}
+
+export async function commentTicket(id: string, body: string): Promise<TicketEvent> {
+  try {
+    const { data } = await getApi().post<TicketEventDTO>(`/tickets/${id}/comments`, { body })
+    return mapEvent(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not add this comment.')
+  }
+}
+
+export async function reopenTicket(id: string, note: string): Promise<Ticket> {
+  try {
+    const { data } = await getApi().post<TicketDTO>(`/tickets/${id}/transition`, {
+      status: 'open',
+      note,
+    })
+    return mapTicket(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not reopen this ticket.')
+  }
 }

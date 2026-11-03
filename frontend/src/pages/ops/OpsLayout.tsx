@@ -11,10 +11,10 @@ export function OpsLayout() {
   const portalLabel = can('users.manage')
     ? 'Admin portal'
     : can('reports.review')
-      ? 'Operations console'
+      ? 'Operations supervisor portal'
       : can('reports.create')
         ? 'Field reporting portal'
-        : 'Operations console'
+        : 'Operations supervisor portal'
 
   // Only field reporters see the Corrections badge; fetching their own
   // rejected-report count for anyone else would be a wasted, permission-

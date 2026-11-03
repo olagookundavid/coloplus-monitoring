@@ -63,7 +63,7 @@ const (
 	//
 	// Version 3: approved planned maintenance leaves the eligible time, and an
 	// outage still going at the end of the day before is assumed to continue
-	// until a report says otherwise (DECISIONS 060).
+	// until a report says otherwise (DECISIONS 062).
 	formulaVersion = "3"
 )
 

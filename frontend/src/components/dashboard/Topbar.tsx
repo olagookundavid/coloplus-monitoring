@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useLocation } from 'react-router-dom'
 
@@ -9,9 +10,12 @@ import { TopbarClock } from './TopbarClock'
 
 export interface TopbarProps {
   nav: NavGroup[]
+  /** The signed-in customer's own co-brand mark (e.g. Airtel) — only the
+      customer portal passes this; ops portals have no customer to brand for. */
+  brandMark?: ReactNode
 }
 
-export function Topbar({ nav }: TopbarProps) {
+export function Topbar({ nav, brandMark }: TopbarProps) {
   const location = useLocation()
   const activeItem = nav
     .flatMap((group) => group.items)
@@ -37,6 +41,12 @@ export function Topbar({ nav }: TopbarProps) {
         <span className="hidden h-8 w-px bg-border md:block" aria-hidden="true" />
         <NotificationsMenu />
         <AccountMenu />
+        {brandMark && (
+          <>
+            <span className="hidden h-8 w-px bg-border md:block" aria-hidden="true" />
+            {brandMark}
+          </>
+        )}
       </div>
     </header>
   )

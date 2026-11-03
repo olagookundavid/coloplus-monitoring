@@ -54,13 +54,13 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Observed versus declared intervals; only observed counts
 - [x] Airtel sees a published view of approved reports only (no notes, authors, review comments)
 - [x] Explanation required for late submissions (a correction already requires its reason) (DECISIONS 049)
-- [~] Events that cross midnight: an outage still going at the end of a day is assumed to continue into the next until it reports otherwise, shown as assumed outage (DECISIONS 060; switch `MIDNIGHT_CARRY_OVER`). Automatic splitting of one entry into two days' reports is not built, since it writes into another day's report; the reporter still splits by hand
-- [x] CSV site import: dry run, row-by-row errors, duplicate detection on the Airtel code, all-or-nothing commit, safe to repeat (`POST /sites/import`, DECISIONS 057). XLSX and importing reports or users not built; XLSX **needs a new dependency**
+- [~] Events that cross midnight: an outage still going at the end of a day is assumed to continue into the next until it reports otherwise, shown as assumed outage (DECISIONS 062; switch `MIDNIGHT_CARRY_OVER`). Automatic splitting of one entry into two days' reports is not built, since it writes into another day's report; the reporter still splits by hand
+- [x] CSV site import: dry run, row-by-row errors, duplicate detection on the Airtel code, all-or-nothing commit, safe to repeat (`POST /sites/import`, DECISIONS 059). XLSX and importing reports or users not built; XLSX **needs a new dependency**
 - [x] Source hours on the daily summary (`source_minutes`, in the API and the CSV export)
 - [x] Planned maintenance on the daily summary (`excluded_maintenance_minutes`); open issues are on the incident register
 - [x] Fuel the manual way: per-site agreed litres per hour and tank size, engineers record deliveries and tank readings, the level is estimated from reported generator hours and labelled an estimate (DECISIONS 050)
 - [ ] Load and generator-asset inputs beyond runtime hours (section 6 tables)
-- [x] Closing and reopening a month: administrators only, after a grace period, reopening needs a reason, closing stores the month's run (`/periods`, DECISIONS 062). The rule is the recommended one and awaits confirmation
+- [x] Closing and reopening a month: administrators only, after a grace period, reopening needs a reason, closing stores the month's run (`/periods`, DECISIONS 064). The rule is the recommended one and awaits confirmation
 - [ ] Provisional view of unapproved entries (only if Airtel and Coloplus jointly enable it). **needs input**
 
 ## 5. Calculations (PRD 7, 8)
@@ -68,12 +68,12 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Daily metrics: eligible minutes, served, outage, unknown, coverage, reported availability, confirmed served share. Missing data is unknown, never available, never zero
 - [x] Portfolio availability pooled by eligible minutes, not an average of percentages
 - [x] "How calculated" payload: formula and version, input report and revision, window, time zone, warnings, plain-language explanation
-- [x] Calculation runs stored with formula version and a fingerprint of the reports behind them; comparison with today (`/calculation-runs`, DECISIONS 059). Month-end automation and queued/failed run states not built (runs are computed in the request)
+- [x] Calculation runs stored with formula version and a fingerprint of the reports behind them; comparison with today (`/calculation-runs`, DECISIONS 061). Month-end automation and queued/failed run states not built (runs are computed in the request)
 - [ ] Formula versions, parameter sets, draft, test, independent approval, effective-dated activation (AT07)
 - [ ] Source runtime; estimated energy; modelled fuel use; fuel balance and variance; battery autonomy (AT02, AT08). Each labelled as an estimate
-- [x] Weekly and monthly aggregation: `GET /dashboard/trend?grain=week|month`, pooled by eligible minutes (DECISIONS 053)
-- [x] Planned-maintenance exclusions, with notice, a cap and a second person's approval (DECISIONS 060). Awaits confirmation of the rules and whether the customer must agree
-- [~] SLA status (met, at risk, missed) beside the confirmed-only reading, off until `SLA_TARGET_PERCENT` is set (DECISIONS 061). The target and the treatment of assumed time are not agreed
+- [x] Weekly and monthly aggregation: `GET /dashboard/trend?grain=week|month`, pooled by eligible minutes (DECISIONS 055)
+- [x] Planned-maintenance exclusions, with notice, a cap and a second person's approval (DECISIONS 062). Awaits confirmation of the rules and whether the customer must agree
+- [~] SLA status (met, at risk, missed) beside the confirmed-only reading, off until `SLA_TARGET_PERCENT` is set (DECISIONS 063). The target and the treatment of assumed time are not agreed
 
 ## 6. Portfolio and site screens, as API (PRD 5)
 
@@ -84,7 +84,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
 - [x] Data-quality indicator on the dashboard (reported days, late reports, corrections, unconfirmed share; level good/fair/poor with proposed thresholds, DECISIONS 052)
 - [ ] Agree the data-quality thresholds with the customer. **needs input**
-- [x] Click-through: `GET /dashboard/outages` lists the outage intervals behind the figures, traced to their reports (DECISIONS 053)
+- [x] Click-through: `GET /dashboard/outages` lists the outage intervals behind the figures, traced to their reports (DECISIONS 055)
 
 ## 7. Incidents and actions (PRD 10)
 
@@ -94,12 +94,12 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Every incident has an owner (to work it), next action and a next-update time
 - [x] Publication to Airtel does not wait for the daily report; Airtel sees published facts and customer updates only **FR**
 - [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
-- [x] Link an incident to the outage intervals of daily reports without duplicating downtime: `GET /incidents/:id/outages` (DECISIONS 053)
-- [~] Midnight: carry-over built (DECISIONS 060); automatic split into the neighbouring day not built
+- [x] Link an incident to the outage intervals of daily reports without duplicating downtime: `GET /incidents/:id/outages` (DECISIONS 055)
+- [~] Midnight: carry-over built (DECISIONS 062); automatic split into the neighbouring day not built
 - [x] Evidence attachments on incidents (DECISIONS 047)
 - [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
 - [x] Ticket attachments (DECISIONS 047)
-- [x] Planned maintenance is a record with its request, approver and note (`/maintenance`, DECISIONS 060)
+- [x] Planned maintenance is a record with its request, approver and note (`/maintenance`, DECISIONS 062)
 - [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
 ## 8. Disputes (PRD 9)
@@ -131,12 +131,12 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Email outbox: written with the change, sent by a job; retried 1m, 5m, 30m, 2h; failures visible to administrators and retryable; never sent twice
 - [x] Resend adapter (plain HTTP, paced); log-only mailer for development
 - [ ] Verified sending domain and live Resend key. **needs input** (domain)
-- [x] In-app alert centre with acknowledgement: `GET /alerts`, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all` (DECISIONS 054)
+- [x] In-app alert centre with acknowledgement: `GET /alerts`, `POST /alerts/:id/acknowledge`, `POST /alerts/acknowledge-all` (DECISIONS 056)
 - [x] Overdue-report alert to the site's reporters and supervisors, once a day while late; says "stale or missing", never "outage"
-- [x] Weekly digest email with a per-user opt-out (DECISIONS 058). Daily digests, repeat reminders and approved recipient lists not built
+- [x] Weekly digest email with a per-user opt-out (DECISIONS 060). Daily digests, repeat reminders and approved recipient lists not built
 - [x] Low-fuel alert by email (once per episode, to those who record fuel; DECISIONS 052)
 - [ ] Runtime anomaly alerts
-- [x] Bounce handling: Resend webhook `POST /webhooks/resend` (signature-checked), a bounced or spam-reported email is marked not delivered in the admin list (DECISIONS 055). Needs the webhook created in Resend and `RESEND_WEBHOOK_SECRET` set
+- [x] Bounce handling: Resend webhook `POST /webhooks/resend` (signature-checked), a bounced or spam-reported email is marked not delivered in the admin list (DECISIONS 057). Needs the webhook created in Resend and `RESEND_WEBHOOK_SECRET` set
 
 ## 11. Evidence and files (PRD 6)
 
@@ -147,13 +147,13 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 
 ## 12. Reports and exports (PRD 10)
 
-- [x] Daily site summaries, incident register, weekly exception report, monthly performance pack and commissioning backlog (CSV; DECISIONS 054)
+- [x] Daily site summaries, incident register, weekly exception report, monthly performance pack and commissioning backlog (CSV; DECISIONS 056)
 - [x] Maintenance log: every window with who asked, who decided and why (`GET /maintenance`)
 - [x] CSV export of daily summaries; gaps stay blank rows
 - [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
-- [x] Issued reports are never overwritten: every export is entered in an immutable register with its SHA-256, and the exact file is kept when storage is on (`GET /exports/issued`; DECISIONS 056). Approved daily reports were already immutable, with linked revisions
+- [x] Issued reports are never overwritten: every export is entered in an immutable register with its SHA-256, and the exact file is kept when storage is on (`GET /exports/issued`; DECISIONS 058). Approved daily reports were already immutable, with linked revisions
 - [ ] Asynchronous generation with visible progress: not needed while exports take well under a second; revisit if a pack grows large
 
 ## 13. Audit (PRD 11)
@@ -161,7 +161,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Authentication, approvals, corrections, publications, disputes, user changes recorded; append-only
 - [x] Audit search (`GET /audit`): by actor, action, entity, time; needs `audit.read`; site-scoped readers see only their sites
 - [x] Audit of exports (`export.daily_summaries`, `export.incident_register`, in a transaction)
-- [~] Retention: emails are anonymised after 90 days (report-only until `RETENTION_ENABLED`); reports and the audit log are kept; deleting evidence and a 24-month archive are not built (DECISIONS 063). The period needs agreeing
+- [~] Retention: emails are anonymised after 90 days (report-only until `RETENTION_ENABLED`); reports and the audit log are kept; deleting evidence and a 24-month archive are not built (DECISIONS 065). The period needs agreeing
 
 ## 14. Non-functional targets (PRD 11) and AT11
 

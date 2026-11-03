@@ -1,26 +1,57 @@
-/* eslint-disable react-refresh/only-export-components -- REGION_OPTIONS and
-   PERIOD_PRESETS are small static data colocated with the one component
-   that uses them, same intentional pattern as AuthContext.tsx. */
+/* eslint-disable react-refresh/only-export-components -- PERIOD_PRESETS and
+   periodToDateRange are small static data/helpers colocated with the one
+   component that uses them, same intentional pattern as AuthContext.tsx. */
 import { CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline'
 
+import type { PortfolioQueryParams } from '../../types'
 import { Select } from '../ui'
 import { DataRecencyIndicator } from './DataRecencyIndicator'
 
-// Hardcoded static content (frontend/CLAUDE.md §8) — no date-picker
-// dependency added; these are presets with nothing real to pick against
-// yet (mock data only). Revisit once a real backend period boundary exists.
-export const REGION_OPTIONS = ['All regions', 'Lagos', 'Ogun', 'Abuja', 'Rivers', 'Oyo', 'Kano']
-export const PERIOD_PRESETS = [
-  'Today · 24 Oct 2026',
-  'Yesterday',
-  'Last 7 days',
-  'Last 30 days',
-  'This month',
-]
+export const ALL_REGIONS = 'All regions'
+
+// Preset labels only -- the actual region list comes from the real
+// GET /dashboard/overview response's `regions[]` (built server-side from
+// the caller's scope), not a hardcoded guess at what they're called.
+export const PERIOD_PRESETS = ['Today', 'Yesterday', 'Last 7 days', 'Last 30 days', 'This month']
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10)
+}
+
+// Translates a preset label into the real date|from&to params GET
+// /dashboard/overview takes (Decision 043) -- the one place that
+// knowledge lives, so every page reading these filters agrees.
+export function periodToDateRange(period: string): Pick<PortfolioQueryParams, 'date' | 'from' | 'to'> {
+  const today = new Date()
+  switch (period) {
+    case 'Yesterday': {
+      const d = new Date(today)
+      d.setDate(d.getDate() - 1)
+      return { date: isoDate(d) }
+    }
+    case 'Last 7 days': {
+      const from = new Date(today)
+      from.setDate(from.getDate() - 6)
+      return { from: isoDate(from), to: isoDate(today) }
+    }
+    case 'Last 30 days': {
+      const from = new Date(today)
+      from.setDate(from.getDate() - 29)
+      return { from: isoDate(from), to: isoDate(today) }
+    }
+    case 'This month': {
+      const from = new Date(today.getFullYear(), today.getMonth(), 1)
+      return { from: isoDate(from), to: isoDate(today) }
+    }
+    default:
+      return { date: isoDate(today) }
+  }
+}
 
 export interface DashboardFilterBarProps {
   region: string
   onRegionChange: (region: string) => void
+  regionOptions: string[]
   period: string
   onPeriodChange: (period: string) => void
 }
@@ -28,6 +59,7 @@ export interface DashboardFilterBarProps {
 export function DashboardFilterBar({
   region,
   onRegionChange,
+  regionOptions,
   period,
   onPeriodChange,
 }: DashboardFilterBarProps) {
@@ -41,7 +73,8 @@ export function DashboardFilterBar({
             onChange={(event) => onRegionChange(event.target.value)}
             aria-label="Region"
           >
-            {REGION_OPTIONS.map((option) => (
+            <option value="">{ALL_REGIONS}</option>
+            {regionOptions.map((option) => (
               <option key={option} value={option}>
                 {option}
               </option>

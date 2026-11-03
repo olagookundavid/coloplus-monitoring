@@ -1,43 +1,104 @@
-import type { Incident } from '../types'
+import { getApi } from './api'
+import { mapAxiosError } from './auth'
+import type {
+  IncidentCategory,
+  IncidentImpact,
+  IncidentSeverity,
+  IncidentWorkflowStatus,
+  PublishedIncident,
+  PublishedIncidentUpdate,
+} from '../types'
 
 /**
- * Mock-backed, same pattern as services/tickets.ts. Each incident tells the
- * same story as an existing ticket (Ikeja Central's diesel shortfall, Port
- * Harcourt's outage) rather than two unrelated fabrications for the same
- * site.
+ * Real backend (replacing the old mock Incident pipeline): GET /incidents,
+ * GET /incidents/:id. Neither airtel_viewer nor airtel_reviewer holds
+ * incidents.read, so the server always returns the published shape here --
+ * no description, owner, notes, root cause or author, and only the updates
+ * written for the customer.
  */
 
-const MOCK_INCIDENTS: Incident[] = [
-  {
-    id: 'FLT-1027',
-    siteCode: 'LG0307',
-    title: 'Diesel below reorder threshold',
-    description: 'Fuel replenishment requested. Current estimate: 190 litres remaining.',
-    impactNote: 'Service remains available. Refill required.',
-    status: 'Open',
-    occurredAt: '2026-10-24T08:40:00+01:00',
-    owner: 'Coloplus Logistics',
-    linkedTicketId: 'CP-2047',
-  },
-  {
-    id: 'FLT-1014',
-    siteCode: 'RV0256',
-    title: 'Power supply interruption',
-    description: 'Grid supply lost; generator failed to start automatically.',
-    impactNote: 'Site running on battery reserve. Field technician dispatched.',
-    status: 'Open',
-    occurredAt: '2026-10-24T09:12:00+01:00',
-    owner: 'Coloplus Field Operations',
-    linkedTicketId: 'CP-2048',
-  },
-]
-
-function mockDelay(minMs = 400, maxMs = 800): Promise<void> {
-  const duration = minMs + Math.random() * (maxMs - minMs)
-  return new Promise((resolve) => setTimeout(resolve, duration))
+interface PublishedUpdateDTO {
+  at: string
+  body: string
 }
 
-export async function getIncidents(): Promise<Incident[]> {
-  await mockDelay()
-  return MOCK_INCIDENTS
+interface PublishedIncidentDTO {
+  id: string
+  ref: string
+  site_id: string
+  category: IncidentCategory
+  severity: IncidentSeverity
+  impact: IncidentImpact
+  title: string
+  status: IncidentWorkflowStatus
+  started_at: string
+  restoration_target?: string
+  restored_at?: string
+  verified: boolean
+  closed_at?: string
+  updates?: PublishedUpdateDTO[]
+}
+
+interface IncidentListResponseDTO {
+  published?: PublishedIncidentDTO[]
+  total: number
+}
+
+function mapUpdate(dto: PublishedUpdateDTO): PublishedIncidentUpdate {
+  return { at: dto.at, body: dto.body }
+}
+
+export function mapPublishedIncident(dto: PublishedIncidentDTO): PublishedIncident {
+  return {
+    id: dto.id,
+    ref: dto.ref,
+    siteId: dto.site_id,
+    category: dto.category,
+    severity: dto.severity,
+    impact: dto.impact,
+    title: dto.title,
+    status: dto.status,
+    startedAt: dto.started_at,
+    restorationTarget: dto.restoration_target,
+    restoredAt: dto.restored_at,
+    verified: dto.verified,
+    closedAt: dto.closed_at,
+    updates: (dto.updates ?? []).map(mapUpdate),
+  }
+}
+
+export interface PublishedIncidentFilter {
+  siteId?: string
+  status?: IncidentWorkflowStatus
+  openOnly?: boolean
+}
+
+export async function fetchPublishedIncidents(
+  filter: PublishedIncidentFilter = {}
+): Promise<PublishedIncident[]> {
+  try {
+    const { data } = await getApi().get<IncidentListResponseDTO>('/incidents', {
+      params: {
+        site_id: filter.siteId,
+        status: filter.status,
+        open: filter.openOnly ? 'true' : undefined,
+        limit: 200,
+      },
+    })
+    return (data.published ?? []).map(mapPublishedIncident)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load incidents.')
+  }
+}
+
+export async function fetchPublishedIncidentDetail(id: string): Promise<PublishedIncident> {
+  try {
+    const { data } = await getApi().get<{ published?: PublishedIncidentDTO }>(`/incidents/${id}`)
+    if (!data.published) {
+      throw new Error('This incident is not available.')
+    }
+    return mapPublishedIncident(data.published)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not load this incident.')
+  }
 }

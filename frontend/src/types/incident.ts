@@ -1,26 +1,3 @@
-export type IncidentStatus = 'Open' | 'Resolved'
-
-export interface Incident {
-  id: string
-  siteCode: string
-  title: string
-  description: string
-  /** The second line in the mockup ("Service remains available. Refill
-      required.") — the customer-facing impact statement, distinct from the
-      technical description above it. */
-  impactNote: string
-  status: IncidentStatus
-  /** ISO 8601. */
-  occurredAt: string
-  owner: string
-  linkedTicketId?: string
-}
-
-// Below: the real reporter-facing incident workflow (backend/internal/domain
-// /incident.go), distinctly named from the mock Incident/IncidentStatus
-// above (still used by the customer-portal SiteDetailPanel's Fault history
-// tab) so the two shapes never collide.
-
 // Mirrors domain.IncidentStatus. "assigned" is reached only via the assign
 // endpoint, not a direct transition.
 export type IncidentWorkflowStatus =
@@ -61,7 +38,10 @@ export interface IncidentUpdateEntry {
 }
 
 // One incident on the reporter's Incidents page -- mirrors dto.IncidentDTO's
-// reporter-relevant fields.
+// reporter-relevant fields. The supervisor Incidents page reuses this same
+// shape (the fields below it, e.g. nextAction/overdue/publishedAt, are the
+// ones only a supervisor view needs) since GET /incidents is one generic,
+// actor-scoped endpoint, not a reporter-specific one.
 export interface ReporterIncident {
   id: string
   /** Server-formatted, e.g. "INC-000123". */
@@ -76,10 +56,14 @@ export interface ReporterIncident {
   startedAt: string
   detectedAt: string
   ownerId?: string
+  nextAction?: string
+  nextUpdateDue?: string
+  overdue: boolean
   restoredAt?: string
   verifiedAt?: string
   closedAt?: string
   rootCause?: string
+  publishedAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -87,4 +71,38 @@ export interface ReporterIncident {
 export interface ReporterIncidentDetail {
   incident: ReporterIncident
   updates: IncidentUpdateEntry[]
+}
+
+// Mirrors dto.IncidentSummaryResponse (GET /incidents/summary).
+export interface IncidentSummary {
+  open: number
+  active: number
+  critical: number
+  overdue: number
+}
+
+// What Airtel sees -- mirrors dto.PublishedIncidentDTO. No description,
+// owner, notes, root cause or author; neither airtel_viewer nor
+// airtel_reviewer holds incidents.read, so GET /incidents always returns
+// this shape for them, never the internal ReporterIncident above.
+export interface PublishedIncidentUpdate {
+  at: string
+  body: string
+}
+
+export interface PublishedIncident {
+  id: string
+  ref: string
+  siteId: string
+  category: IncidentCategory
+  severity: IncidentSeverity
+  impact: IncidentImpact
+  title: string
+  status: IncidentWorkflowStatus
+  startedAt: string
+  restorationTarget?: string
+  restoredAt?: string
+  verified: boolean
+  closedAt?: string
+  updates: PublishedIncidentUpdate[]
 }

@@ -1,34 +1,45 @@
-import {
-  ArrowDownTrayIcon,
-  BoltIcon,
-  InformationCircleIcon,
-  TicketIcon,
-} from '@heroicons/react/24/outline'
+import { ClipboardDocumentListIcon, DocumentTextIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 
-import { DashboardFilterBar, DashboardPageHeader, ReportCard } from '../../components/dashboard'
-import { FuelIcon } from '../../components/icons'
-import { AlertBanner, Button } from '../../components/ui'
-import { useSitePerformance, useTickets } from '../../hooks'
+import { useMemo } from 'react'
+
+import { DashboardFilterBar, DashboardPageHeader, periodToDateRange, ReportCard } from '../../components/dashboard'
+import { AlertBanner } from '../../components/ui'
 import {
-  buildDieselFuelCsv,
-  buildFaultsSupportCsv,
-  buildSitePerformanceCsv,
-  downloadCsv,
-} from '../../utils'
+  useAdminSites,
+  useDownloadDailySummariesMutation,
+  useDownloadIncidentRegisterMutation,
+} from '../../hooks'
+import { toast } from '../../utils'
 import { useDashboardFilters } from './CustomerLayout'
 
 const EXPORT_DETAILS = [
-  { label: 'Reporting scope', value: 'Site IDs, region and selected reporting period' },
-  { label: 'Data context', value: 'Units, source basis and observation timestamps' },
-  { label: 'Missing data', value: 'Blank values remain unavailable' },
+  { label: 'Reporting scope', value: 'Site ids, region and the selected period' },
+  { label: 'Data context', value: 'Units, source basis, review state and formula version' },
+  { label: 'Missing data', value: 'Blank values remain unavailable, never shown as zero' },
   { label: 'Time standard', value: 'Africa/Lagos · WAT (UTC+1)' },
 ]
 
 export function Reports() {
-  const { region, setRegion, period, setPeriod } = useDashboardFilters()
-  const sitesQuery = useSitePerformance({ region, period })
-  const ticketsQuery = useTickets()
-  const scope = { region, period }
+  const { region, period, setRegion, setPeriod } = useDashboardFilters()
+  const sitesQuery = useAdminSites()
+  const regionOptions = useMemo(
+    () => [...new Set((sitesQuery.data ?? []).map((site) => site.region))].sort(),
+    [sitesQuery.data]
+  )
+  const dailySummariesMutation = useDownloadDailySummariesMutation()
+  const incidentRegisterMutation = useDownloadIncidentRegisterMutation()
+
+  const { date, from, to } = periodToDateRange(period)
+  const range = { from: from ?? date ?? '', to: to ?? date ?? '', region: region || undefined }
+
+  async function handleDownload(mutation: typeof dailySummariesMutation, label: string) {
+    try {
+      await mutation.mutateAsync(range)
+      toast.success(`${label} downloaded.`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Could not generate ${label.toLowerCase()}.`)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -36,16 +47,12 @@ export function Reports() {
         eyebrow="Performance & insights"
         title="Reports & exports"
         subtitle="Your operational performance, ready to review and share."
-        actions={
-          <Button variant="outline" icon={ArrowDownTrayIcon}>
-            Export report
-          </Button>
-        }
       />
 
       <DashboardFilterBar
         region={region}
         onRegionChange={setRegion}
+        regionOptions={regionOptions}
         period={period}
         onPeriodChange={setPeriod}
       />
@@ -55,44 +62,23 @@ export function Reports() {
         icon={InformationCircleIcon}
         title={
           <>
-            Exports use <strong>{region}</strong> and <strong>{period}</strong>.
+            Exports use <strong>{region || 'all regions'}</strong> and <strong>{period}</strong>.
           </>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ReportCard
-          icon={BoltIcon}
-          title="Site performance"
-          description="Energy estimates, power and radio availability, diesel levels and data coverage."
-          onDownload={() =>
-            downloadCsv(
-              'coloplus-site-performance.csv',
-              buildSitePerformanceCsv(sitesQuery.data ?? [], scope)
-            )
-          }
+          icon={DocumentTextIcon}
+          title="Daily summaries"
+          description="One row per site/day: minutes, coverage, reported availability, provenance and review state."
+          onDownload={() => handleDownload(dailySummariesMutation, 'Daily summaries')}
         />
         <ReportCard
-          icon={FuelIcon}
-          title="Diesel & fuel"
-          description="Tank capacity, latest recorded volume, fuel percentage and refill indicators."
-          onDownload={() =>
-            downloadCsv(
-              'coloplus-diesel-fuel.csv',
-              buildDieselFuelCsv(sitesQuery.data ?? [], scope)
-            )
-          }
-        />
-        <ReportCard
-          icon={TicketIcon}
-          title="Faults & support"
-          description="Customer tickets, service impact, priorities, status and recorded updates."
-          onDownload={() =>
-            downloadCsv(
-              'coloplus-faults-support.csv',
-              buildFaultsSupportCsv(ticketsQuery.data ?? [], scope)
-            )
-          }
+          icon={ClipboardDocumentListIcon}
+          title="Incident register"
+          description="Published incidents in the period — category, severity, times and restoration status."
+          onDownload={() => handleDownload(incidentRegisterMutation, 'Incident register')}
         />
       </div>
 

@@ -1,26 +1,24 @@
 import type { Column } from '../ui'
-import type { Site, SiteStatus } from '../../types'
-import { getSiteStatusTone } from '../../utils'
+import type { PortfolioSite } from '../../types'
+import { formatDateTimeWAT, siteConditionLabel } from '../../utils'
 import { StatusBadge } from '../ui'
 
-// Shared across every page that shows the site table (frontend/CLAUDE.md §4:
-// "When a page shows the same columns twice, share them"). First built for
-// Overview, reused as-is by Sites.
+// Shared across every page that shows the portfolio site table
+// (frontend/CLAUDE.md §4: "When a page shows the same columns twice, share
+// them"). Real-backend-shaped (PortfolioSite, from GET /dashboard/overview)
+// -- no more invented "radio availability" or "energy consumed" columns;
+// neither is a real tracked metric.
 
-// Stable empty array (§4: "a module-level const NO_ROWS: Row[] = [], not an
-// inline ?? []") so a loading/undefined query result never hands DataTable a
-// fresh array reference every render.
-export const NO_SITES: Site[] = []
+export const NO_SITES: PortfolioSite[] = []
 
-export const STATUS_FILTER_OPTIONS: Array<SiteStatus | 'All statuses'> = [
-  'All statuses',
-  'Available',
-  'Low diesel',
-  'Power outage',
-  'Update overdue',
+export const CONDITION_FILTER_OPTIONS: Array<PortfolioSite['condition'] | 'All conditions'> = [
+  'All conditions',
+  'available',
+  'outage_reported',
+  'awaiting_update',
 ]
 
-export const SITE_COLUMNS: Column<Site>[] = [
+export const SITE_COLUMNS: Column<PortfolioSite>[] = [
   {
     header: 'Site / Location',
     accessor: (site) => site.name,
@@ -28,94 +26,62 @@ export const SITE_COLUMNS: Column<Site>[] = [
       <div>
         <p className="font-medium text-text">{site.name}</p>
         <p className="text-xs text-text-muted">
-          {site.code} · {site.region}
+          {site.airtelCode} · {site.region}
         </p>
       </div>
     ),
     sortable: true,
   },
   {
-    header: 'Site status',
-    accessor: (site) => site.status,
-    cell: (site) => <StatusBadge label={site.status} tone={getSiteStatusTone(site.status)} />,
+    header: 'Condition',
+    accessor: (site) => site.condition,
+    cell: (site) => {
+      const { label, tone } = siteConditionLabel(site.condition)
+      return <StatusBadge label={label} tone={tone} />
+    },
     sortable: true,
   },
   {
-    header: 'Power source',
-    accessor: (site) => site.powerSource,
-    sortable: true,
-  },
-  {
-    header: 'Energy',
-    accessor: (site) => site.energyKwh,
-    cell: (site) => `${site.energyKwh.toLocaleString()} kWh`,
-    align: 'right',
-    sortable: true,
-  },
-  {
-    header: 'Diesel level',
-    accessor: (site) => site.dieselPercent,
-    cell: (site) => (
-      <div className="flex items-center justify-end gap-2">
-        <div className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-subtle">
-          <div
-            className={`h-full rounded-full ${site.dieselPercent < 25 ? 'bg-warning' : 'bg-primary'}`}
-            style={{ width: `${site.dieselPercent}%` }}
-          />
-        </div>
-        <span>{site.dieselPercent}%</span>
-      </div>
-    ),
-    align: 'right',
-    sortable: true,
-  },
-  {
-    header: 'Power avail.',
-    accessor: (site) => site.powerAvailabilityPercent,
-    cell: (site) => (
-      <span
-        className={site.powerAvailabilityPercent < 98 ? 'text-warning-700' : 'text-primary-700'}
-      >
-        {site.powerAvailabilityPercent.toFixed(2)}%
-      </span>
-    ),
-    align: 'right',
-    sortable: true,
-  },
-  {
-    header: 'Radio avail.',
-    accessor: (site) => site.radioAvailabilityPercent,
+    header: 'Reported availability',
+    accessor: (site) => site.summary?.reportedAvailabilityPct ?? -1,
     cell: (site) =>
-      site.radioAvailabilityPercent == null ? (
-        <div>
-          <p>—</p>
-          <p className="text-xs text-text-muted">Awaiting data</p>
-        </div>
+      site.summary?.reportedAvailabilityPct == null ? (
+        <span className="text-text-muted">No approved report</span>
       ) : (
-        <span>{site.radioAvailabilityPercent.toFixed(2)}%</span>
+        <span>{site.summary.reportedAvailabilityPct.toFixed(2)}%</span>
       ),
     align: 'right',
     sortable: true,
-    sortValue: (site) => site.radioAvailabilityPercent ?? -1,
+  },
+  {
+    header: 'Data quality',
+    accessor: (site) => site.dataQuality?.level ?? '',
+    cell: (site) => {
+      const quality = site.dataQuality
+      if (!quality) return <span className="text-text-muted">—</span>
+      const tone = quality.level === 'good' ? 'success' : quality.level === 'fair' ? 'warning' : 'danger'
+      return <StatusBadge label={quality.level} tone={tone} />
+    },
+    sortable: true,
+  },
+  {
+    header: 'Fuel',
+    accessor: (site) => site.fuel?.litres ?? -1,
+    cell: (site) =>
+      !site.fuel || site.fuel.litres == null ? (
+        <span className="text-text-muted">—</span>
+      ) : (
+        <span className={site.fuel.low || site.fuel.empty ? 'text-warning-700' : undefined}>
+          {Math.round(site.fuel.litres).toLocaleString()} L
+        </span>
+      ),
+    align: 'right',
+    sortable: true,
   },
   {
     header: 'Updated WAT',
-    accessor: (site) => site.updatedAt,
-    cell: (site) => {
-      const time = new Date(site.updatedAt).toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Africa/Lagos',
-      })
-      return (
-        <div>
-          <p>{time}</p>
-          {site.status === 'Update overdue' && (
-            <p className="text-xs text-warning-700">Update overdue</p>
-          )}
-        </div>
-      )
-    },
+    accessor: (site) => site.asOf ?? '',
+    cell: (site) => (site.asOf ? formatDateTimeWAT(site.asOf) : '—'),
     sortable: true,
   },
 ]

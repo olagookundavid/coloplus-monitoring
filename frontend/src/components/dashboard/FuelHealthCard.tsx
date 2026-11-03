@@ -28,25 +28,23 @@ export function FuelHealthCard({ summary }: FuelHealthCardProps) {
       </p>
 
       <ul className="mt-4 flex flex-1 flex-col gap-3">
-        {summary.sites.map((site) => {
-          const isLow = site.percent < 25
-          return (
-            <li key={site.siteId}>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-text">{site.siteName}</span>
-                <span className={isLow ? 'font-medium text-warning-700' : 'text-text-muted'}>
-                  {site.percent}%
-                </span>
-              </div>
-              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-subtle">
-                <div
-                  className={`h-full rounded-full ${isLow ? 'bg-warning' : 'bg-primary'}`}
-                  style={{ width: `${site.percent}%` }}
-                />
-              </div>
+        {summary.sites.length === 0 ? (
+          <li className="text-sm text-text-muted">No sites are low on fuel.</li>
+        ) : (
+          summary.sites.map((site) => (
+            <li key={site.siteId} className="flex items-center justify-between text-sm">
+              <span className="text-text">{site.siteName}</span>
+              <span className="font-medium text-warning-700">
+                {site.empty
+                  ? 'Empty'
+                  : site.litres == null
+                    ? '—'
+                    : `${Math.round(site.litres).toLocaleString()} L`}
+                {site.hoursRemaining != null && ` · ${Math.round(site.hoursRemaining)}h left`}
+              </span>
             </li>
-          )
-        })}
+          ))
+        )}
       </ul>
 
       {summary.sitesNeedingReplenishment > 0 && (

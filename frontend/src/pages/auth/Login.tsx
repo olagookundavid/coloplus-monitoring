@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { AuthLayout } from '../../components/auth'
 import {
@@ -26,10 +26,6 @@ import {
 } from '../../utils'
 
 const INITIAL_MFA_VALUES: MfaCodeFormValues = { code: '' }
-
-interface LocationState {
-  from?: { pathname: string }
-}
 
 // "Keep me signed in on this device" only remembers the *email*, for
 // autofill convenience — never the password. Storing a password in
@@ -60,7 +56,6 @@ function writeRememberedEmail(email: string | null): void {
 
 export function Login() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { refreshSession } = useAuth()
   const loginMutation = useLoginMutation()
 
@@ -92,19 +87,6 @@ export function Login() {
     setTouched((current) => ({ ...current, [field]: true }))
   }
 
-  // Respects an explicit redirect target (RequireAuth/RequireRole sent them
-  // here from somewhere specific) over the permission-based default, so e.g.
-  // an admin bounced off /users for being signed out lands back there.
-  // ROUTES.HOME doesn't count as "somewhere specific": RequireAuth records
-  // it as `from` for every signed-out visitor who just opens the app at
-  // '/', not only ones deep-linking into the customer portal, so treating
-  // it as deliberate would make the permission-based default never apply.
-  function destinationAfterLogin(permissions: string[]): string {
-    const from = (location.state as LocationState | null)?.from?.pathname
-    if (from && from !== ROUTES.HOME) return from
-    return landingRouteFor(permissions)
-  }
-
   // Shared by both steps: login is one call resubmitted whole with
   // `totpCode` filled in, not a separate "verify" endpoint.
   async function completeLogin(totpCode?: string) {
@@ -123,9 +105,7 @@ export function Login() {
       toast.success('Welcome back.')
     }
     navigate(
-      result.mfaSetupRequired
-        ? ROUTES.MFA_SETUP
-        : destinationAfterLogin(session?.permissions ?? []),
+      result.mfaSetupRequired ? ROUTES.MFA_SETUP : landingRouteFor(session?.permissions ?? []),
       { replace: true }
     )
   }

@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom'
 import { ROUTES } from '../../constants'
 import { useAuth } from '../../contexts'
 import { usePermissions } from '../../hooks'
+import { landingRouteFor } from '../../utils'
 import { MainLoader } from '../ui'
 
 export interface RequireRoleProps {
@@ -18,15 +19,23 @@ export interface RequireRoleProps {
 }
 
 export function RequireRole({ permission, children }: RequireRoleProps) {
-  const { status } = useAuth()
+  const { status, permissions } = useAuth()
   const { can } = usePermissions()
 
   if (status === 'loading') {
     return <MainLoader />
   }
 
-  if (status === 'unauthenticated' || !can(permission)) {
-    return <Navigate to={ROUTES.HOME} replace />
+  if (status === 'unauthenticated') {
+    return <Navigate to={ROUTES.LOGIN} replace />
+  }
+
+  // Denied, not signed out -- land on this account's own home, not
+  // unconditionally the customer portal (that was the bug: a denial for
+  // any role used to dump everyone on ROUTES.HOME regardless of who they
+  // actually are).
+  if (!can(permission)) {
+    return <Navigate to={landingRouteFor(permissions)} replace />
   }
 
   return <>{children}</>

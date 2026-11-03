@@ -11,8 +11,8 @@ export function toCsv(rows: Array<Array<string | number | null | undefined>>): s
   return rows.map((row) => row.map(escapeCsvValue).join(',')).join('\r\n')
 }
 
-export function downloadCsv(filename: string, content: string): void {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' })
+export function downloadTextFile(filename: string, content: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -21,4 +21,8 @@ export function downloadCsv(filename: string, content: string): void {
   link.click()
   document.body.removeChild(link)
   URL.revokeObjectURL(url)
+}
+
+export function downloadCsv(filename: string, content: string): void {
+  downloadTextFile(filename, content, 'text/csv;charset=utf-8;')
 }

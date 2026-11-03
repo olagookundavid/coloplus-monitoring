@@ -10,7 +10,7 @@ import (
 
 // Adjustments are the facts, outside a day's own report, that figures need:
 // approved planned maintenance (taken out of the eligible time) and an outage
-// carried over from the day before (DECISIONS 060). One value is shared by every
+// carried over from the day before (DECISIONS 062). One value is shared by every
 // service that shows a figure, so a figure never differs from screen to screen.
 type Adjustments struct {
 	windows ports.MaintenanceRepository
