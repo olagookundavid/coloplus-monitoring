@@ -1,11 +1,23 @@
 # Coloplus MVP checklist
 
-Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and the acceptance tests AT01 to AT11. Updated 29 Oct 2026, after disputes, audit search, overdue-report alerts, acceptance and the site overview. Update this file in the same change that finishes an item.
+Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and the acceptance tests AT01 to AT11. Updated 3 Nov 2026, after the go-live defaults (DECISIONS 068). Update this file in the same change that finishes an item.
 
 - `[x]` built, lint clean, and the risky parts have tests
 - `[~]` built in the recommended form; the rule or number still needs the customer's or the owner's manager's confirmation, or part of it is left out (the line says which)
 - `[ ]` not done. A tag says why: **partial** (some of it exists), **needs input** (waiting on a decision, credential or domain from outside), **new dependency** (needs your yes before I start)
 - The PRD's "recommended first release" (section 13) is marked **FR** where an item belongs to it: site condition, a complete fault register, downtime, accountability and recovery updates, with energy and fuel estimates only where inputs are adequate.
+
+## 0. Readiness for first release (3 Nov 2026)
+
+The backend is complete for the PRD's recommended first release (site condition, fault register, downtime, accountability and recovery updates). Every open question that only needed a setting now carries the recommended answer (DECISIONS 068). What stands between this and real use is not backend code:
+
+1. **Resend sending domain verified and the live key in the server's `.env`** (A5, A6, B5). Without it no invitation or alert email leaves the system.
+2. **Server `.env` edited** to take the new defaults (`WEEKLY_DIGEST_ENABLED=true`, `SLA_TARGET_PERCENT=99.5`, `RETENTION_ENABLED=true`), if it was copied from the old example.
+3. **Backups of `coloplus` to R2 (B7) and one restore run (E6)**, then UptimeRobot (E3).
+4. **Real sites loaded** (`POST /sites/import`) and users invited.
+5. **The front end** covering the screens in `docs/FRONTEND.md`.
+
+Not in the first release by decision: formula versions, estimated energy, XLSX/PDF, provisional view of unapproved entries.
 
 ## 1. Foundations
 
@@ -73,7 +85,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [ ] Source runtime; estimated energy; modelled fuel use; fuel balance and variance; battery autonomy (AT02, AT08). Each labelled as an estimate
 - [x] Weekly and monthly aggregation: `GET /dashboard/trend?grain=week|month`, pooled by eligible minutes (DECISIONS 055)
 - [x] Planned-maintenance exclusions, with notice, a cap and a second person's approval (DECISIONS 062). Awaits confirmation of the rules and whether the customer must agree
-- [~] SLA status (met, at risk, missed) beside the confirmed-only reading, off until `SLA_TARGET_PERCENT` is set (DECISIONS 063). The target and the treatment of assumed time are not agreed
+- [~] SLA status (met, at risk, missed) beside the confirmed-only reading, target 99.5% by default (`SLA_TARGET_PERCENT`, DECISIONS 063, 068). The target and the treatment of assumed time await confirmation
 
 ## 6. Portfolio and site screens, as API (PRD 5)
 
@@ -161,7 +173,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Authentication, approvals, corrections, publications, disputes, user changes recorded; append-only
 - [x] Audit search (`GET /audit`): by actor, action, entity, time; needs `audit.read`; site-scoped readers see only their sites
 - [x] Audit of exports (`export.daily_summaries`, `export.incident_register`, in a transaction)
-- [~] Retention: emails are anonymised after 90 days (report-only until `RETENTION_ENABLED`); reports and the audit log are kept; deleting evidence and a 24-month archive are not built (DECISIONS 065). The period needs agreeing
+- [~] Retention: emails are anonymised after 90 days (on by default, DECISIONS 068); reports and the audit log are kept; deleting evidence and a 24-month archive are not built (DECISIONS 065). The period needs agreeing
 
 ## 14. Non-functional targets (PRD 11) and AT11
 
