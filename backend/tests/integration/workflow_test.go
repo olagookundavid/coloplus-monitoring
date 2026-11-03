@@ -15,10 +15,10 @@ import (
 // on that site, a supervisor, an Airtel viewer, and an outsider.
 type workflow struct {
 	*stack
-	site                                    string
-	admin, reporter, supervisor, airtel, ot string // tokens
-	reporterID                              string
-	repEmail, supEmail, airEmail            string
+	site                                     string
+	admin, reporter, supervisor, airtel, ot  string // tokens
+	reporterID                               string
+	repEmail, supEmail, airEmail, adminEmail string
 }
 
 func newWorkflow(t *testing.T) *workflow {
@@ -35,7 +35,7 @@ func newWorkflow(t *testing.T) *workflow {
 	return &workflow{
 		stack: s, site: site, admin: admin, reporterID: repID,
 		reporter: s.login(repEmail), supervisor: s.login(supEmail), airtel: s.login(airEmail), ot: s.login(outEmail),
-		repEmail: repEmail, supEmail: supEmail, airEmail: airEmail,
+		repEmail: repEmail, supEmail: supEmail, airEmail: airEmail, adminEmail: adminEmail,
 	}
 }
 

@@ -175,7 +175,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		notifications, loc, cfg.Mail.BaseURL)
 	corrections := services.NewCorrectionService(incidentCorrectionRepo, incidentRepo, txManager, audit, clock)
 	disputes := services.NewDisputeService(disputeRepo, reportRepo, siteRepo, userRepo, txManager, audit, clock,
-		notifications, loc, cfg.Mail.BaseURL)
+		notifications, loc, cfg.Mail.BaseURL).WithResponseTime(time.Duration(cfg.Response.DisputeHours) * time.Hour)
 	tickets := services.NewTicketService(ticketRepo, incidentRepo, siteRepo, userRepo, txManager, audit, clock,
 		notifications, cfg.Mail.BaseURL)
 	objectStore, err := newObjectStore(cfg)
@@ -193,7 +193,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	fuelService := services.NewFuelService(fuelRepo, siteRepo, reportRepo, userRepo, txManager, audit, clock,
 		notifications, loc, cfg.Mail.BaseURL, cfg.Fuel.LowHours)
 	acceptance := services.NewAcceptanceService(acceptanceRepo, siteRepo, userRepo, txManager, audit, clock,
-		notifications, loc, cfg.Mail.BaseURL)
+		notifications, loc, cfg.Mail.BaseURL).WithEscalation(time.Duration(cfg.Response.AcceptanceEscalateDays) * 24 * time.Hour)
 	sla := domain.SLA{TargetPercent: cfg.SLA.TargetPercent, AtRiskPoints: cfg.SLA.AtRiskPoints}
 	maintenanceRepo := postgres.NewMaintenanceRepository(db)
 	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, cfg.Figures.MidnightCarryOver)
@@ -244,6 +244,15 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		n, err := acceptance.AlertOverdue(ctx)
 		if n > 0 {
 			log.Info("overdue acceptance alerts queued", "emails", n)
+		}
+		return err
+	}); err != nil {
+		return err
+	}
+	if err := scheduler.Add("dispute-alerts", cfg.Jobs.DisputeAlertsCron, func(ctx context.Context) error {
+		n, err := disputes.AlertOverdue(ctx)
+		if n > 0 {
+			log.Info("overdue dispute alerts queued", "emails", n)
 		}
 		return err
 	}); err != nil {

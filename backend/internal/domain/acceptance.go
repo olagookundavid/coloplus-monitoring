@@ -57,6 +57,27 @@ type Acceptance struct {
 	UpdatedAt   time.Time
 }
 
+// stageDueDays are the days a step is given when nobody sets a date. They are
+// proposals until the customer agrees a commissioning timetable.
+var stageDueDays = map[AcceptanceStage]int{
+	StageRequested:          14, // Coloplus builds
+	StageBuilt:              3,  // Coloplus declares the site ready
+	StageReadyForInspection: 5,  // Airtel inspects
+	StageInspected:          5,  // Airtel decides
+	StageRejected:           14, // Coloplus fixes what was found
+}
+
+// DefaultDue is when the step the process has just reached falls due if nobody
+// sets a date; nil for a stage that has no deadline (accepted, on hold).
+func DefaultDue(stage AcceptanceStage, now time.Time) *time.Time {
+	days, ok := stageDueDays[stage]
+	if !ok {
+		return nil
+	}
+	t := now.AddDate(0, 0, days)
+	return &t
+}
+
 // Done reports whether the process has ended in acceptance.
 func (a Acceptance) Done() bool { return a.Stage == StageAccepted }
 
@@ -169,8 +190,11 @@ func (a *Acceptance) Apply(party DisputeParty, actorID string, s AcceptanceStep,
 		return
 	}
 	if from == StageOnHold {
-		// Resuming: back to the stage it left, with the hold cleared.
+		// Resuming: back to the stage it left, with the hold cleared and a fresh deadline.
 		a.Stage, a.HeldFrom, a.HoldReason = s.To, "", ""
+		if s.DueAt == nil {
+			a.DueAt = DefaultDue(s.To, now)
+		}
 		return
 	}
 	a.Stage = s.To
@@ -185,6 +209,11 @@ func (a *Acceptance) Apply(party DisputeParty, actorID string, s AcceptanceStep,
 		a.Reason, a.Responsible = note, PartyColoplus
 	case StageAccepted:
 		a.DecidedAt, a.DecidedBy = &now, actorID
+	}
+	// Each step has its own deadline; the one left from the step before no
+	// longer applies.
+	if s.DueAt == nil {
+		a.DueAt = DefaultDue(s.To, now)
 	}
 }
 

@@ -321,6 +321,7 @@ func optionalDate(v string) (*time.Time, error) {
 //	@Param			from	query		string	false	"First day of a period; give with to"
 //	@Param			to		query		string	false	"Last day of a period (not in the future)"
 //	@Param			region	query		string	false	"Only sites in this region"
+//	@Param			quality	query		string	false	"Only site rows whose data quality is good, fair or poor; the counts and the portfolio still cover every site"
 //	@Success		200		{object}	dto.OverviewResponse
 //	@Failure		400		{object}	dto.ErrorResponse
 //	@Router			/api/v1/dashboard/overview [get]
@@ -335,7 +336,21 @@ func (a *api) overview(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toOverviewResponse(o, a.loc))
+	resp := toOverviewResponse(o, a.loc)
+	if q := c.Query("quality"); q != "" {
+		if q != string(domain.QualityGood) && q != string(domain.QualityFair) && q != string(domain.QualityPoor) {
+			a.fail(c, badRequest("quality must be good, fair or poor"))
+			return
+		}
+		kept := resp.Sites[:0]
+		for _, row := range resp.Sites {
+			if row.DataQuality.Level == q {
+				kept = append(kept, row)
+			}
+		}
+		resp.Sites = kept
+	}
+	c.JSON(http.StatusOK, resp)
 }
 
 // mySites godoc

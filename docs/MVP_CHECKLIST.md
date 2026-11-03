@@ -43,7 +43,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Site directory with search by either code and name, filters on state, region, status
 - [ ] Asset capacities, reporting cadence, load profile, formula profile, effective dates on the site record. **partial**
 - [x] Directory filters on power source, acceptance stage and assigned person (staff only)
-- [ ] Directory filter on data quality: the indicator is on the dashboard for the chosen period; a filter on the site list needs the thresholds agreed first
+- [x] Data-quality filter: `GET /dashboard/overview?quality=good|fair|poor` (DECISIONS 067), with the proposed thresholds
 
 ## 4. Daily reporting and approval (PRD 6, 9)
 
@@ -83,7 +83,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Period dashboards: `GET /dashboard/overview?from&to&region` pools the days by eligible minutes, `GET /dashboard/trend` gives one point per day with gaps as null (DECISIONS 043)
 - [x] Stale count on the dashboard (`sites_awaiting_update`, `sites_not_reported`)
 - [x] Data-quality indicator on the dashboard (reported days, late reports, corrections, unconfirmed share; level good/fair/poor with proposed thresholds, DECISIONS 052)
-- [ ] Agree the data-quality thresholds with the customer. **needs input**
+- [~] Data-quality thresholds are built as proposals (DECISIONS 052); the customer still has to agree them
 - [x] Click-through: `GET /dashboard/outages` lists the outage intervals behind the figures, traced to their reports (DECISIONS 055)
 
 ## 7. Incidents and actions (PRD 10)
@@ -112,7 +112,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Reports show `open_disputes`, so a disputed figure says so
 - [x] Evidence attachments on disputes (DECISIONS 047)
 - [x] Dispute state carried into exports (open and total disputes per site-day, corrections do not hide them)
-- [ ] Overdue-dispute alerts. **needs input** (an agreed response time)
+- [~] Overdue-dispute alerts: Coloplus gets 72 hours (`DISPUTE_RESPONSE_HOURS`) once a dispute waits on it; one alert per wait (DECISIONS 067). The time is a proposal
 
 ## 9. Commissioning and acceptance (PRD 9)
 
@@ -124,7 +124,7 @@ Backend status against the PRD (v1.1, 24 Oct 2026), section 12 "MVP build" and t
 - [x] Acceptance-overdue alert, once per missed due time; a hold stops the clock
 - [ ] KPI inclusion rule. **needs input**: built as a proposed default (Airtel's acceptance activates a pending site; pending sites stay out of the KPIs). Confirm with Airtel
 - [x] Documents attached to the acceptance dossier (DECISIONS 047)
-- [ ] Escalation beyond the second email; per-milestone due dates
+- [~] Every acceptance step has a deadline (a default per stage when none is set) and an acceptance overdue for 7 days also goes to the administrators once (DECISIONS 067). The days are proposals
 
 ## 10. Alerts and email (PRD 10)
 

@@ -1238,6 +1238,12 @@
                         "description": "Only sites in this region",
                         "name": "region",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Only site rows whose data quality is good, fair or poor; the counts and the portfolio still cover every site",
+                        "name": "quality",
+                        "in": "query"
                     }
                 ],
                 "responses": {

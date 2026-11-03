@@ -43,7 +43,7 @@ These are not new features. The backend now answers differently, and today's scr
 - [ ] Three steps, never through the API: `POST /attachments` `{ owner_type: ticket|incident|dispute|acceptance, owner_id, filename, content_type, size_bytes, sha256, shared? }` returns an `upload` target (`url`, `method`, `headers`); `PUT` the file to that URL with **exactly** those headers; then `POST /attachments/:id/complete`. Compute the SHA-256 in the browser (`crypto.subtle`) first. Accepted: JPEG, PNG, WebP, HEIC, PDF, plain text, CSV, Word, Excel; at most 25 per owner. List with `GET /attachments?owner_type&owner_id` (for acceptance `owner_id` is the site id). Download is `GET /attachments/:id/download`, which returns a link good for about two minutes: open it at once, do not store it. `internal` files are Coloplus-only. `owner_type: report` attaches evidence to a daily report (a meter photo); it is always internal, open to reporters while the report is a draft, rejected or submitted, and closed once approved (409). Customers cannot add or list it. (066) A `503` means file storage is off; show a plain message. `shared: true` lets Airtel see a Coloplus file. (047)
 
 ### Dashboard
-- [ ] **Period and region:** `GET /dashboard/overview?from&to&region` (or `?date=`), pooled by minutes. `regions` in the response fills the region filter. (043)
+- [ ] **Period, region and data quality:** `GET /dashboard/overview?from&to&region[&quality=good|fair|poor]` (or `?date=`), pooled by minutes. `quality` keeps only those site rows; the counts and portfolio still cover every site, so say so beside a filtered list. `regions` in the response fills the region filter. (043)
 - [ ] **Trend grain:** `GET /dashboard/trend?from&to&region&grain=day|week|month`. A bucket nobody reported is `null`, not zero. Each point carries `from`, `to` and `days` (a part bucket is plain), and `site_days` / `site_days_reported` to say how much rests on reports. (043)
 - [ ] **Drill-down:** `GET /dashboard/outages?from&to&region&site_id` lists the outage stretches behind the figures (at most 92 days), each with `report_id` and `report_revision`. `reason` is Coloplus-only. `GET /incidents/:id/outages` shows the outage reported during an incident and `total_minutes`. (055)
 - [ ] **Source hours:** `source_minutes` (`{ grid: 700, generator: 600 }`) on a summary. Sources can overlap, so do not make them add up to served time. (055)
@@ -65,6 +65,9 @@ These are not new features. The backend now answers differently, and today's scr
 
 ### Auditor role
 - [ ] A read-only role (`auditor`): sees everything in scope, can export and read the audit log, can change nothing. Hide every write control when the permission is missing; do not hide by role name. (045)
+
+### Acceptance and disputes
+- [ ] Every acceptance step now has a `due_at` (a default per stage when none is set); show it and mark an overdue one. Overdue acceptances also email administrators after 7 days (`acceptance.escalated`) and a dispute waiting on Coloplus for over 72 hours alerts its managers (`dispute.overdue`); both arrive in the alert centre. Show them as ordinary alerts. (067)
 
 ## 2. Rules to keep in mind
 

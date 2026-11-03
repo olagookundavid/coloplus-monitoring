@@ -34,6 +34,7 @@ type Config struct {
 	SLA       SLA
 	Periods   Periods
 	Figures   Figures
+	Response  Response
 	Retention Retention
 	Jobs      Jobs
 	Swagger   Swagger
@@ -139,6 +140,17 @@ type Retention struct {
 	NotificationDays int
 }
 
+// Response configures how long each side has to act before an alert goes out.
+// The numbers are proposals until the customer agrees them.
+type Response struct {
+	// DisputeHours is how long Coloplus has to respond to a dispute that is
+	// waiting on it; 0 turns the alerts off.
+	DisputeHours int
+	// AcceptanceEscalateDays is how long an overdue acceptance step waits before
+	// the administrators are told as well; 0 turns escalation off.
+	AcceptanceEscalateDays int
+}
+
 // Figures configures how figures are adjusted beyond a day's own report. The
 // numbers are proposals until the customer agrees them.
 type Figures struct {
@@ -206,6 +218,7 @@ type Jobs struct {
 	WeeklyDigestEnabled bool
 	RetentionCron       string
 	AnomalyAlertsCron   string
+	DisputeAlertsCron   string
 }
 
 type Swagger struct {
@@ -281,6 +294,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 		},
 		Fuel:      Fuel{LowHours: float64(r.integer("FUEL_LOW_HOURS", 24))},
 		Retention: Retention{Enabled: r.boolean("RETENTION_ENABLED", false), NotificationDays: r.integer("NOTIFICATION_RETENTION_DAYS", 90)},
+		Response:  Response{DisputeHours: r.integer("DISPUTE_RESPONSE_HOURS", 72), AcceptanceEscalateDays: r.integer("ACCEPTANCE_ESCALATE_DAYS", 7)},
 		Figures: Figures{
 			MidnightCarryOver:          r.boolean("MIDNIGHT_CARRY_OVER", true),
 			MaintenanceNoticeHours:     r.integer("MAINTENANCE_NOTICE_HOURS", 48),
@@ -314,6 +328,7 @@ func Load(lookup func(string) (string, bool)) (Config, error) {
 			WeeklyDigestEnabled:  r.boolean("WEEKLY_DIGEST_ENABLED", false),
 			RetentionCron:        r.str("JOB_RETENTION_CRON", "37 3 * * *"),
 			AnomalyAlertsCron:    r.str("JOB_ANOMALY_ALERTS_CRON", "*/30 * * * *"),
+			DisputeAlertsCron:    r.str("JOB_DISPUTE_ALERTS_CRON", "*/30 * * * *"),
 		},
 		Swagger: Swagger{Enabled: r.boolean("SWAGGER_ENABLED", false)},
 	}
@@ -409,6 +424,9 @@ func (c Config) validate() []error {
 	if f := c.Figures; f.MaintenanceNoticeHours < 0 || f.MaintenanceNoticeHours > 720 || f.MaintenanceMaxHours < 1 || f.MaintenanceMaxHours > 24 ||
 		f.MonthlyCapOutOfRange() {
 		bad("MAINTENANCE_NOTICE_HOURS must be 0 to 720, MAINTENANCE_MAX_HOURS 1 to 24 and MAINTENANCE_MONTHLY_CAP_HOURS 1 to 720 (and at least the maximum)")
+	}
+	if c.Response.DisputeHours < 0 || c.Response.DisputeHours > 24*60 || c.Response.AcceptanceEscalateDays < 0 || c.Response.AcceptanceEscalateDays > 365 {
+		bad("DISPUTE_RESPONSE_HOURS must be 0 to 1440 and ACCEPTANCE_ESCALATE_DAYS 0 to 365 (0 turns the alert off)")
 	}
 	if c.Retention.NotificationDays < 30 || c.Retention.NotificationDays > 3650 {
 		bad("NOTIFICATION_RETENTION_DAYS must be between 30 and 3650")

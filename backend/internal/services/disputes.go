@@ -27,6 +27,9 @@ type DisputeService struct {
 	notifier *NotificationService
 	loc      *time.Location
 	baseURL  string
+	// responseTime is how long Coloplus has to respond to a dispute that is
+	// waiting on it; zero turns the overdue alerts off.
+	responseTime time.Duration
 }
 
 func NewDisputeService(
@@ -38,6 +41,55 @@ func NewDisputeService(
 		disputes: disputes, reports: reports, sites: sites, users: users, tx: tx, audit: audit,
 		clock: clock, notifier: notifier, loc: loc, baseURL: strings.TrimRight(baseURL, "/"),
 	}
+}
+
+// WithResponseTime sets how long Coloplus has to respond once a dispute is
+// waiting on it (a proposal until the customer agrees one).
+func (s *DisputeService) WithResponseTime(d time.Duration) *DisputeService {
+	s.responseTime = d
+	return s
+}
+
+const disputeAlertLimit = 500
+
+// AlertOverdue emails the people who manage disputes at the site when one has
+// waited on Coloplus (open, under review, or a correction agreed but not made)
+// for longer than the response time. Each wait is alerted once: a status change
+// starts a new one. It returns how many emails it queued.
+func (s *DisputeService) AlertOverdue(ctx context.Context) (int, error) {
+	if s.responseTime <= 0 {
+		return 0, nil
+	}
+	now := s.clock.Now()
+	waiting, _, err := s.disputes.List(ctx, ports.DisputeFilter{
+		AllSites: true, Limit: disputeAlertLimit,
+		Statuses: []domain.DisputeStatus{domain.DisputeOpen, domain.DisputeUnderReview, domain.DisputeAgreedCorrection},
+	})
+	if err != nil {
+		return 0, err
+	}
+	queued := 0
+	for _, d := range waiting {
+		if now.Sub(d.UpdatedAt) < s.responseTime {
+			continue
+		}
+		site, err := s.sites.GetByID(ctx, d.SiteID)
+		if err != nil {
+			return queued, err
+		}
+		recipients, err := s.users.UsersWithPermission(ctx, domain.PermDisputesManage, d.SiteID)
+		if err != nil {
+			return queued, err
+		}
+		subject, body := disputeOverdueEmail(d, site, d.UpdatedAt, s.loc, s.link(d))
+		n, err := s.notifier.EnqueueFor(ctx, recipients, "dispute.overdue",
+			fmt.Sprintf("dispute-overdue:%s:%d", d.ID, d.UpdatedAt.Unix()), subject, body)
+		queued += n
+		if err != nil {
+			return queued, err
+		}
+	}
+	return queued, nil
 }
 
 func (s *DisputeService) link(d domain.Dispute) string { return s.baseURL + "/disputes/" + d.ID }

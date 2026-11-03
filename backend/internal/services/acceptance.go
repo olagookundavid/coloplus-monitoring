@@ -25,6 +25,8 @@ type AcceptanceService struct {
 	notifier    *NotificationService
 	loc         *time.Location
 	baseURL     string
+	// escalateAfter is how long overdue before the administrators are told too.
+	escalateAfter time.Duration
 }
 
 func NewAcceptanceService(
@@ -96,6 +98,9 @@ func (s *AcceptanceService) Request(ctx context.Context, actor domain.Actor, in 
 	a := domain.Acceptance{
 		SiteID: in.SiteID, Responsible: domain.PartyColoplus, NextAction: strings.TrimSpace(in.NextAction),
 		DueAt: in.DueAt, RequestedAt: now, CreatedBy: actor.UserID,
+	}
+	if a.DueAt == nil {
+		a.DueAt = domain.DefaultDue(domain.StageRequested, now)
 	}
 
 	var created domain.Acceptance
@@ -259,6 +264,13 @@ func (s *AcceptanceService) notifyOtherParty(ctx context.Context, a domain.Accep
 	return err
 }
 
+// WithEscalation makes an acceptance that stays overdue for this long also go to
+// the administrators, once. Zero leaves it off.
+func (s *AcceptanceService) WithEscalation(after time.Duration) *AcceptanceService {
+	s.escalateAfter = after
+	return s
+}
+
 const acceptanceAlertLimit = 500
 
 // AlertOverdue emails whoever the next step is waiting on, and Coloplus's
@@ -299,6 +311,21 @@ func (s *AcceptanceService) AlertOverdue(ctx context.Context) (int, error) {
 		queued += n
 		if err != nil {
 			return queued, err
+		}
+		// Overdue for a long time: the administrators are told once, whoever
+		// the step is waiting on.
+		if s.escalateAfter > 0 && a.DueAt.Add(s.escalateAfter).Before(now) {
+			admins, err := s.users.UsersWithPermission(ctx, domain.PermUsersManage, a.SiteID)
+			if err != nil {
+				return queued, err
+			}
+			subject, body := acceptanceEscalationEmail(site, a, *a.DueAt, s.loc, s.link(a.SiteID))
+			n, err := s.notifier.EnqueueFor(ctx, admins, "acceptance.escalated",
+				fmt.Sprintf("acceptance-escalated:%s:%d", a.ID, a.DueAt.Unix()), subject, body)
+			queued += n
+			if err != nil {
+				return queued, err
+			}
 		}
 	}
 	return queued, nil

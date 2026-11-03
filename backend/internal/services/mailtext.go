@@ -132,6 +132,19 @@ func acceptanceOverdueEmail(site domain.Site, a domain.Acceptance, due time.Time
 			siteLabel(site), due.In(loc).Format(timeLayout), stageWord(a.Stage), a.Responsible, orDash(a.NextAction), link)
 }
 
+func acceptanceEscalationEmail(site domain.Site, a domain.Acceptance, due time.Time, loc *time.Location, link string) (subject, body string) {
+	return "Acceptance stuck: " + siteLabel(site),
+		fmt.Sprintf("The next step in the acceptance of %s was due %s and is still waiting, with %s.\n\n"+
+			"Stage: %s\nNext action: %s\n\nThe people responsible were told when it fell due. It is sent to you because it has now been late for a long time.\n\nOpen it: %s\n",
+			siteLabel(site), due.In(loc).Format(timeLayout), a.Responsible, stageWord(a.Stage), orDash(a.NextAction), link)
+}
+
+func disputeOverdueEmail(d domain.Dispute, site domain.Site, since time.Time, loc *time.Location, link string) (subject, body string) {
+	return fmt.Sprintf("Dispute waiting for Coloplus: %s", d.Title),
+		fmt.Sprintf("The dispute \"%s\" about %s has been waiting for Coloplus since %s, longer than the agreed time to respond.\n\nStatus: %s\n\nOpen it: %s\n",
+			d.Title, siteLabel(site), since.In(loc).Format(timeLayout), strings.ReplaceAll(string(d.Status), "_", " "), link)
+}
+
 func ticketRef(n int64) string { return fmt.Sprintf("TKT-%06d", n) }
 
 func ticketStatusWord(s domain.TicketStatus) string { return strings.ReplaceAll(string(s), "_", " ") }
