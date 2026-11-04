@@ -124,7 +124,7 @@ async function putFileToR2(file: File, target: UploadTarget): Promise<void> {
 
 async function completeUpload(id: string): Promise<Attachment> {
   try {
-    const { data } = await getApi().post<AttachmentDTO>(`/attachments/${id}/complete`)
+    const { data } = await getApi().post<AttachmentDTO>(`/attachments/${id}/complete`, {})
     return mapAttachment(data)
   } catch (error) {
     throw mapAxiosError(

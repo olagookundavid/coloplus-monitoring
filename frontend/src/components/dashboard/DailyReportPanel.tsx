@@ -43,6 +43,8 @@ export function DailyReportPanel({
     setPowerStatus,
     generatorHours,
     setGeneratorHours,
+    outageReason,
+    setOutageReason,
     notes,
     setNotes,
     error,
@@ -113,6 +115,21 @@ export function DailyReportPanel({
               ]}
             />
           </Field>
+
+          {powerStatus === 'outage' && (
+            <Field
+              label="Reason for outage"
+              htmlFor="outage-reason"
+              hint="Required to submit a day with an outage."
+            >
+              <Textarea
+                id="outage-reason"
+                value={outageReason}
+                onChange={(event) => setOutageReason(event.target.value)}
+                disabled={readOnly}
+              />
+            </Field>
+          )}
 
           <Field
             label="Generator runtime (hours)"

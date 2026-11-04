@@ -243,7 +243,7 @@ export async function transitionIncident(
 
 export async function publishIncident(id: string): Promise<ReporterIncident> {
   try {
-    const { data } = await getApi().post<IncidentDTO>(`/incidents/${id}/publish`)
+    const { data } = await getApi().post<IncidentDTO>(`/incidents/${id}/publish`, {})
     return mapIncident(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not publish this incident.')

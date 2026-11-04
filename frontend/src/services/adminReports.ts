@@ -39,6 +39,7 @@ interface ReportDTO {
   notes: string
   intervals?: IntervalDTO[]
   generator_hours?: number | null
+  outage_reason?: string
   submitted_at?: string
   reviewed_at?: string
   reviewer_id?: string
@@ -115,6 +116,7 @@ function mapDailyReport(dto: ReportDTO): DailyReport {
       basis: iv.basis as 'observed' | 'declared' | undefined,
     })),
     generatorHours: dto.generator_hours ?? null,
+    outageReason: dto.outage_reason,
     submittedAt: dto.submitted_at,
     reviewedAt: dto.reviewed_at,
     reviewerId: dto.reviewer_id,
@@ -201,6 +203,7 @@ export async function fetchReports(params: {
 export interface DailyReportFormInput {
   powerStatus: PowerStatus
   generatorHours: number | null
+  outageReason: string
   notes: string
 }
 
@@ -208,6 +211,7 @@ function reportFormBody(input: DailyReportFormInput) {
   return {
     power_status: input.powerStatus,
     generator_hours: input.generatorHours,
+    outage_reason: input.outageReason,
     notes: input.notes,
   }
 }
@@ -246,7 +250,10 @@ export async function saveDailyReportDraft(
 
 export async function submitDailyReport(id: string): Promise<DailyReport> {
   try {
-    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${id}/submit`)
+    // A body is required even though the backend's own fields here are optional:
+    // axios only sets Content-Type: application/json when it has an object to
+    // stringify, and the API's CSRF guard rejects writes without that header.
+    const { data } = await getApi().post<ReportDTO>(`/daily-reports/${id}/submit`, {})
     return mapDailyReport(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not submit this report.')

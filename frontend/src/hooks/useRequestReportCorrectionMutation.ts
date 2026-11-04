@@ -40,6 +40,7 @@ export function useRequestReportCorrectionMutation() {
       const saved = await saveDailyReportDraft(revision.id, revision.rowVersion, {
         powerStatus,
         generatorHours,
+        outageReason: revision.outageReason ?? '',
         notes: revision.notes,
       })
       return submitDailyReport(saved.id)

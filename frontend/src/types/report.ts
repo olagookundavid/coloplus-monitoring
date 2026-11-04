@@ -29,6 +29,7 @@ export interface DailyReport {
   notes: string
   intervals?: PowerInterval[]
   generatorHours?: number | null
+  outageReason?: string
   submittedAt?: string
   reviewedAt?: string
   reviewerId?: string

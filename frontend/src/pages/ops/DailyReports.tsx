@@ -61,6 +61,8 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
     setPowerStatus,
     generatorHours,
     setGeneratorHours,
+    outageReason,
+    setOutageReason,
     notes,
     setNotes,
     error,
@@ -69,6 +71,10 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
     handleSaveDraft,
     handleSubmit,
   } = useDailyReportForm({ site, reportDate, reportId: site.todayStatus?.reportId, mode })
+
+  const isOutage = powerStatus === 'outage'
+  const generatorStep = isOutage ? 3 : 2
+  const notesStep = isOutage ? 4 : 3
 
   const status = report?.status
   const subtitle = [site.siteType, site.generatorCapacity].filter(Boolean).join(' · ')
@@ -122,8 +128,23 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
             />
           </Field>
 
+          {isOutage && (
+            <Field
+              label="2. Reason for outage"
+              htmlFor="daily-outage-reason"
+              hint="Required to submit a day with an outage."
+            >
+              <Textarea
+                id="daily-outage-reason"
+                value={outageReason}
+                onChange={(event) => setOutageReason(event.target.value)}
+                disabled={readOnly}
+              />
+            </Field>
+          )}
+
           <Field
-            label="2. Generator runtime (hours)"
+            label={`${generatorStep}. Generator runtime (hours)`}
             htmlFor="daily-generator-hours"
             hint="Fuel use is estimated from this and shown to Airtel as an estimate."
           >
@@ -141,7 +162,7 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
             />
           </Field>
 
-          <Field label="3. Notes" htmlFor="daily-report-notes" hint="(optional)">
+          <Field label={`${notesStep}. Notes`} htmlFor="daily-report-notes" hint="(optional)">
             <Textarea
               id="daily-report-notes"
               value={notes}

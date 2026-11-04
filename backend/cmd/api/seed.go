@@ -389,10 +389,12 @@ func (sd *seeder) ensureReportDay(
 		return existing[0], nil
 	}
 	// dailyIntervals always includes a short observed outage (DECISIONS 051
-	// requires a reason to submit one), so every report built from it needs
-	// this set, whatever the target status.
+	// requires a reason to submit one, and domain.ValidateGeneratorHours
+	// requires generator runtime hours too), so every report built from it
+	// needs both set, whatever the target status.
+	outageGeneratorHours := 0.5
 	created, err := sd.reports.CreateDraft(ctx, reporter, siteID, date, services.ReportInput{
-		Notes: "Seeded sample entry.", Intervals: intervals,
+		Notes: "Seeded sample entry.", Intervals: intervals, GeneratorHours: &outageGeneratorHours,
 		OutageReason: "Seeded sample outage: short morning utility dip before the generator backup engaged.",
 	})
 	if err != nil {
@@ -693,7 +695,7 @@ func (sd *seeder) ensureTicketAt(
 	}
 	created, err := sd.tickets.Raise(ctx, airtel, services.TicketInput{
 		SiteID: siteID, Category: category, Priority: priority, Subject: subject,
-		Description: "Seeded sample ticket.",
+		Description: "Seeded sample ticket.", ContactEmail: "ops.contact@airtel.africa",
 	})
 	if err != nil {
 		return err
@@ -983,38 +985,78 @@ func (sd *seeder) run(ctx context.Context) error {
 
 	lekkiRate, lekkiTank := 3.5, 500.0
 	ikejaRate, ikejaTank := 2.8, 300.0
+	// Real approximate coordinates for each named location, and a spread of
+	// past commissioning dates -- flavour for the site profile fields that
+	// have no computed default (GeneratorCapacity/AccessContact*/
+	// SupervisorName/Latitude/Longitude/CommissioningDate), unlike Status/
+	// ServiceWindow/FreshnessHours which SiteService.withDefaults already
+	// fills in when left zero.
+	lekkiLat, lekkiLng := 6.4474, 3.4737
+	ikejaLat, ikejaLng := 6.5952, 3.3430
+	garkiLat, garkiLng := 9.0379, 7.4951
+	phcLat, phcLng := 4.7719, 7.0134
+	kanoLat, kanoLng := 12.0022, 8.5411
+	enuguLat, enuguLng := 6.4483, 7.5139
+	lekkiCommissioned := time.Date(2022, time.March, 14, 0, 0, 0, 0, time.UTC)
+	ikejaCommissioned := time.Date(2022, time.June, 2, 0, 0, 0, 0, time.UTC)
+	garkiCommissioned := time.Date(2022, time.September, 20, 0, 0, 0, 0, time.UTC)
+	phcCommissioned := time.Date(2023, time.January, 11, 0, 0, 0, 0, time.UTC)
+	kanoCommissioned := time.Date(2023, time.April, 30, 0, 0, 0, 0, time.UTC)
+	enuguCommissioned := time.Date(2023, time.July, 8, 0, 0, 0, 0, time.UTC)
 	siteSpecs := []domain.Site{
 		{
 			AirtelCode: "ATL-LEK-001", ColoplusCode: "CPL-LEK-001", Name: "Lekki Toll Gate Mast",
 			Address: "Lekki-Epe Expressway, Toll Gate", Region: "South West", State: "Lagos", SiteType: "Mast",
 			PowerSources:   []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
 			ConsumptionLPH: &lekkiRate, TankCapacityLitres: &lekkiTank,
+			ResponsibleTeam: "Lagos South Field Team", GeneratorCapacity: "60 kVA diesel generator",
+			AccessContactName: "Tunde Bakare", AccessContactPhone: "+234 802 123 4567", SupervisorName: "Sam Supervisor",
+			CommissioningDate: &lekkiCommissioned, Latitude: &lekkiLat, Longitude: &lekkiLng,
 		},
 		{
 			AirtelCode: "ATL-IKJ-002", ColoplusCode: "CPL-IKJ-002", Name: "Ikeja Central Hub",
 			Address: "Oba Akran Avenue, Ikeja", Region: "South West", State: "Lagos", SiteType: "Hub",
 			PowerSources:   []domain.PowerSource{domain.SourceGrid, domain.SourceSolar},
 			ConsumptionLPH: &ikejaRate, TankCapacityLitres: &ikejaTank,
+			ResponsibleTeam: "Lagos North Field Team", GeneratorCapacity: "45 kVA diesel generator",
+			AccessContactName: "Ngozi Eze", AccessContactPhone: "+234 803 234 5678", SupervisorName: "Sam Supervisor",
+			CommissioningDate: &ikejaCommissioned, Latitude: &ikejaLat, Longitude: &ikejaLng,
 		},
 		{
 			AirtelCode: "ATL-GRK-003", ColoplusCode: "CPL-GRK-003", Name: "Abuja Garki Node",
 			Address: "Area 3, Garki", Region: "North Central", State: "FCT", SiteType: "Node",
 			PowerSources: []domain.PowerSource{domain.SourceGenerator, domain.SourceBattery},
+			ResponsibleTeam: "FCT Field Team", GeneratorCapacity: "30 kVA diesel generator",
+			AccessContactName: "Musa Ibrahim", AccessContactPhone: "+234 805 345 6789", SupervisorName: "Tunde Supervisor",
+			CommissioningDate: &garkiCommissioned, Latitude: &garkiLat, Longitude: &garkiLng,
+			// The one site in this sample set with the strict "unknown"
+			// reading -- unreported time here is neither up nor down,
+			// unlike every other site's default "available" reading.
+			UnreportedTime: domain.UnreportedUnknown,
 		},
 		{
 			AirtelCode: "ATL-PHC-004", ColoplusCode: "CPL-PHC-004", Name: "Port Harcourt Trans-Amadi Site",
 			Address: "Trans-Amadi Industrial Layout", Region: "South South", State: "Rivers", SiteType: "Tower",
 			PowerSources: []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator, domain.SourceSolar},
+			ResponsibleTeam: "South South Field Team", GeneratorCapacity: "50 kVA diesel generator",
+			AccessContactName: "Blessing Okafor", AccessContactPhone: "+234 806 456 7890", SupervisorName: "Tunde Supervisor",
+			CommissioningDate: &phcCommissioned, Latitude: &phcLat, Longitude: &phcLng,
 		},
 		{
 			AirtelCode: "ATL-KAN-005", ColoplusCode: "CPL-KAN-005", Name: "Kano Sabon Gari Node",
 			Address: "Sabon Gari Market Road", Region: "North West", State: "Kano", SiteType: "Node",
 			PowerSources: []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
+			ResponsibleTeam: "North West Field Team", GeneratorCapacity: "35 kVA diesel generator",
+			AccessContactName: "Abubakar Sani", AccessContactPhone: "+234 807 567 8901", SupervisorName: "Sam Supervisor",
+			CommissioningDate: &kanoCommissioned, Latitude: &kanoLat, Longitude: &kanoLng,
 		},
 		{
 			AirtelCode: "ATL-ENU-006", ColoplusCode: "CPL-ENU-006", Name: "Enugu Independence Layout Hub",
 			Address: "Independence Layout", Region: "South East", State: "Enugu", SiteType: "Hub",
 			PowerSources: []domain.PowerSource{domain.SourceGenerator, domain.SourceSolar, domain.SourceBattery},
+			ResponsibleTeam: "South East Field Team", GeneratorCapacity: "40 kVA diesel generator",
+			AccessContactName: "Chukwuemeka Nwosu", AccessContactPhone: "+234 808 678 9012", SupervisorName: "Tunde Supervisor",
+			CommissioningDate: &enuguCommissioned, Latitude: &enuguLat, Longitude: &enuguLng,
 		},
 	}
 	siteIDs := make([]string, len(siteSpecs))
@@ -1075,10 +1117,16 @@ func (sd *seeder) run(ctx context.Context) error {
 	if _, err := sd.ensureUser(ctx, bootstrap, "reviewer2@airtel.africa", "Nkem Reviewer", domain.RoleAirtelReviewer, siteIDs); err != nil {
 		return fmt.Errorf("seeding second airtel reviewer: %w", err)
 	}
-	if _, err := sd.ensureUser(ctx, bootstrap, "auditor@coloplus.africa", "Amaka Auditor", domain.RoleAuditor, nil); err != nil {
+	// Auditor is site-scoped, like a reporter (DECISIONS 045) -- nil site ids
+	// would leave both accounts able to sign in but seeing no sites, no
+	// reports and no maintenance at all. The first gets every site (a
+	// portfolio-wide auditor); the second gets a subset, the same
+	// first-gets-everything/second-gets-a-subset spread reporter/reporter2
+	// already demonstrate above.
+	if _, err := sd.ensureUser(ctx, bootstrap, "auditor@coloplus.africa", "Amaka Auditor", domain.RoleAuditor, siteIDs); err != nil {
 		return fmt.Errorf("seeding auditor: %w", err)
 	}
-	if _, err := sd.ensureUser(ctx, bootstrap, "auditor2@coloplus.africa", "Chidi Auditor", domain.RoleAuditor, nil); err != nil {
+	if _, err := sd.ensureUser(ctx, bootstrap, "auditor2@coloplus.africa", "Chidi Auditor", domain.RoleAuditor, []string{garkiID, phcID, kanoID}); err != nil {
 		return fmt.Errorf("seeding second auditor: %w", err)
 	}
 

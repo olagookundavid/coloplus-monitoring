@@ -44,6 +44,7 @@ export function useDailyReportForm({
 
   const [powerStatus, setPowerStatus] = useState<PowerStatus | null>(null)
   const [generatorHours, setGeneratorHours] = useState('')
+  const [outageReason, setOutageReason] = useState('')
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null)
@@ -57,6 +58,7 @@ export function useDailyReportForm({
     setInitialized(true)
     setPowerStatus(derivePowerStatus(report?.intervals))
     setGeneratorHours(report?.generatorHours != null ? String(report.generatorHours) : '')
+    setOutageReason(report?.outageReason ?? '')
     setNotes(report?.notes ?? '')
   }
 
@@ -85,8 +87,22 @@ export function useDailyReportForm({
       setError('Enter the generator runtime hours for a day with an outage.')
       return null
     }
+    const trimmedOutageReason = outageReason.trim()
+    if (powerStatus === 'outage' && trimmedOutageReason === '') {
+      setError('Say why the site was unavailable.')
+      return null
+    }
+    if (trimmedOutageReason.length > 1000) {
+      setError('The reason for the outage is too long (1000 characters max).')
+      return null
+    }
     setError(null)
-    return { powerStatus, generatorHours: hours, notes }
+    return {
+      powerStatus,
+      generatorHours: hours,
+      outageReason: powerStatus === 'outage' ? trimmedOutageReason : '',
+      notes,
+    }
   }
 
   async function ensureReport(
@@ -142,6 +158,8 @@ export function useDailyReportForm({
     setPowerStatus,
     generatorHours,
     setGeneratorHours,
+    outageReason,
+    setOutageReason,
     notes,
     setNotes,
     error,
