@@ -542,6 +542,9 @@ type MySiteRow struct {
 	// Bars is the trailing mySitesBarDays, oldest first.
 	Bars          []DayBarEntry
 	OpenIncidents int
+	// Fuel is the estimated tank level for the site; nil when the caller may
+	// not see fuel, or the site has no agreed rate or nothing recorded.
+	Fuel *FuelBrief
 }
 
 type MySites struct {
@@ -605,6 +608,14 @@ func (s *DashboardService) MySites(ctx context.Context, actor domain.Actor) (MyS
 		return MySites{}, err
 	}
 
+	// Fuel, only for those who may see it, for the sites that have a rate.
+	var fuels map[string]siteFuel
+	if actor.Can(domain.PermFuelRead) {
+		if fuels, err = fuelEstimates(ctx, s.fuel, s.reports, sites, now, s.loc); err != nil {
+			return MySites{}, err
+		}
+	}
+
 	rows := make([]MySiteRow, len(sites))
 	for i, site := range sites {
 		byDate := bySite[site.ID]
@@ -631,6 +642,12 @@ func (s *DashboardService) MySites(ctx context.Context, actor domain.Actor) (MyS
 		if r, ok := statusByDay[ports.DayKey(site.ID, today)]; ok {
 			r := r
 			row.TodayStatus = &r
+		}
+		if f, ok := fuels[site.ID]; ok && f.Estimate.Available {
+			row.Fuel = &FuelBrief{
+				Litres: f.Estimate.Litres, HoursRemaining: f.Estimate.HoursRemaining, Low: f.Estimate.Low(s.fuelLowHours),
+				Empty: f.Estimate.EstimatedEmpty, Provisional: f.Estimate.Provisional,
+			}
 		}
 		rows[i] = row
 	}

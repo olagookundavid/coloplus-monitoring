@@ -18,6 +18,9 @@ export interface CustomerLayoutContextValue {
   setRegion: (region: string) => void
   period: string
   setPeriod: (period: string) => void
+  /** Empty string means every quality level -- GET /dashboard/overview's own meaning for "no filter." */
+  quality: string
+  setQuality: (quality: string) => void
   openCreateTicket: (siteId?: string) => void
 }
 
@@ -43,6 +46,7 @@ export function CustomerLayout() {
 
   const [region, setRegion] = useState<string>('')
   const [period, setPeriod] = useState<string>(PERIOD_PRESETS[0] ?? '')
+  const [quality, setQuality] = useState<string>('')
   const [isCreateTicketOpen, setIsCreateTicketOpen] = useState(false)
   const [prefillSiteId, setPrefillSiteId] = useState<string | undefined>(undefined)
 
@@ -51,6 +55,8 @@ export function CustomerLayout() {
     setRegion,
     period,
     setPeriod,
+    quality,
+    setQuality,
     openCreateTicket: (siteId) => {
       setPrefillSiteId(siteId)
       setIsCreateTicketOpen(true)

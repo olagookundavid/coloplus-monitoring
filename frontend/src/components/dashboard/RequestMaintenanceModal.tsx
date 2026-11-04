@@ -1,16 +1,19 @@
 import { useState, type FormEvent } from 'react'
 import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
 
-import { useAdminSites, useRequestMaintenanceMutation } from '../../hooks'
+import { useAdminSites, useMaintenanceWindows, useRequestMaintenanceMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
-import type { AdminSite, MaintenanceRules } from '../../types'
+import type { AdminSite, MaintenanceRules, MaintenanceWindow } from '../../types'
 import {
   getFieldErrors,
+  maintenanceRuleErrors,
   requestMaintenanceSchema,
   toast,
   type RequestMaintenanceFormValues,
 } from '../../utils'
 import { Button, Field, Input, Select, SidePanel, Textarea } from '../ui'
+
+const NO_WINDOWS: MaintenanceWindow[] = []
 
 export interface RequestMaintenanceModalProps {
   open: boolean
@@ -43,7 +46,18 @@ export function RequestMaintenanceModal({ open, onClose, rules }: RequestMainten
   const [submitted, setSubmitted] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  const fieldErrors = getFieldErrors(requestMaintenanceSchema, values)
+  // The site's own other windows, for the overlap and monthly-cap courtesy
+  // checks below -- not fetched until a site is chosen.
+  const siteWindowsQuery = useMaintenanceWindows(
+    { siteId: values.siteId },
+    Boolean(values.siteId)
+  )
+  const siteWindows = siteWindowsQuery.data?.windows ?? NO_WINDOWS
+
+  const fieldErrors: Record<string, string> = {
+    ...getFieldErrors(requestMaintenanceSchema, values),
+    ...maintenanceRuleErrors(values, rules, siteWindows),
+  }
 
   function showError(field: keyof RequestMaintenanceFormValues): string | undefined {
     return touched[field] || submitted ? fieldErrors[field] : undefined

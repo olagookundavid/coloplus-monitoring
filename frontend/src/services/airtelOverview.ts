@@ -10,6 +10,7 @@ import type {
   PortfolioTrend,
   PortfolioTrendQueryParams,
   SiteCondition,
+  SLA,
 } from '../types'
 
 interface DataQualityDTO {
@@ -22,6 +23,12 @@ interface DataQualityDTO {
   unconfirmed_share_pct: number
 }
 
+interface SLADTO {
+  target_percent: number
+  status: 'met' | 'at_risk' | 'missed'
+  confirmed_meets_target: boolean
+}
+
 interface SummaryDTO {
   eligible_minutes: number
   served_minutes: number
@@ -30,6 +37,9 @@ interface SummaryDTO {
   coverage_pct: number | null
   reported_availability_pct: number | null
   assumed_available_minutes: number
+  excluded_maintenance_minutes: number
+  assumed_outage_minutes: number
+  source_minutes?: Record<string, number>
   confirmed_served_share_pct: number | null
   provisional: boolean
 }
@@ -60,6 +70,7 @@ interface SiteRowDTO {
   days_reported: number
   days_without_report: number
   data_quality?: DataQualityDTO
+  sla?: SLADTO
   fuel?: FuelBriefDTO
 }
 
@@ -81,6 +92,7 @@ interface OverviewResponseDTO {
   sites_outage_reported: number
   site_days_without_report: number
   data_quality?: DataQualityDTO
+  sla?: SLADTO
   outages_this_week: number
   portfolio: SummaryDTO
   sites: SiteRowDTO[]
@@ -98,6 +110,14 @@ function mapDataQuality(dto: DataQualityDTO): DataQuality {
   }
 }
 
+function mapSLA(dto: SLADTO): SLA {
+  return {
+    targetPercent: dto.target_percent,
+    status: dto.status,
+    confirmedMeetsTarget: dto.confirmed_meets_target,
+  }
+}
+
 function mapSummary(dto: SummaryDTO): PeriodSummary {
   return {
     eligibleMinutes: dto.eligible_minutes,
@@ -107,6 +127,9 @@ function mapSummary(dto: SummaryDTO): PeriodSummary {
     coveragePct: dto.coverage_pct,
     reportedAvailabilityPct: dto.reported_availability_pct,
     assumedAvailableMinutes: dto.assumed_available_minutes,
+    excludedMaintenanceMinutes: dto.excluded_maintenance_minutes,
+    assumedOutageMinutes: dto.assumed_outage_minutes,
+    sourceMinutes: dto.source_minutes,
     confirmedServedSharePct: dto.confirmed_served_share_pct,
     provisional: dto.provisional,
   }
@@ -141,18 +164,25 @@ function mapSite(dto: SiteRowDTO): PortfolioSite {
     daysReported: dto.days_reported,
     daysWithoutReport: dto.days_without_report,
     dataQuality: dto.data_quality ? mapDataQuality(dto.data_quality) : undefined,
+    sla: dto.sla ? mapSLA(dto.sla) : undefined,
     fuel: dto.fuel ? mapFuel(dto.fuel) : undefined,
   }
 }
 
 interface TrendPointDTO {
   date: string
+  from: string
+  to: string
+  days: number
   active_sites: number
   sites_reported: number
+  site_days: number
+  site_days_reported: number
   summary: SummaryDTO
 }
 
 interface TrendResponseDTO {
+  grain: 'day' | 'week' | 'month'
   from: string
   to: string
   region: string
@@ -169,6 +199,7 @@ export async function fetchPortfolioTrend(
   try {
     const { data } = await getApi().get<TrendResponseDTO>('/dashboard/trend', { params })
     return {
+      grain: data.grain,
       from: data.from,
       to: data.to,
       region: data.region,
@@ -176,8 +207,13 @@ export async function fetchPortfolioTrend(
       generatedAt: data.generated_at,
       points: data.points.map((p) => ({
         date: p.date,
+        from: p.from,
+        to: p.to,
+        days: p.days,
         activeSites: p.active_sites,
         sitesReported: p.sites_reported,
+        siteDays: p.site_days,
+        siteDaysReported: p.site_days_reported,
         summary: mapSummary(p.summary),
       })),
     }
@@ -209,6 +245,7 @@ export async function fetchPortfolioOverview(
       sitesOutageReported: data.sites_outage_reported,
       siteDaysWithoutReport: data.site_days_without_report,
       dataQuality: data.data_quality ? mapDataQuality(data.data_quality) : undefined,
+      sla: data.sla ? mapSLA(data.sla) : undefined,
       outagesThisWeek: data.outages_this_week,
       portfolio: mapSummary(data.portfolio),
       sites: data.sites.map(mapSite),

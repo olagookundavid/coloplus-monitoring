@@ -1,8 +1,10 @@
 // Mirrors dto.AttachmentDTO/UploadTarget/RequestUploadRequest
-// (backend/internal/dto/attachments.go). Backend only supports these four
-// owner types (domain.ValidAttachmentOwner) -- never a daily report, never
-// a correction.
-export type AttachmentOwnerType = 'ticket' | 'incident' | 'dispute' | 'acceptance'
+// (backend/internal/dto/attachments.go). Backend supports these five owner
+// types (domain.ValidAttachmentOwner) -- never a correction, which has no
+// id of its own (it's a report revision). `report` evidence is always
+// internal (domain/services/attachments.go's `coloplusOnly`) and closed
+// once the report is approved or superseded (`frozen`, a 409).
+export type AttachmentOwnerType = 'ticket' | 'incident' | 'dispute' | 'acceptance' | 'report'
 
 export type AttachmentStatus = 'pending' | 'ready' | 'rejected' | 'expired'
 export type AttachmentParty = 'airtel' | 'coloplus'

@@ -28,6 +28,9 @@ interface TicketDTO {
   incident_ref?: string
   created_at: string
   updated_at: string
+  raised_by?: string
+  assignee_id?: string
+  resolved_by?: string
 }
 
 interface TicketEventDTO {
@@ -37,6 +40,8 @@ interface TicketEventDTO {
   from_status?: TicketStatus
   to_status?: TicketStatus
   body?: string
+  internal?: boolean
+  author_id?: string
   created_at: string
 }
 
@@ -70,6 +75,9 @@ function mapTicket(dto: TicketDTO): Ticket {
     incidentRef: dto.incident_ref,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+    raisedBy: dto.raised_by,
+    assigneeId: dto.assignee_id,
+    resolvedBy: dto.resolved_by,
   }
 }
 
@@ -81,6 +89,8 @@ function mapEvent(dto: TicketEventDTO): TicketEvent {
     fromStatus: dto.from_status,
     toStatus: dto.to_status,
     body: dto.body ?? '',
+    internal: dto.internal,
+    authorId: dto.author_id,
     createdAt: dto.created_at,
   }
 }
@@ -154,12 +164,42 @@ export async function raiseTicket(input: RaiseTicketInput): Promise<Ticket> {
   }
 }
 
-export async function commentTicket(id: string, body: string): Promise<TicketEvent> {
+export async function commentTicket(
+  id: string,
+  body: string,
+  internal = false
+): Promise<TicketEvent> {
   try {
-    const { data } = await getApi().post<TicketEventDTO>(`/tickets/${id}/comments`, { body })
+    const { data } = await getApi().post<TicketEventDTO>(`/tickets/${id}/comments`, {
+      body,
+      internal,
+    })
     return mapEvent(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not add this comment.')
+  }
+}
+
+// Coloplus's general transition (start work, resolve, take a resolved
+// ticket back into work). Airtel's reopen keeps its own reopenTicket()
+// below, which always sends status "open" -- this one never does.
+export interface TransitionTicketInput {
+  status: 'in_progress' | 'resolved'
+  note?: string
+}
+
+export async function transitionTicket(
+  id: string,
+  input: TransitionTicketInput
+): Promise<Ticket> {
+  try {
+    const { data } = await getApi().post<TicketDTO>(`/tickets/${id}/transition`, {
+      status: input.status,
+      note: input.note,
+    })
+    return mapTicket(data)
+  } catch (error) {
+    throw mapAxiosError(error, 'Could not update this ticket.')
   }
 }
 

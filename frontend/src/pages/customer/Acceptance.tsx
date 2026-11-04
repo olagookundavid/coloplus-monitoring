@@ -92,6 +92,16 @@ function AcceptanceDetailPane({
             <dd className="font-medium text-text">{acceptance.nextAction}</dd>
           </div>
         )}
+        {acceptance.dueAt && (
+          <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+            <dt className="text-text-muted">Due</dt>
+            <dd
+              className={`font-medium ${acceptance.overdue ? 'text-danger' : 'text-text'}`}
+            >
+              {formatDateTimeWAT(acceptance.dueAt)}
+            </dd>
+          </div>
+        )}
         <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
           <dt className="text-text-muted">Ready for inspection</dt>
           <dd className="font-medium text-text">{acceptance.readyAgeHours}h ago</dd>

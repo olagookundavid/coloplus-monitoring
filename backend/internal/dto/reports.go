@@ -314,6 +314,9 @@ type MySiteRowDTO struct {
 	OpenIncidents      int      `json:"open_incidents"`
 	// Bars is the trailing 7 days, oldest first (last entry is today).
 	Bars []DayBarDTO `json:"bars"`
+	// Fuel is the site's estimated diesel; absent when you may not see fuel, or
+	// the site has no agreed rate or nothing recorded.
+	Fuel *FuelBriefDTO `json:"fuel,omitempty"`
 }
 
 type MySitesResponse struct {

@@ -37,6 +37,9 @@ export interface DisputeEvent {
   fromStatus?: DisputeStatus
   toStatus?: DisputeStatus
   body: string
+  /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
+  internal?: boolean
+  authorId?: string
   createdAt: string
 }
 
@@ -66,6 +69,10 @@ export interface Dispute {
   reopenCount: number
   createdAt: string
   updatedAt: string
+  /** Coloplus's own view; left out for Airtel. */
+  raisedBy?: string
+  ownerId?: string
+  resolvedBy?: string
 }
 
 export interface DisputeDetail {

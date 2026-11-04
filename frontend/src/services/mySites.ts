@@ -1,4 +1,4 @@
-import type { DayBarColor, MySitesResponse, ReportStatus, ReportStatusSummary } from '../types'
+import type { DayBarColor, FuelBrief, MySitesResponse, ReportStatus, ReportStatusSummary } from '../types'
 import { getApi } from './api'
 import { mapAxiosError } from './auth'
 
@@ -7,6 +7,15 @@ interface ReportStatusDTO {
   status: ReportStatus
   row_version: number
   review_comment?: string
+}
+
+interface FuelBriefDTO {
+  basis: 'estimate'
+  litres: number | null
+  hours_remaining: number | null
+  low: boolean
+  empty: boolean
+  provisional: boolean
 }
 
 interface DayBarDTO {
@@ -30,6 +39,7 @@ interface MySiteRowDTO {
   availability_pct_30d: number | null
   open_incidents: number
   bars: DayBarDTO[]
+  fuel?: FuelBriefDTO
 }
 
 interface MySitesResponseDTO {
@@ -46,6 +56,18 @@ function mapReportStatus(dto?: ReportStatusDTO): ReportStatusSummary | undefined
     status: dto.status,
     rowVersion: dto.row_version,
     reviewComment: dto.review_comment,
+  }
+}
+
+function mapFuel(dto?: FuelBriefDTO): FuelBrief | undefined {
+  if (!dto) return undefined
+  return {
+    basis: dto.basis,
+    litres: dto.litres,
+    hoursRemaining: dto.hours_remaining,
+    low: dto.low,
+    empty: dto.empty,
+    provisional: dto.provisional,
   }
 }
 
@@ -75,6 +97,7 @@ export async function fetchMySites(): Promise<MySitesResponse> {
         availabilityPct30d: site.availability_pct_30d,
         openIncidents: site.open_incidents,
         bars: site.bars.map((bar) => ({ date: bar.date, color: bar.color })),
+        fuel: mapFuel(site.fuel),
       })),
     }
   } catch (error) {

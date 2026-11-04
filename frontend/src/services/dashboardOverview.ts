@@ -1,4 +1,4 @@
-import type { DashboardOverview, ReportStatus, ReportStatusSummary } from '../types'
+import type { DashboardOverview, FuelBrief, ReportStatus, ReportStatusSummary } from '../types'
 import { getApi } from './api'
 import { mapAxiosError } from './auth'
 
@@ -7,6 +7,15 @@ interface ReportStatusDTO {
   status: ReportStatus
   row_version: number
   review_comment?: string
+}
+
+interface FuelBriefDTO {
+  basis: 'estimate'
+  litres: number | null
+  hours_remaining: number | null
+  low: boolean
+  empty: boolean
+  provisional: boolean
 }
 
 interface SiteRowDTO {
@@ -18,6 +27,7 @@ interface SiteRowDTO {
   state: string
   today_status?: ReportStatusDTO
   yesterday_status?: ReportStatusDTO
+  fuel?: FuelBriefDTO
 }
 
 interface OverviewResponseDTO {
@@ -35,6 +45,18 @@ function mapReportStatus(dto?: ReportStatusDTO): ReportStatusSummary | undefined
     status: dto.status,
     rowVersion: dto.row_version,
     reviewComment: dto.review_comment,
+  }
+}
+
+function mapFuel(dto?: FuelBriefDTO): FuelBrief | undefined {
+  if (!dto) return undefined
+  return {
+    basis: dto.basis,
+    litres: dto.litres,
+    hoursRemaining: dto.hours_remaining,
+    low: dto.low,
+    empty: dto.empty,
+    provisional: dto.provisional,
   }
 }
 
@@ -60,6 +82,7 @@ export async function fetchDashboardOverview(date?: string): Promise<DashboardOv
         state: site.state,
         todayStatus: mapReportStatus(site.today_status),
         yesterdayStatus: mapReportStatus(site.yesterday_status),
+        fuel: mapFuel(site.fuel),
       })),
     }
   } catch (error) {

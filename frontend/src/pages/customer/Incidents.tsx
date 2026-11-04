@@ -3,11 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 
 import { DashboardPageHeader } from '../../components/dashboard'
 import { SkeletonListItems } from '../../components/skeletons'
-import { SidePanel, StatusBadge, Tabs, type TabItem } from '../../components/ui'
+import { Spinner, SidePanel, StatusBadge, Tabs, type TabItem } from '../../components/ui'
 import { ROUTES, incidentDetailPath } from '../../constants'
-import { useAdminSites, usePublishedIncidents } from '../../hooks'
+import { useAdminSites, useIncidentOutages, usePublishedIncidents } from '../../hooks'
 import type { AdminSite, PublishedIncident } from '../../types'
-import { describeIncidentStatus, formatDateTimeWAT, severityLabel } from '../../utils'
+import { describeIncidentStatus, formatDateTimeWAT, formatMinutes, severityLabel } from '../../utils'
 
 const NO_INCIDENTS: PublishedIncident[] = []
 const NO_SITES: AdminSite[] = []
@@ -49,6 +49,7 @@ export function Incidents() {
   const selectedIncident = selectedId
     ? (incidents.find((incident) => incident.id === selectedId) ?? null)
     : null
+  const outagesQuery = useIncidentOutages(selectedIncident?.id)
 
   // A stale or mistyped incident id in the URL -- send the viewer back to
   // the list rather than leaving the panel open with nothing to show.
@@ -174,6 +175,37 @@ export function Incidents() {
                     </li>
                   ))}
                 </ul>
+              )}
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                Reported outage during this incident
+              </p>
+              {outagesQuery.isLoading ? (
+                <Spinner className="mt-3 h-5 w-5" />
+              ) : !outagesQuery.data || outagesQuery.data.outages.length === 0 ? (
+                <p className="mt-3 text-sm text-text-muted">No approved report shows an outage yet.</p>
+              ) : (
+                <>
+                  <p className="mt-3 text-sm text-text">
+                    {formatMinutes(outagesQuery.data.totalMinutes)} reported
+                    {outagesQuery.data.open ? ' so far' : ''}
+                  </p>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {outagesQuery.data.outages.map((outage, index) => (
+                      <li key={index} className="rounded-lg border border-border p-3 text-sm">
+                        <p className="text-text">
+                          {formatDateTimeWAT(outage.start)} &ndash; {formatDateTimeWAT(outage.end)}
+                        </p>
+                        <p className="mt-0.5 text-xs text-text-muted">
+                          {formatMinutes(outage.minutes)} · report {outage.reportDate} rev{' '}
+                          {outage.reportRevision}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
           </div>

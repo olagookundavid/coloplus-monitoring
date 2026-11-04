@@ -1,12 +1,20 @@
 import { useState } from 'react'
 import { MapPinIcon, PlusIcon } from '@heroicons/react/24/outline'
 
-import { useSiteOverview, useTransitionAcceptanceMutation, usePermissions } from '../../hooks'
+import {
+  useMaintenanceWindows,
+  useOutages,
+  useSiteOverview,
+  useTransitionAcceptanceMutation,
+  usePermissions,
+} from '../../hooks'
 import type { PortfolioSite } from '../../types'
 import {
   acceptanceStageLabel,
   disputeStatusLabel,
   formatDateTimeWAT,
+  formatMinutes,
+  maintenanceStatusLabel,
   severityLabel,
   siteConditionLabel,
   toast,
@@ -21,13 +29,14 @@ export interface SiteDetailPanelProps {
   onCreateTicket: () => void
 }
 
-type SiteDetailTab = 'profile' | 'incidents' | 'disputes' | 'acceptance'
+type SiteDetailTab = 'profile' | 'incidents' | 'disputes' | 'acceptance' | 'maintenance'
 
 const TABS: TabItem<SiteDetailTab>[] = [
   { value: 'profile', label: 'Profile' },
   { value: 'incidents', label: 'Incidents' },
   { value: 'disputes', label: 'Disputes' },
   { value: 'acceptance', label: 'Acceptance' },
+  { value: 'maintenance', label: 'Maintenance' },
 ]
 
 type PendingAcceptanceAction = { stage: 'inspected' | 'accepted' | 'rejected'; reason?: string }
@@ -45,6 +54,17 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
   const overviewQuery = useSiteOverview(site?.id)
   const overview = overviewQuery.data
   const transitionMutation = useTransitionAcceptanceMutation()
+
+  const outagesToDate = new Date()
+  const outagesFromDate = new Date(outagesToDate)
+  outagesFromDate.setDate(outagesFromDate.getDate() - 29)
+  const outagesTo = outagesToDate.toISOString().slice(0, 10)
+  const outagesFrom = outagesFromDate.toISOString().slice(0, 10)
+  const outagesQuery = useOutages(
+    { siteId: site?.id, from: outagesFrom, to: outagesTo },
+    Boolean(site?.id)
+  )
+  const maintenanceQuery = useMaintenanceWindows({ siteId: site?.id }, Boolean(site?.id))
 
   if (!site) return null
 
@@ -118,6 +138,7 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
                   />
                 </>
               )}
+              <ProfileRow label="Responsible team" value={site.responsibleTeam || '—'} />
               {site.asOf && (
                 <ProfileRow label="Last power observation" value={formatDateTimeWAT(site.asOf)} />
               )}
@@ -157,6 +178,37 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
                   )
                 })}
               </div>
+            )}
+
+            <h3 className="mt-6 text-base font-semibold text-text">
+              Outages from daily reports (last 30 days)
+            </h3>
+            {outagesQuery.isLoading ? (
+              <p className="mt-3 text-sm text-text-muted">Loading...</p>
+            ) : !outagesQuery.data || outagesQuery.data.outages.length === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">No approved report shows an outage.</p>
+            ) : (
+              <>
+                <p className="mt-3 text-sm text-text">
+                  {formatMinutes(outagesQuery.data.totalMinutes)} reported
+                </p>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {outagesQuery.data.outages.map((outage, index) => (
+                    <li
+                      key={index}
+                      className="rounded-lg border border-border p-3 text-sm"
+                    >
+                      <p className="text-text">
+                        {formatDateTimeWAT(outage.start)} &ndash; {formatDateTimeWAT(outage.end)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-text-muted">
+                        {formatMinutes(outage.minutes)} · report {outage.reportDate} rev{' '}
+                        {outage.reportRevision}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </>
             )}
           </div>
         )}
@@ -218,6 +270,12 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
                   {acceptance.nextAction && (
                     <ProfileRow label="Next action" value={acceptance.nextAction} />
                   )}
+                  {acceptance.dueAt && (
+                    <ProfileRow
+                      label="Due"
+                      value={`${formatDateTimeWAT(acceptance.dueAt)}${acceptance.overdue ? ' (overdue)' : ''}`}
+                    />
+                  )}
                   <ProfileRow
                     label="Ready for inspection"
                     value={`${acceptance.readyAgeHours}h ago (not operational performance)`}
@@ -258,6 +316,38 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
                   </div>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {tab === 'maintenance' && (
+          <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-text">Planned maintenance</h3>
+            {maintenanceQuery.isLoading ? (
+              <p className="mt-3 text-sm text-text-muted">Loading...</p>
+            ) : !maintenanceQuery.data || maintenanceQuery.data.windows.length === 0 ? (
+              <p className="mt-3 text-sm text-text-muted">No planned maintenance for this site.</p>
+            ) : (
+              <ul className="mt-4 flex flex-col gap-3">
+                {maintenanceQuery.data.windows.map((window) => {
+                  const { label, tone } = maintenanceStatusLabel(window.status)
+                  return (
+                    <li key={window.id} className="rounded-lg border border-border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <StatusBadge label={label} tone={tone} />
+                        <span className="text-xs text-text-muted">
+                          {formatMinutes(window.minutes)}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-text">
+                        {formatDateTimeWAT(window.startsAt)} &ndash;{' '}
+                        {formatDateTimeWAT(window.endsAt)}
+                      </p>
+                      <p className="mt-1 text-sm text-text-muted">{window.reason}</p>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </div>
         )}

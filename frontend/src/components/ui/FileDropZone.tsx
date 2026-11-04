@@ -1,9 +1,11 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react'
-import { ArrowUpTrayIcon } from '@heroicons/react/24/outline'
+import { ArrowUpTrayIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
 import { useUploadAttachmentMutation } from '../../hooks'
+import { AuthApiError } from '../../services'
 import type { AttachmentOwnerType } from '../../types'
 import { ACCEPT_ATTR, toast, validateAttachmentFile } from '../../utils'
+import { AlertBanner } from './AlertBanner'
 import { Checkbox } from './Checkbox'
 import { Spinner } from './Spinner'
 
@@ -34,6 +36,10 @@ export function FileDropZone({
   const uploadMutation = useUploadAttachmentMutation()
   const [shared, setShared] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  // Sticky, not a toast: storage being off is a system state the person
+  // should still see after the toast has faded, not just at the moment of
+  // the failed tap.
+  const [storageUnavailable, setStorageUnavailable] = useState(false)
 
   async function handleFile(file: File) {
     const validationError = validateAttachmentFile(file)
@@ -45,6 +51,10 @@ export function FileDropZone({
       await uploadMutation.mutateAsync({ ownerType, ownerId, file, shared: isStaff ? shared : undefined })
       toast.success('File uploaded.')
     } catch (err) {
+      if (err instanceof AuthApiError && err.status === 503) {
+        setStorageUnavailable(true)
+        return
+      }
       toast.error(err instanceof Error ? err.message : 'Could not upload this file.')
     }
   }
@@ -63,6 +73,18 @@ export function FileDropZone({
   }
 
   const pending = uploadMutation.isPending
+
+  if (storageUnavailable) {
+    return (
+      <AlertBanner
+        tone="warning"
+        icon={ExclamationTriangleIcon}
+        title="File storage is currently off."
+        description="Uploads aren't accepted right now. Try again later."
+        className={className}
+      />
+    )
+  }
 
   return (
     <div className={`flex flex-col gap-2 ${className}`}>

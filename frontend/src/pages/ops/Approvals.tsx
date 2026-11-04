@@ -10,11 +10,13 @@ import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeleton
 import {
   AlertBanner,
   Button,
+  CalculationDetails,
   ConfirmDialog,
   ConfirmSummary,
   StatusBadge,
   Tabs,
   Textarea,
+  type CalculationDetailRow,
 } from '../../components/ui'
 import { useAuth } from '../../contexts'
 import {
@@ -319,9 +321,15 @@ function DetailCard({
   onApprove,
   onReject,
 }: DetailCardProps) {
-  const { report, summary, openDisputes } = detail
+  const { report, summary, calculation, openDisputes } = detail
   const correction = isCorrection(report)
   const isPending = report.status === 'submitted'
+
+  const calculationRows: CalculationDetailRow[] = [
+    { label: 'Input report', value: `${calculation.inputReportId} · rev ${calculation.inputRevision}` },
+    { label: 'Window', value: `${calculation.windowStart} – ${calculation.windowEnd}` },
+    { label: 'Computed', value: formatDateTimeWAT(calculation.computedAt) },
+  ]
 
   return (
     <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 sm:p-6">
@@ -392,6 +400,14 @@ function DetailCard({
             </>
           )}
         </dl>
+        <CalculationDetails
+          className="mt-3"
+          formula={calculation.formula}
+          formulaVersion={calculation.version}
+          explanation={calculation.explanation}
+          rows={calculationRows}
+          warnings={calculation.warnings}
+        />
       </div>
 
       <div>
@@ -427,6 +443,11 @@ function DetailCard({
             <span className="text-text-muted"> · {author?.name ?? report.authorId}</span>
             {report.submittedAt && (
               <span className="text-text-muted"> · {formatDateTimeWAT(report.submittedAt)}</span>
+            )}
+            {report.lateReason && (
+              <p className="mt-1 text-text-muted">
+                Late submission &mdash; &ldquo;{report.lateReason}&rdquo;
+              </p>
             )}
           </li>
           {!isPending && (

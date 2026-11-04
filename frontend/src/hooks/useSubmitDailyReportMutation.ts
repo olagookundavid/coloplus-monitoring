@@ -9,8 +9,9 @@ import { ADMIN_REPORT_QUERY_KEY } from './useReportDetail'
 export function useSubmitDailyReportMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) => submitDailyReport(id),
-    onSuccess: (_report, id) => {
+    mutationFn: ({ id, lateReason }: { id: string; lateReason?: string }) =>
+      submitDailyReport(id, lateReason),
+    onSuccess: (_report, { id }) => {
       queryClient.invalidateQueries({ queryKey: DASHBOARD_OVERVIEW_QUERY_KEY })
       queryClient.invalidateQueries({ queryKey: MY_REPORTS_QUERY_KEY })
       queryClient.invalidateQueries({ queryKey: MY_SITES_QUERY_KEY })

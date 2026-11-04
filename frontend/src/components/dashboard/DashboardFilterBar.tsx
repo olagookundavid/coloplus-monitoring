@@ -2,13 +2,19 @@
    periodToDateRange and periodToTrendRange are small static data/helpers
    colocated with the one component that uses them, same intentional pattern
    as AuthContext.tsx. */
-import { CalendarIcon, MapPinIcon } from '@heroicons/react/24/outline'
+import { CalendarIcon, ExclamationTriangleIcon, MapPinIcon } from '@heroicons/react/24/outline'
 
 import type { PortfolioQueryParams } from '../../types'
 import { Select } from '../ui'
 import { DataRecencyIndicator } from './DataRecencyIndicator'
 
 export const ALL_REGIONS = 'All regions'
+export const ALL_QUALITY = 'All data quality'
+export const QUALITY_OPTIONS: Array<{ value: PortfolioQueryParams['quality']; label: string }> = [
+  { value: 'good', label: 'Good' },
+  { value: 'fair', label: 'Fair' },
+  { value: 'poor', label: 'Poor' },
+]
 
 // Preset labels only -- the actual region list comes from the real
 // GET /dashboard/overview response's `regions[]` (built server-side from
@@ -65,6 +71,9 @@ export interface DashboardFilterBarProps {
   regionOptions: string[]
   period: string
   onPeriodChange: (period: string) => void
+  /** Omit on a page with no per-site quality figure to filter by. */
+  quality?: string
+  onQualityChange?: (quality: string) => void
   /** The real ISO timestamp this page's data was generated at. Omit when
       the page has no single cohesive data snapshot to date (e.g. Reports). */
   isoTimestamp?: string
@@ -76,6 +85,8 @@ export function DashboardFilterBar({
   regionOptions,
   period,
   onPeriodChange,
+  quality,
+  onQualityChange,
   isoTimestamp,
 }: DashboardFilterBarProps) {
   return (
@@ -110,6 +121,23 @@ export function DashboardFilterBar({
             ))}
           </Select>
         </div>
+        {onQualityChange && (
+          <div className="w-full sm:w-48">
+            <Select
+              icon={ExclamationTriangleIcon}
+              value={quality ?? ''}
+              onChange={(event) => onQualityChange(event.target.value)}
+              aria-label="Data quality"
+            >
+              <option value="">{ALL_QUALITY}</option>
+              {QUALITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
       </div>
       <DataRecencyIndicator isoTimestamp={isoTimestamp} />
     </div>

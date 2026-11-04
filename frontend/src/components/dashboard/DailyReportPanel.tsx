@@ -1,7 +1,17 @@
-import { ExclamationTriangleIcon, PhotoIcon } from '@heroicons/react/24/outline'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 
-import { AlertBanner, Button, Field, Input, SegmentedToggle, SidePanel, Textarea } from '../ui'
-import { useDailyReportForm } from '../../hooks'
+import {
+  AlertBanner,
+  AttachmentList,
+  Button,
+  Field,
+  FileDropZone,
+  Input,
+  SegmentedToggle,
+  SidePanel,
+  Textarea,
+} from '../ui'
+import { useAttachments, useDailyReportForm } from '../../hooks'
 import type { PowerStatus, SiteReportRow } from '../../types'
 
 export type DailyReportPanelMode = 'create' | 'edit' | 'view'
@@ -50,11 +60,17 @@ export function DailyReportPanel({
     error,
     submitting,
     readOnly,
+    needsLateReason,
+    lateReason,
+    setLateReason,
     handleSaveDraft,
     handleSubmit,
   } = useDailyReportForm({ site, reportDate, reportId, mode, onSuccess: onClose })
 
   const returned = report?.status === 'rejected'
+  const frozen = report?.status === 'approved' || report?.status === 'superseded'
+  const canAttachEvidence = Boolean(report?.id) && !readOnly && !frozen
+  const attachmentsQuery = useAttachments('report', report?.id)
 
   return (
     <SidePanel
@@ -158,19 +174,39 @@ export function DailyReportPanel({
             />
           </Field>
 
-          <Field label="Evidence">
-            {/* Daily reports aren't a supported attachment owner on the
-                backend yet (docs/DECISIONS.md #047's own stated gap) --
-                an honest disabled notice, not a non-functional upload
-                control. */}
-            <div
-              aria-disabled="true"
-              className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border bg-surface-subtle px-4 py-8 text-center opacity-60"
+          {needsLateReason && (
+            <Field
+              label="Reason for late submission"
+              htmlFor="late-reason"
+              hint="This report is later than your site's freshness window allows."
             >
-              <PhotoIcon className="h-6 w-6 text-text-muted" aria-hidden="true" />
-              <p className="text-sm font-medium text-text-muted">Evidence upload coming soon</p>
-              <p className="text-xs text-text-muted">Not yet supported for daily reports.</p>
-            </div>
+              <Textarea
+                id="late-reason"
+                value={lateReason}
+                onChange={(event) => setLateReason(event.target.value)}
+                disabled={readOnly}
+              />
+            </Field>
+          )}
+
+          <Field label="Evidence" hint="A meter photo or similar. Internal to Coloplus only.">
+            {report?.id ? (
+              <div className="flex flex-col gap-3">
+                <AttachmentList
+                  attachments={attachmentsQuery.data ?? []}
+                  loading={attachmentsQuery.isLoading}
+                  emptyMessage="No evidence attached yet."
+                />
+                {canAttachEvidence && <FileDropZone ownerType="report" ownerId={report.id} isStaff />}
+                {frozen && (
+                  <p className="text-xs text-text-muted">
+                    This report is {report.status}; no more evidence can be added.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">Save a draft first to attach evidence.</p>
+            )}
           </Field>
         </div>
       )}

@@ -5,6 +5,7 @@ import { useReportDetail } from './useReportDetail'
 import { useSaveDailyReportMutation } from './useSaveDailyReportMutation'
 import { useSubmitDailyReportMutation } from './useSubmitDailyReportMutation'
 import type { DailyReportPanelMode } from '../components/dashboard'
+import { AuthApiError } from '../services'
 import type { DailyReportFormInput } from '../services'
 import type { PowerStatus, SiteReportRow } from '../types'
 import { toast } from '../utils'
@@ -48,6 +49,8 @@ export function useDailyReportForm({
   const [notes, setNotes] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null)
+  const [lateReason, setLateReason] = useState('')
+  const [needsLateReason, setNeedsLateReason] = useState(false)
 
   // Initialises the form from the loaded report (edit/view) or blank
   // (create) the first time its data is available. Adjusting state during
@@ -60,6 +63,8 @@ export function useDailyReportForm({
     setGeneratorHours(report?.generatorHours != null ? String(report.generatorHours) : '')
     setOutageReason(report?.outageReason ?? '')
     setNotes(report?.notes ?? '')
+    setLateReason(report?.lateReason ?? '')
+    setNeedsLateReason(Boolean(report?.lateReason))
   }
 
   const createMutation = useCreateDailyReportMutation()
@@ -138,13 +143,32 @@ export function useDailyReportForm({
   async function handleSubmit() {
     const input = buildInput()
     if (!input) return
+    const trimmedLateReason = lateReason.trim()
+    if (needsLateReason && trimmedLateReason === '') {
+      setError('Say why this report was not submitted sooner.')
+      return
+    }
     setSubmitting('submit')
     try {
       const { id } = await ensureReport(input)
-      await submitMutation.mutateAsync(id)
+      await submitMutation.mutateAsync({
+        id,
+        lateReason: needsLateReason ? trimmedLateReason : undefined,
+      })
       toast.success('Report submitted.')
       onSuccess?.()
     } catch (err) {
+      // No structured error code for this condition -- the backend answers
+      // 400 with this literal sentence (reports.go Submit()). A late report
+      // only needs the reason once; everything else about it is unchanged.
+      if (
+        err instanceof AuthApiError &&
+        err.status === 400 &&
+        err.message.includes('this report is late')
+      ) {
+        setNeedsLateReason(true)
+        return
+      }
       toast.error(err instanceof Error ? err.message : 'Could not submit this report.')
     } finally {
       setSubmitting(null)
@@ -165,6 +189,9 @@ export function useDailyReportForm({
     error,
     submitting,
     readOnly,
+    needsLateReason,
+    lateReason,
+    setLateReason,
     handleSaveDraft,
     handleSubmit,
   }

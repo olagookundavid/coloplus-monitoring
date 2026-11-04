@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import {
@@ -11,21 +12,26 @@ import {
   SiteAttentionBanner,
   SiteDetailPanel,
 } from '../../components/dashboard'
-import { DataTable, Select } from '../../components/ui'
+import { AlertBanner, DataTable, Select } from '../../components/ui'
 import { ROUTES } from '../../constants'
 import { usePortfolioOverview } from '../../hooks'
 import type { PortfolioSite } from '../../types'
 import { useDashboardFilters } from './CustomerLayout'
 
 export function Sites() {
-  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
+  const { region, setRegion, period, setPeriod, quality, setQuality, openCreateTicket } =
+    useDashboardFilters()
   const [conditionFilter, setConditionFilter] = useState<
     PortfolioSite['condition'] | 'All conditions'
   >('All conditions')
   const { id: selectedSiteId } = useParams<{ id?: string }>()
   const navigate = useNavigate()
 
-  const sitesQuery = usePortfolioOverview({ region, ...periodToDateRange(period) })
+  const sitesQuery = usePortfolioOverview({
+    region,
+    quality: (quality || undefined) as 'good' | 'fair' | 'poor' | undefined,
+    ...periodToDateRange(period),
+  })
   const sites = sitesQuery.data?.sites ?? NO_SITES
   const selectedSite = selectedSiteId
     ? (sites.find((site) => site.id === selectedSiteId) ?? null)
@@ -58,8 +64,19 @@ export function Sites() {
         regionOptions={sitesQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
+        quality={quality}
+        onQualityChange={setQuality}
         isoTimestamp={sitesQuery.data?.generatedAt}
       />
+
+      {quality && (
+        <AlertBanner
+          tone="info"
+          icon={ExclamationTriangleIcon}
+          title={`Showing ${quality}-quality sites only.`}
+          description="The counts and totals above still cover every site."
+        />
+      )}
 
       <SiteAttentionBanner sites={sites} />
 

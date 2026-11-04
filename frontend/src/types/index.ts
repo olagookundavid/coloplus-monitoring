@@ -21,7 +21,15 @@ export type {
   PortfolioTrendPoint,
   PortfolioTrend,
   PortfolioTrendQueryParams,
+  SLA,
 } from './site'
+export type {
+  Outage,
+  OutageListParams,
+  OutageListResult,
+  IncidentOutage,
+  IncidentOutages,
+} from './outage'
 export type { AdminSite } from './adminSite'
 export type {
   SiteStatus,
@@ -52,8 +60,6 @@ export type {
   PublishedIncident,
 } from './incident'
 export type {
-  FuelHealthSite,
-  FuelHealthSummary,
   FuelEntryKind,
   FuelVariance,
   FuelEntry,

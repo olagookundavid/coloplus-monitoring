@@ -6,7 +6,8 @@ import { TICKET_DETAIL_QUERY_KEY } from './useTicketDetail'
 export function useCommentTicketMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: string }) => commentTicket(id, body),
+    mutationFn: ({ id, body, internal }: { id: string; body: string; internal?: boolean }) =>
+      commentTicket(id, body, internal),
     onSuccess: (_event, { id }) => {
       queryClient.invalidateQueries({ queryKey: [...TICKET_DETAIL_QUERY_KEY, id] })
     },

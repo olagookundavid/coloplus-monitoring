@@ -4,7 +4,14 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 
-import { AlertBanner, Button, Spinner, StatusBadge } from '../ui'
+import {
+  AlertBanner,
+  Button,
+  CalculationDetails,
+  Spinner,
+  StatusBadge,
+  type CalculationDetailRow,
+} from '../ui'
 import { useReportDetail } from '../../hooks'
 import type { CorrectionListItem, DailyReport, IncidentCorrection, MySiteRow } from '../../types'
 import { correctionFieldLabel, formatDateTimeWAT } from '../../utils'
@@ -80,6 +87,11 @@ function ReturnedReportBody({
             {report.submittedAt && (
               <span className="text-text-muted"> · {formatDateTimeWAT(report.submittedAt)}</span>
             )}
+            {report.lateReason && (
+              <p className="mt-1 text-text-muted">
+                Late submission &mdash; &ldquo;{report.lateReason}&rdquo;
+              </p>
+            )}
           </li>
           <li>
             <span className="font-medium text-text">Returned by {reviewerName(site)}</span>
@@ -112,8 +124,14 @@ function ReportCorrectionBody({
   if (detailQuery.isLoading || !detailQuery.data) {
     return <Spinner className="h-5 w-5" />
   }
-  const { summary } = detailQuery.data
+  const { summary, calculation } = detailQuery.data
   const superseded = supersededQuery.data
+
+  const calculationRows: CalculationDetailRow[] = [
+    { label: 'Input report', value: `${calculation.inputReportId} · rev ${calculation.inputRevision}` },
+    { label: 'Window', value: `${calculation.windowStart} – ${calculation.windowEnd}` },
+    { label: 'Computed', value: formatDateTimeWAT(calculation.computedAt) },
+  ]
 
   return (
     <>
@@ -144,6 +162,14 @@ function ReportCorrectionBody({
           />
           <FactRow label="Reason for correction" value={report.correctionReason || '—'} />
         </dl>
+        <CalculationDetails
+          className="mt-3"
+          formula={calculation.formula}
+          formulaVersion={calculation.version}
+          explanation={calculation.explanation}
+          rows={calculationRows}
+          warnings={calculation.warnings}
+        />
       </div>
 
       <div>

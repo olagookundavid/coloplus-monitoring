@@ -14,9 +14,7 @@ export interface SiteAttentionBannerProps {
 // rules exist to prevent (frontend/CLAUDE.md §11/§12). Renders nothing when
 // no site currently needs attention.
 export function SiteAttentionBanner({ sites }: SiteAttentionBannerProps) {
-  const attentionCount = sites.filter(
-    (site) => site.condition === 'outage_reported' || site.fuel?.low || site.fuel?.empty
-  ).length
+  const attentionCount = sites.filter((site) => site.condition === 'outage_reported').length
 
   if (attentionCount === 0) return null
 
@@ -25,7 +23,7 @@ export function SiteAttentionBanner({ sites }: SiteAttentionBannerProps) {
       tone="warning"
       icon={ExclamationTriangleIcon}
       title={`${attentionCount} site${attentionCount === 1 ? '' : 's'} need${attentionCount === 1 ? 's' : ''} attention.`}
-      description="An outage or low fuel level is being addressed."
+      description="An outage is being addressed."
       action={{ label: 'View issues', to: ROUTES.CUSTOMER_SITES }}
     />
   )

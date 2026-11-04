@@ -36,6 +36,9 @@ interface DisputeDTO {
   reopen_count: number
   created_at: string
   updated_at: string
+  raised_by?: string
+  owner_id?: string
+  resolved_by?: string
 }
 
 interface DisputeEventDTO {
@@ -45,6 +48,8 @@ interface DisputeEventDTO {
   from_status?: DisputeStatus
   to_status?: DisputeStatus
   body?: string
+  internal?: boolean
+  author_id?: string
   created_at: string
 }
 
@@ -82,6 +87,9 @@ export function mapDispute(dto: DisputeDTO): Dispute {
     reopenCount: dto.reopen_count,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
+    raisedBy: dto.raised_by,
+    ownerId: dto.owner_id,
+    resolvedBy: dto.resolved_by,
   }
 }
 
@@ -93,6 +101,8 @@ function mapEvent(dto: DisputeEventDTO): DisputeEvent {
     fromStatus: dto.from_status,
     toStatus: dto.to_status,
     body: dto.body ?? '',
+    internal: dto.internal,
+    authorId: dto.author_id,
     createdAt: dto.created_at,
   }
 }
@@ -157,9 +167,16 @@ export async function raiseDispute(input: RaiseDisputeInput): Promise<Dispute> {
   }
 }
 
-export async function commentDispute(id: string, body: string): Promise<DisputeEvent> {
+export async function commentDispute(
+  id: string,
+  body: string,
+  internal = false
+): Promise<DisputeEvent> {
   try {
-    const { data } = await getApi().post<DisputeEventDTO>(`/disputes/${id}/comments`, { body })
+    const { data } = await getApi().post<DisputeEventDTO>(`/disputes/${id}/comments`, {
+      body,
+      internal,
+    })
     return mapEvent(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not add this comment.')
@@ -169,6 +186,12 @@ export async function commentDispute(id: string, body: string): Promise<DisputeE
 export interface TransitionDisputeInput {
   status: DisputeStatus
   note?: string
+  /** Required to resolve: upheld or not_upheld. Upheld needs the correction
+      to have been agreed first. */
+  outcome?: DisputeOutcome
+  /** The corrected, approved report revision that settles an upheld dispute
+      about a report. */
+  resolutionReportId?: string
 }
 
 export async function transitionDispute(
@@ -179,6 +202,8 @@ export async function transitionDispute(
     const { data } = await getApi().post<DisputeDTO>(`/disputes/${id}/transition`, {
       status: input.status,
       note: input.note,
+      outcome: input.outcome,
+      resolution_report_id: input.resolutionReportId,
     })
     return mapDispute(data)
   } catch (error) {

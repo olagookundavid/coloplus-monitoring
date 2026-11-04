@@ -68,7 +68,7 @@ export function MySiteCard({ site, onReport, onDetails, onFuel }: MySiteCardProp
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${site.fuel ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div>
           <p className="text-xs text-text-muted">Power availability, 30 days</p>
           <p className="mt-1 text-lg font-bold text-text">
@@ -79,6 +79,23 @@ export function MySiteCard({ site, onReport, onDetails, onFuel }: MySiteCardProp
           <p className="text-xs text-text-muted">Open incidents</p>
           <p className="mt-1 text-lg font-bold text-text">{site.openIncidents}</p>
         </div>
+        {site.fuel && (
+          <div>
+            <p className="text-xs text-text-muted">Fuel (estimate)</p>
+            <p
+              className={`mt-1 text-lg font-bold ${site.fuel.low || site.fuel.empty ? 'text-warning-700' : 'text-text'}`}
+            >
+              {site.fuel.litres == null ? '—' : `${Math.round(site.fuel.litres).toLocaleString()} L`}
+            </p>
+            {(site.fuel.low || site.fuel.empty) && (
+              <StatusBadge
+                label={site.fuel.empty ? 'Empty' : 'Low'}
+                tone="warning"
+                className="mt-1"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2">

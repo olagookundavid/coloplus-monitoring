@@ -5,15 +5,17 @@ import { DashboardPageHeader } from '../../components/dashboard'
 import { SkeletonDetailPane, SkeletonListItems } from '../../components/skeletons'
 import {
   AlertBanner,
+  AttachmentList,
   Button,
   Field,
+  FileDropZone,
   Input,
   SegmentedToggle,
   Spinner,
   StatusBadge,
   Textarea,
 } from '../../components/ui'
-import { useDailyReportForm, useMySites } from '../../hooks'
+import { useAttachments, useDailyReportForm, useMySites } from '../../hooks'
 import type { MySiteRow, PowerStatus } from '../../types'
 import { actionFor, statusLabel } from '../../utils'
 
@@ -68,6 +70,9 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
     error,
     submitting,
     readOnly,
+    needsLateReason,
+    lateReason,
+    setLateReason,
     handleSaveDraft,
     handleSubmit,
   } = useDailyReportForm({ site, reportDate, reportId: site.todayStatus?.reportId, mode })
@@ -77,6 +82,9 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
   const notesStep = isOutage ? 4 : 3
 
   const status = report?.status
+  const frozen = status === 'approved' || status === 'superseded'
+  const canAttachEvidence = Boolean(report?.id) && !readOnly && !frozen
+  const attachmentsQuery = useAttachments('report', report?.id)
   const subtitle = [site.siteType, site.generatorCapacity].filter(Boolean).join(' · ')
   const { label, tone } = statusLabel(site.todayStatus?.status)
 
@@ -169,6 +177,43 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
               onChange={(event) => setNotes(event.target.value)}
               disabled={readOnly}
             />
+          </Field>
+
+          {needsLateReason && (
+            <Field
+              label="Reason for late submission"
+              htmlFor="daily-late-reason"
+              hint="This report is later than your site's freshness window allows."
+            >
+              <Textarea
+                id="daily-late-reason"
+                value={lateReason}
+                onChange={(event) => setLateReason(event.target.value)}
+                disabled={readOnly}
+              />
+            </Field>
+          )}
+
+          <Field label="Evidence" hint="A meter photo or similar. Internal to Coloplus only.">
+            {report?.id ? (
+              <div className="flex flex-col gap-3">
+                <AttachmentList
+                  attachments={attachmentsQuery.data ?? []}
+                  loading={attachmentsQuery.isLoading}
+                  emptyMessage="No evidence attached yet."
+                />
+                {canAttachEvidence && (
+                  <FileDropZone ownerType="report" ownerId={report.id} isStaff />
+                )}
+                {frozen && (
+                  <p className="text-xs text-text-muted">
+                    This report is {status}; no more evidence can be added.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-text-muted">Save a draft first to attach evidence.</p>
+            )}
           </Field>
 
           {status !== 'approved' && (

@@ -137,14 +137,12 @@ export async function fetchFuelStatus(siteId: string): Promise<FuelStatus> {
 
 export async function recordFuel(input: RecordFuelInput): Promise<FuelEntry> {
   try {
-    const clientKey =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined
     const { data } = await getApi().post<FuelEntryDTO>(`/sites/${input.siteId}/fuel`, {
       kind: input.kind,
       litres: input.litres,
       occurred_at: input.occurredAt,
       note: input.note,
-      client_key: clientKey,
+      client_key: input.clientKey,
     })
     return mapEntry(data)
   } catch (error) {

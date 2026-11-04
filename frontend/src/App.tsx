@@ -56,6 +56,14 @@ const SupervisorIncidents = lazyNamed(
   () => import('./pages/ops/SupervisorIncidents'),
   'SupervisorIncidents'
 )
+const SupervisorDisputes = lazyNamed(
+  () => import('./pages/ops/SupervisorDisputes'),
+  'SupervisorDisputes'
+)
+const SupervisorTickets = lazyNamed(
+  () => import('./pages/ops/SupervisorTickets'),
+  'SupervisorTickets'
+)
 
 export function App() {
   return (
@@ -280,6 +288,8 @@ export function App() {
           <Route path={ROUTES.OPS_SUPERVISOR_OVERVIEW} element={<SupervisorOverview />} />
           <Route path={ROUTES.OPS_SUPERVISOR_SITES} element={<SupervisorSites />} />
           <Route path={ROUTES.OPS_SUPERVISOR_INCIDENTS} element={<SupervisorIncidents />} />
+          <Route path={ROUTES.OPS_SUPERVISOR_DISPUTES} element={<SupervisorDisputes />} />
+          <Route path={ROUTES.OPS_SUPERVISOR_TICKETS} element={<SupervisorTickets />} />
         </Route>
 
         {/* A seventh, separate block: maintenance.request is held by all

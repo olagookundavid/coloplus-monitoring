@@ -1,3 +1,5 @@
+import type { FuelBrief } from './site'
+
 export type ReportStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'superseded'
 
 // The reporter's simplified day-level toggle, and the matching state of the
@@ -30,6 +32,7 @@ export interface DailyReport {
   intervals?: PowerInterval[]
   generatorHours?: number | null
   outageReason?: string
+  lateReason?: string
   submittedAt?: string
   reviewedAt?: string
   reviewerId?: string
@@ -60,6 +63,8 @@ export interface SiteReportRow {
   state: string
   todayStatus?: ReportStatusSummary
   yesterdayStatus?: ReportStatusSummary
+  /** Absent when the caller may not see fuel, or the site has no agreed rate/entry. */
+  fuel?: FuelBrief
 }
 
 // Mirrors dto.OverviewResponse's reporter-relevant fields.

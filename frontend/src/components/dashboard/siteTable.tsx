@@ -1,6 +1,12 @@
 import type { Column } from '../ui'
 import type { PortfolioSite } from '../../types'
-import { formatDateTimeWAT, siteConditionLabel } from '../../utils'
+import {
+  confirmedMeetsTargetLabel,
+  formatDateTimeWAT,
+  formatMinutes,
+  siteConditionLabel,
+  slaStatusLabel,
+} from '../../utils'
 import { StatusBadge } from '../ui'
 
 // Shared across every page that shows the portfolio site table
@@ -42,14 +48,42 @@ export const SITE_COLUMNS: Column<PortfolioSite>[] = [
     sortable: true,
   },
   {
+    header: 'Responsible team',
+    accessor: (site) => site.responsibleTeam,
+    cell: (site) => <span>{site.responsibleTeam || '—'}</span>,
+    sortable: true,
+  },
+  {
     header: 'Reported availability',
     accessor: (site) => site.summary?.reportedAvailabilityPct ?? -1,
-    cell: (site) =>
-      site.summary?.reportedAvailabilityPct == null ? (
-        <span className="text-text-muted">No approved report</span>
-      ) : (
-        <span>{site.summary.reportedAvailabilityPct.toFixed(2)}%</span>
-      ),
+    cell: (site) => {
+      const summary = site.summary
+      if (summary?.reportedAvailabilityPct == null) {
+        return <span className="text-text-muted">No approved report</span>
+      }
+      const notes: string[] = []
+      if (summary.confirmedServedSharePct != null) {
+        notes.push(`${summary.confirmedServedSharePct.toFixed(1)}% confirmed`)
+      }
+      if (summary.assumedAvailableMinutes > 0) {
+        notes.push(`${formatMinutes(summary.assumedAvailableMinutes)} assumed`)
+      }
+      if (summary.excludedMaintenanceMinutes > 0) {
+        notes.push(`${formatMinutes(summary.excludedMaintenanceMinutes)} maintenance excluded`)
+      }
+      if (summary.assumedOutageMinutes > 0) {
+        notes.push(`${formatMinutes(summary.assumedOutageMinutes)} assumed outage`)
+      }
+      if (site.daysWithoutReport > 0) {
+        notes.push(`${site.daysWithoutReport} day${site.daysWithoutReport === 1 ? '' : 's'} unreported`)
+      }
+      return (
+        <div>
+          <p>{summary.reportedAvailabilityPct.toFixed(2)}%</p>
+          {notes.length > 0 && <p className="text-xs text-text-muted">{notes.join(' · ')}</p>}
+        </div>
+      )
+    },
     align: 'right',
     sortable: true,
   },
@@ -60,22 +94,37 @@ export const SITE_COLUMNS: Column<PortfolioSite>[] = [
       const quality = site.dataQuality
       if (!quality) return <span className="text-text-muted">—</span>
       const tone = quality.level === 'good' ? 'success' : quality.level === 'fair' ? 'warning' : 'danger'
-      return <StatusBadge label={quality.level} tone={tone} />
+      const notes = [
+        `${quality.completenessPct.toFixed(0)}% complete`,
+        `${quality.lateReports} late`,
+        `${quality.corrections} correction${quality.corrections === 1 ? '' : 's'}`,
+      ]
+      if (quality.unconfirmedSharePct > 0) {
+        notes.push(`${quality.unconfirmedSharePct.toFixed(0)}% unconfirmed`)
+      }
+      return (
+        <div>
+          <StatusBadge label={quality.level} tone={tone} />
+          <p className="mt-1 text-xs text-text-muted">{notes.join(' · ')}</p>
+        </div>
+      )
     },
     sortable: true,
   },
   {
-    header: 'Fuel',
-    accessor: (site) => site.fuel?.litres ?? -1,
-    cell: (site) =>
-      !site.fuel || site.fuel.litres == null ? (
-        <span className="text-text-muted">—</span>
-      ) : (
-        <span className={site.fuel.low || site.fuel.empty ? 'text-warning-700' : undefined}>
-          {Math.round(site.fuel.litres).toLocaleString()} L
-        </span>
-      ),
-    align: 'right',
+    header: 'SLA',
+    accessor: (site) => site.sla?.status ?? '',
+    cell: (site) => {
+      if (!site.sla) return <span className="text-text-muted">—</span>
+      const status = slaStatusLabel(site.sla.status)
+      const confirmed = confirmedMeetsTargetLabel(site.sla.confirmedMeetsTarget)
+      return (
+        <div className="flex flex-col items-start gap-1">
+          <StatusBadge label={status.label} tone={status.tone} />
+          <StatusBadge label={confirmed.label} tone={confirmed.tone} />
+        </div>
+      )
+    },
     sortable: true,
   },
   {

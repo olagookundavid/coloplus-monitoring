@@ -133,6 +133,24 @@ export function ReporterOverview() {
         },
       },
       {
+        header: 'Fuel',
+        accessor: (row) => row.fuel?.litres ?? -1,
+        cell: (row) =>
+          !row.fuel || row.fuel.litres == null ? (
+            <span className="text-text-muted">—</span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5">
+              <span className={row.fuel.low || row.fuel.empty ? 'text-warning-700' : undefined}>
+                {Math.round(row.fuel.litres).toLocaleString()} L
+              </span>
+              {(row.fuel.low || row.fuel.empty) && (
+                <StatusBadge label={row.fuel.empty ? 'Empty' : 'Low'} tone="warning" />
+              )}
+            </span>
+          ),
+        align: 'right',
+      },
+      {
         header: 'Action',
         accessor: () => '',
         align: 'right',

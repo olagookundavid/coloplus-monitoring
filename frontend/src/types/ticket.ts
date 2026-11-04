@@ -27,6 +27,9 @@ export interface TicketEvent {
   fromStatus?: TicketStatus
   toStatus?: TicketStatus
   body: string
+  /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
+  internal?: boolean
+  authorId?: string
   createdAt: string
 }
 
@@ -49,6 +52,10 @@ export interface Ticket {
   incidentRef?: string
   createdAt: string
   updatedAt: string
+  /** Coloplus's own view; left out for Airtel. */
+  raisedBy?: string
+  assigneeId?: string
+  resolvedBy?: string
 }
 
 export interface TicketDetail {

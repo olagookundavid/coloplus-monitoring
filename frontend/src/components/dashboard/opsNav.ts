@@ -10,7 +10,9 @@ import {
   ExclamationTriangleIcon,
   LockClosedIcon,
   MapIcon,
+  ScaleIcon,
   Squares2X2Icon,
+  TicketIcon,
   UserGroupIcon,
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
@@ -132,7 +134,7 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           permission: 'users.manage',
         },
         {
-          label: 'Issued exports',
+          label: 'Exports',
           to: ROUTES.OPS_ISSUED_EXPORTS,
           icon: ArchiveBoxIcon,
           permission: 'users.manage',
@@ -173,6 +175,18 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           permission: 'reports.review',
         },
         {
+          label: 'Disputes',
+          to: ROUTES.OPS_SUPERVISOR_DISPUTES,
+          icon: ScaleIcon,
+          permission: 'reports.review',
+        },
+        {
+          label: 'Tickets',
+          to: ROUTES.OPS_SUPERVISOR_TICKETS,
+          icon: TicketIcon,
+          permission: 'reports.review',
+        },
+        {
           label: 'Reports to review',
           to: ROUTES.OPS_APPROVALS,
           icon: ClipboardDocumentCheckIcon,
@@ -185,7 +199,7 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           permission: 'reports.review',
         },
         {
-          label: 'Issued exports',
+          label: 'Exports',
           to: ROUTES.OPS_ISSUED_EXPORTS,
           icon: ArchiveBoxIcon,
           permission: 'reports.review',

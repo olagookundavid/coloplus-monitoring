@@ -5,6 +5,8 @@ export type { DashboardPageHeaderProps } from './DashboardPageHeader'
 export {
   DashboardFilterBar,
   ALL_REGIONS,
+  ALL_QUALITY,
+  QUALITY_OPTIONS,
   PERIOD_PRESETS,
   periodToDateRange,
   periodToTrendRange,
@@ -27,8 +29,6 @@ export { StatCard } from './StatCard'
 export type { StatCardProps, StatCardTrend } from './StatCard'
 export { PerformanceTrendChart } from './PerformanceTrendChart'
 export type { PerformanceTrendChartProps } from './PerformanceTrendChart'
-export { FuelHealthCard } from './FuelHealthCard'
-export type { FuelHealthCardProps } from './FuelHealthCard'
 export { SiteAttentionBanner } from './SiteAttentionBanner'
 export type { SiteAttentionBannerProps } from './SiteAttentionBanner'
 export { SITE_COLUMNS, NO_SITES, CONDITION_FILTER_OPTIONS } from './siteTable'

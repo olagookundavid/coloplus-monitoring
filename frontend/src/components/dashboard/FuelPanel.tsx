@@ -52,6 +52,12 @@ function initialValues(): RecordFuelFormValues {
   return { kind: 'delivery', litres: '', occurredAt: nowLocalDatetimeValue(), note: '' }
 }
 
+// A fresh key per form open, reused across a retried submission of that
+// same entry -- a double tap must not record it twice.
+function newClientKey(): string | undefined {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined
+}
+
 const KIND_LABEL: Record<FuelEntryKind, string> = { delivery: 'Delivery', reading: 'Reading' }
 
 export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
@@ -66,6 +72,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
   const [values, setValues] = useState<RecordFuelFormValues>(initialValues)
   const [touched, setTouched] = useState<Partial<Record<keyof RecordFuelFormValues, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
+  const [clientKey, setClientKey] = useState(newClientKey)
 
   const [voidTarget, setVoidTarget] = useState<FuelEntry | null>(null)
   const [voidReason, setVoidReason] = useState('')
@@ -82,6 +89,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
       setValues(initialValues())
       setTouched({})
       setSubmitted(false)
+      setClientKey(newClientKey())
     }
   }
 
@@ -114,6 +122,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
         litres: Number(values.litres),
         occurredAt: new Date(values.occurredAt).toISOString(),
         note: values.note || undefined,
+        clientKey,
       })
       toast.success(values.kind === 'delivery' ? 'Delivery recorded.' : 'Reading recorded.')
       if (entry.variance) {
@@ -126,6 +135,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
       setValues(initialValues())
       setTouched({})
       setSubmitted(false)
+      setClientKey(newClientKey())
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong. Try again.')
     }

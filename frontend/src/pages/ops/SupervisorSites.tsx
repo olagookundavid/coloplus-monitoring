@@ -192,6 +192,13 @@ function SiteDetailBody({ site, onFuel }: { site: AdminSite; onFuel?: () => void
             <p className="text-sm text-text-muted">
               Waiting on {acceptance.waitingOn === 'airtel' ? 'Airtel' : 'Coloplus'}
             </p>
+            {acceptance.dueAt && (
+              <p className={`text-sm ${acceptance.overdue ? 'text-danger' : 'text-text-muted'}`}>
+                <span className="font-medium">Due: </span>
+                {formatDateTimeWAT(acceptance.dueAt)}
+                {acceptance.overdue ? ' (overdue)' : ''}
+              </p>
+            )}
             {acceptance.dossier && (
               <p className="text-sm text-text">
                 <span className="font-medium">Dossier: </span>

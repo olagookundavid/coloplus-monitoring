@@ -156,6 +156,16 @@ func toCalculationDTO(c services.Calculation, loc *time.Location) dto.Calculatio
 	}
 }
 
+func toFuelBriefDTO(f *services.FuelBrief) *dto.FuelBriefDTO {
+	if f == nil {
+		return nil
+	}
+	return &dto.FuelBriefDTO{
+		Basis: "estimate", Litres: f.Litres, HoursRemaining: f.HoursRemaining,
+		Low: f.Low, Empty: f.Empty, Provisional: f.Provisional,
+	}
+}
+
 func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewResponse {
 	rows := make([]dto.SiteRowDTO, len(o.Sites))
 	for i, r := range o.Sites {
@@ -174,12 +184,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 			sum := toSummaryDTO(*r.Summary)
 			row.Summary = &sum
 		}
-		if r.Fuel != nil {
-			row.Fuel = &dto.FuelBriefDTO{
-				Basis: "estimate", Litres: r.Fuel.Litres, HoursRemaining: r.Fuel.HoursRemaining,
-				Low: r.Fuel.Low, Empty: r.Fuel.Empty, Provisional: r.Fuel.Provisional,
-			}
-		}
+		row.Fuel = toFuelBriefDTO(r.Fuel)
 		rows[i] = row
 	}
 	regions := o.Regions
@@ -212,7 +217,7 @@ func toMySitesResponse(m services.MySites) dto.MySitesResponse {
 			GeneratorCapacity: r.Site.GeneratorCapacity, AccessContactName: r.Site.AccessContactName,
 			AccessContactPhone: r.Site.AccessContactPhone, SupervisorName: r.Site.SupervisorName,
 			TodayStatus: toReportStatusDTO(r.TodayStatus), AvailabilityPct30d: round2(r.AvailabilityPct),
-			OpenIncidents: r.OpenIncidents, Bars: bars,
+			OpenIncidents: r.OpenIncidents, Bars: bars, Fuel: toFuelBriefDTO(r.Fuel),
 		}
 	}
 	return dto.MySitesResponse{

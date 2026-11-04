@@ -12,6 +12,7 @@ export {
   AuthApiError,
 } from './auth'
 export { fetchPortfolioOverview, fetchPortfolioTrend } from './airtelOverview'
+export { fetchOutages, fetchIncidentOutages } from './outages'
 export {
   fetchTickets,
   fetchTicketDetail,
@@ -19,9 +20,10 @@ export {
   raiseTicket,
   commentTicket,
   reopenTicket,
+  transitionTicket,
   linkTicketIncident,
 } from './tickets'
-export type { TicketFilter } from './tickets'
+export type { TicketFilter, TransitionTicketInput } from './tickets'
 export { fetchPublishedIncidents, mapPublishedIncident } from './incidents'
 export type { PublishedIncidentFilter } from './incidents'
 export {

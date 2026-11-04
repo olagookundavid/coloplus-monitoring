@@ -49,6 +49,8 @@ export const ROUTES = {
   OPS_SUPERVISOR_OVERVIEW: '/supervision',
   OPS_SUPERVISOR_SITES: '/site-oversight',
   OPS_SUPERVISOR_INCIDENTS: '/incident-management',
+  OPS_SUPERVISOR_DISPUTES: '/dispute-management',
+  OPS_SUPERVISOR_TICKETS: '/ticket-management',
 } as const
 
 export function siteDetailPath(id: string): string {

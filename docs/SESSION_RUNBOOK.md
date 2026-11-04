@@ -13,7 +13,7 @@ For the session on 4 November 2026. The test plan page is what the testers follo
 
 ## Why you need a supervisor login of your own
 
-Coloplus's side of disputes, support tickets and acceptance belongs to the **supervisor** role (`disputes.manage`, `tickets.manage`, `acceptance.manage`). The administrator cannot do them, and the front end has no screen for them yet (listed in `docs/FRONTEND.md`). Invite yourself as an extra supervisor with a second email address, finish two-step setup, and give that account the Lagos sites and TEST-ENU-001. Then use the commands below for tests C8, C9 and C10.
+Coloplus's side of disputes, support tickets and acceptance belongs to the **supervisor** role (`disputes.manage`, `tickets.manage`, `acceptance.manage`); the administrator cannot do them. The front end now has screens for all three (`pages/ops/SupervisorDisputes.tsx`, `SupervisorTickets.tsx`, and acceptance embedded in `SupervisorSites.tsx`) — the commands below are still useful for a quick command-line walkthrough, but the portal works too. Invite yourself as an extra supervisor with a second email address, finish two-step setup, and give that account the Lagos sites and TEST-ENU-001. Then use the commands below, or the portal, for tests C8, C9 and C10.
 
 ## Commands
 
@@ -71,8 +71,7 @@ Then the Airtel reviewer marks it inspected, then accepted, in the portal. A sit
 
 ## Known gaps to say out loud
 
-- **Outage reason.** A report with an outage cannot be submitted without an outage reason, and a late report needs a late reason. The report form does not send them yet (the first item in `docs/FRONTEND.md`). Until it does, test R5 is Blocked and everything built on the outage day (C6, C7, E3, E5) needs a stand-in: submit that day's outage report as Reporter A through the API, or pick the generator-day report instead.
-- No Coloplus-side screens for disputes, tickets and acceptance.
+- The report form now sends the outage reason and the late reason (`docs/FRONTEND.md`'s "Do these first" section 0 is clear of both). Test R5 and the outage-day tests (C6, C7, E3, E5) no longer need the API stand-in.
 - Everything else not in this release is listed on the plan's first tab.
 
 ## After the session

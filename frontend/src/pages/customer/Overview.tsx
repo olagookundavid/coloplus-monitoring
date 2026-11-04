@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useState } from 'react'
 import {
   BoltIcon,
   CheckCircleIcon,
@@ -9,7 +9,6 @@ import {
 import {
   DashboardFilterBar,
   DashboardPageHeader,
-  FuelHealthCard,
   NO_SITES,
   PerformanceTrendChart,
   periodToDateRange,
@@ -19,42 +18,67 @@ import {
   StatCard,
 } from '../../components/dashboard'
 import { SkeletonChartRow, SkeletonStatCards } from '../../components/skeletons'
-import { Button, DataTable } from '../../components/ui'
+import { AlertBanner, Button, DataTable, Select, StatusBadge } from '../../components/ui'
 import { siteDetailPath } from '../../constants'
 import { usePortfolioOverview, usePortfolioTrend } from '../../hooks'
-import type { FuelHealthSummary, PortfolioSite } from '../../types'
+import type { PortfolioTrendQueryParams } from '../../types'
+import { confirmedMeetsTargetLabel, formatMinutes, slaStatusLabel } from '../../utils'
 import { useDashboardFilters } from './CustomerLayout'
 
-function buildFuelHealthSummary(sites: PortfolioSite[]): FuelHealthSummary {
-  const withFuel = sites.filter((site) => site.fuel?.litres != null)
-  const needingAttention = withFuel.filter((site) => site.fuel?.low || site.fuel?.empty)
-  return {
-    totalLitresRemaining: Math.round(
-      withFuel.reduce((sum, site) => sum + (site.fuel?.litres ?? 0), 0)
-    ),
-    sites: needingAttention.slice(0, 5).map((site) => ({
-      siteId: site.id,
-      siteName: site.name,
-      litres: site.fuel?.litres ?? null,
-      hoursRemaining: site.fuel?.hoursRemaining ?? null,
-      low: site.fuel?.low ?? false,
-      empty: site.fuel?.empty ?? false,
-    })),
-    sitesNeedingReplenishment: needingAttention.length,
-  }
-}
+const GRAIN_OPTIONS: Array<{ value: NonNullable<PortfolioTrendQueryParams['grain']>; label: string }> = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
+]
 
 export function Overview() {
-  const { region, setRegion, period, setPeriod, openCreateTicket } = useDashboardFilters()
+  const { region, setRegion, period, setPeriod, quality, setQuality, openCreateTicket } =
+    useDashboardFilters()
+  const [grain, setGrain] = useState<NonNullable<PortfolioTrendQueryParams['grain']>>('day')
 
-  const overviewQuery = usePortfolioOverview({ region, ...periodToDateRange(period) })
-  const trendQuery = usePortfolioTrend({ region, ...periodToTrendRange(period) })
+  const overviewQuery = usePortfolioOverview({
+    region,
+    quality: (quality || undefined) as 'good' | 'fair' | 'poor' | undefined,
+    ...periodToDateRange(period),
+  })
+  const trendQuery = usePortfolioTrend({ region, grain, ...periodToTrendRange(period) })
   const sites = overviewQuery.data?.sites ?? NO_SITES
 
-  const fuelHealth = useMemo(() => buildFuelHealthSummary(sites), [sites])
+  const {
+    reportedAvailabilityPct,
+    confirmedServedSharePct,
+    assumedAvailableMinutes,
+    excludedMaintenanceMinutes,
+    assumedOutageMinutes,
+    sourceMinutes,
+  } = overviewQuery.data?.portfolio ?? {}
+  const sla = overviewQuery.data?.sla
 
-  const { reportedAvailabilityPct, confirmedServedSharePct, assumedAvailableMinutes } =
-    overviewQuery.data?.portfolio ?? {}
+  const availabilityNotes: string[] = []
+  if (assumedAvailableMinutes && assumedAvailableMinutes > 0) {
+    availabilityNotes.push('Includes minutes nobody reported, counted as available by default')
+  } else {
+    availabilityNotes.push('Confirmed by approved reports')
+  }
+  if (excludedMaintenanceMinutes && excludedMaintenanceMinutes > 0) {
+    availabilityNotes.push(`${formatMinutes(excludedMaintenanceMinutes)} planned maintenance excluded`)
+  }
+  if (assumedOutageMinutes && assumedOutageMinutes > 0) {
+    availabilityNotes.push(`${formatMinutes(assumedOutageMinutes)} assumed outage`)
+  }
+
+  const dataQuality = overviewQuery.data?.dataQuality
+  const dataQualityNotes = dataQuality
+    ? [
+        `${dataQuality.reportedDays}/${dataQuality.days} days reported`,
+        `${dataQuality.completenessPct.toFixed(0)}% complete`,
+        `${dataQuality.lateReports} late`,
+        `${dataQuality.corrections} correction${dataQuality.corrections === 1 ? '' : 's'}`,
+        ...(dataQuality.unconfirmedSharePct > 0
+          ? [`${dataQuality.unconfirmedSharePct.toFixed(0)}% unconfirmed`]
+          : []),
+      ].join(' · ')
+    : undefined
 
   return (
     <div className="flex flex-col gap-6">
@@ -75,11 +99,22 @@ export function Overview() {
         regionOptions={overviewQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
+        quality={quality}
+        onQualityChange={setQuality}
         isoTimestamp={overviewQuery.data?.generatedAt}
       />
 
+      {quality && (
+        <AlertBanner
+          tone="info"
+          icon={ExclamationTriangleIcon}
+          title={`Showing ${quality}-quality sites only.`}
+          description="The counts and totals above still cover every site."
+        />
+      )}
+
       {overviewQuery.isLoading ? (
-        <SkeletonStatCards count={4} />
+        <SkeletonStatCards count={6} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
@@ -94,11 +129,7 @@ export function Overview() {
               reportedAvailabilityPct == null ? '—' : `${reportedAvailabilityPct.toFixed(2)}%`
             }
             icon={BoltIcon}
-            caption={
-              assumedAvailableMinutes && assumedAvailableMinutes > 0
-                ? 'Includes minutes nobody reported, counted as available by default'
-                : 'Confirmed by approved reports'
-            }
+            caption={availabilityNotes.join(' · ')}
           />
           <StatCard
             label="Confirmed served share"
@@ -110,14 +141,34 @@ export function Overview() {
           />
           <StatCard
             label="Data quality"
-            value={overviewQuery.data?.dataQuality?.level ?? '—'}
+            value={dataQuality?.level ?? '—'}
             icon={ExclamationTriangleIcon}
-            caption={
-              overviewQuery.data?.dataQuality
-                ? `${overviewQuery.data.dataQuality.reportedDays}/${overviewQuery.data.dataQuality.days} days reported`
-                : undefined
-            }
+            caption={dataQualityNotes}
           />
+          <StatCard
+            label="Sites without a report"
+            value={overviewQuery.data?.siteDaysWithoutReport ?? 0}
+            icon={ExclamationTriangleIcon}
+            caption="Site-days in this period with no approved report"
+          />
+          {sla && (
+            <StatCard
+              label="SLA"
+              value={
+                <StatusBadge
+                  label={slaStatusLabel(sla.status).label}
+                  tone={slaStatusLabel(sla.status).tone}
+                />
+              }
+              icon={CheckCircleIcon}
+              caption={
+                <StatusBadge
+                  label={confirmedMeetsTargetLabel(sla.confirmedMeetsTarget).label}
+                  tone={confirmedMeetsTargetLabel(sla.confirmedMeetsTarget).tone}
+                />
+              }
+            />
+          )}
         </div>
       )}
 
@@ -126,15 +177,39 @@ export function Overview() {
       {trendQuery.isLoading ? (
         <SkeletonChartRow />
       ) : (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <div className="min-w-0 rounded-lg border border-border bg-surface p-5 lg:col-span-2">
-            <h2 className="text-base font-semibold text-text">Performance over time</h2>
-            <p className="mb-4 text-sm text-text-muted">
-              Daily availability across your active sites
-            </p>
-            <PerformanceTrendChart points={trendQuery.data?.points ?? []} />
+        <div className="min-w-0 rounded-lg border border-border bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-text">Performance over time</h2>
+              <p className="text-sm text-text-muted">
+                Availability across your active sites, by {grain}
+              </p>
+            </div>
+            <div className="w-32">
+              <Select
+                value={grain}
+                onChange={(event) =>
+                  setGrain(event.target.value as NonNullable<PortfolioTrendQueryParams['grain']>)
+                }
+                aria-label="Trend grain"
+              >
+                {GRAIN_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <FuelHealthCard summary={fuelHealth} />
+          <PerformanceTrendChart points={trendQuery.data?.points ?? []} grain={grain} />
+          {sourceMinutes && Object.keys(sourceMinutes).length > 0 && (
+            <p className="mt-4 border-t border-border pt-3 text-xs text-text-muted">
+              {Object.entries(sourceMinutes)
+                .map(([source, minutes]) => `${source}: ${formatMinutes(minutes)}`)
+                .join(' · ')}{' '}
+              this period — sources can overlap, so this does not add up to served time
+            </p>
+          )}
         </div>
       )}
 

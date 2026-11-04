@@ -5724,6 +5724,14 @@
                 "coloplus_code": {
                     "type": "string"
                 },
+                "fuel": {
+                    "description": "Fuel is the site's estimated diesel; absent when you may not see fuel, or\nthe site has no agreed rate or nothing recorded.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/dto.FuelBriefDTO"
+                        }
+                    ]
+                },
                 "generator_capacity": {
                     "type": "string"
                 },

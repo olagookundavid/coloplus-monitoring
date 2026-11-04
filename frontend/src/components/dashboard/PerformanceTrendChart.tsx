@@ -8,10 +8,12 @@ import {
   YAxis,
 } from 'recharts'
 
-import type { PortfolioTrendPoint } from '../../types'
+import type { PortfolioTrendPoint, PortfolioTrendQueryParams } from '../../types'
 
 export interface PerformanceTrendChartProps {
   points: PortfolioTrendPoint[]
+  /** Defaults to 'day' -- widens the x-axis tick label for a week/month bucket. */
+  grain?: NonNullable<PortfolioTrendQueryParams['grain']>
 }
 
 // One-off chart accents (frontend/CLAUDE.md §7's documented-exception
@@ -36,11 +38,16 @@ interface TrendChartRow {
 // timestamp). A bare "YYYY-MM-DD" string parses as UTC midnight, which can
 // render as the previous day in a timezone behind UTC -- appending a
 // zone-less time parses it as local midnight instead, so the day never shifts.
-function formatDateTick(date: string): string {
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
+function formatDateTick(
+  date: string,
+  grain: NonNullable<PortfolioTrendQueryParams['grain']> = 'day'
+): string {
+  const d = new Date(`${date}T00:00:00`)
+  if (grain === 'month') {
+    return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+  }
+  const dayLabel = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  return grain === 'week' ? `W/o ${dayLabel}` : dayLabel
 }
 
 function formatPct(value: number | null): string {
@@ -59,14 +66,15 @@ interface TrendTooltipProps {
   label?: string
   payload?: TrendTooltipPayloadEntry[]
   points: PortfolioTrendPoint[]
+  grain: NonNullable<PortfolioTrendQueryParams['grain']>
 }
 
-function TrendTooltip({ active, label, payload, points }: TrendTooltipProps) {
+function TrendTooltip({ active, label, payload, points, grain }: TrendTooltipProps) {
   if (!active || !payload || payload.length === 0 || !label) return null
   const point = points.find((p) => p.date === label)
   return (
     <div className="rounded-lg border border-border bg-surface p-3 text-sm shadow-lg">
-      <p className="mb-1.5 font-medium text-text">{formatDateTick(label)}</p>
+      <p className="mb-1.5 font-medium text-text">{formatDateTick(label, grain)}</p>
       <div className="flex flex-col gap-1">
         {payload.map((entry) => (
           <p key={entry.dataKey} className="flex items-center gap-2">
@@ -89,7 +97,7 @@ function TrendTooltip({ active, label, payload, points }: TrendTooltipProps) {
   )
 }
 
-export function PerformanceTrendChart({ points }: PerformanceTrendChartProps) {
+export function PerformanceTrendChart({ points, grain = 'day' }: PerformanceTrendChartProps) {
   const data: TrendChartRow[] = points.map((p) => ({
     date: p.date,
     reportedAvailabilityPct: p.summary.reportedAvailabilityPct,
@@ -128,7 +136,7 @@ export function PerformanceTrendChart({ points }: PerformanceTrendChartProps) {
           <CartesianGrid horizontal vertical={false} stroke="var(--color-border)" strokeWidth={1} />
           <XAxis
             dataKey="date"
-            tickFormatter={formatDateTick}
+            tickFormatter={(date: string) => formatDateTick(date, grain)}
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }}
@@ -141,7 +149,7 @@ export function PerformanceTrendChart({ points }: PerformanceTrendChartProps) {
             width={40}
             tick={{ fontSize: 12, fill: 'var(--color-text-muted)' }}
           />
-          <Tooltip content={<TrendTooltip points={points} />} />
+          <Tooltip content={<TrendTooltip points={points} grain={grain} />} />
           <Line
             dataKey="reportedAvailabilityPct"
             name="Reported availability"

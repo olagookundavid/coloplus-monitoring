@@ -1,12 +1,14 @@
 import { Skeleton } from './Skeleton'
 
 export interface SkeletonStatCardsProps {
-  count: 3 | 4
+  count: 3 | 4 | 5 | 6
 }
 
-const GRID_CLASS: Record<3 | 4, string> = {
+const GRID_CLASS: Record<3 | 4 | 5 | 6, string> = {
   3: 'grid-cols-1 gap-4 sm:grid-cols-3',
   4: 'grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4',
+  5: 'grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4',
+  6: 'grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4',
 }
 
 // Matches StatCard.tsx's DOM: label + icon circle row, value line, caption
