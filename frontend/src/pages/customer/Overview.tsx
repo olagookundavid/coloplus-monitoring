@@ -75,6 +75,7 @@ export function Overview() {
         regionOptions={overviewQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
+        isoTimestamp={overviewQuery.data?.generatedAt}
       />
 
       {overviewQuery.isLoading ? (

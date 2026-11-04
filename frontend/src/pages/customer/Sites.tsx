@@ -58,6 +58,7 @@ export function Sites() {
         regionOptions={sitesQuery.data?.regions ?? []}
         period={period}
         onPeriodChange={setPeriod}
+        isoTimestamp={sitesQuery.data?.generatedAt}
       />
 
       <SiteAttentionBanner sites={sites} />

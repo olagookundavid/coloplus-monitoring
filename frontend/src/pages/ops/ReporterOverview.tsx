@@ -171,7 +171,7 @@ export function ReporterOverview() {
         }
       />
 
-      <DataRecencyIndicator label="Updated" />
+      <DataRecencyIndicator label="Updated" isoTimestamp={overviewQuery.data?.generatedAt} />
 
       {overviewQuery.isLoading ? (
         <SkeletonStatCards count={4} />

@@ -9,6 +9,16 @@ export function formatDateTimeWAT(iso: string): string {
   })
 }
 
+// Time-only WAT, e.g. "14:32" -- for compact "as of"/"updated" badges where
+// a full date (formatDateTimeWAT) would be more than the space calls for.
+export function formatTimeWAT(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Africa/Lagos',
+  })
+}
+
 // How long ago an ISO timestamp was, in whole hours under a day and whole
 // days beyond that -- used to flag approvals waiting too long.
 export function formatAge(iso?: string): string {

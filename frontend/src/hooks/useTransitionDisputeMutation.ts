@@ -5,16 +5,18 @@ import type { TransitionDisputeInput } from '../services'
 import { DISPUTE_DETAIL_QUERY_KEY } from './useDisputeDetail'
 import { DISPUTE_SUMMARY_QUERY_KEY } from './useDisputeSummary'
 import { DISPUTES_QUERY_KEY } from './useDisputes'
+import { SITE_OVERVIEW_QUERY_KEY } from './useSiteOverview'
 
 export function useTransitionDisputeMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, input }: { id: string; input: TransitionDisputeInput }) =>
       transitionDispute(id, input),
-    onSuccess: (_dispute, { id }) => {
+    onSuccess: (dispute, { id }) => {
       queryClient.invalidateQueries({ queryKey: DISPUTES_QUERY_KEY })
       queryClient.invalidateQueries({ queryKey: [...DISPUTE_DETAIL_QUERY_KEY, id] })
       queryClient.invalidateQueries({ queryKey: DISPUTE_SUMMARY_QUERY_KEY })
+      queryClient.invalidateQueries({ queryKey: [...SITE_OVERVIEW_QUERY_KEY, dispute.siteId] })
     },
   })
 }

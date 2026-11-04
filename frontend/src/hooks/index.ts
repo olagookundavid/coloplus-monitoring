@@ -7,8 +7,6 @@ export { useRegenerateRecoveryCodesMutation } from './useRegenerateRecoveryCodes
 export { usePermissions } from './usePermissions'
 export { usePortfolioOverview, PORTFOLIO_OVERVIEW_QUERY_KEY } from './usePortfolioOverview'
 export { usePortfolioTrend, PORTFOLIO_TREND_QUERY_KEY } from './usePortfolioTrend'
-export { useDataSnapshot } from './useDataSnapshot'
-export type { DataSnapshot } from './useDataSnapshot'
 export { useTickets, TICKETS_QUERY_KEY } from './useTickets'
 export { useTicketDetail, TICKET_DETAIL_QUERY_KEY } from './useTicketDetail'
 export { useTicketSummary, TICKET_SUMMARY_QUERY_KEY } from './useTicketSummary'

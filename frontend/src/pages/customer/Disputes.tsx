@@ -57,6 +57,7 @@ function DisputeDetailPane({
   const [commentBody, setCommentBody] = useState('')
   const [evidenceNote, setEvidenceNote] = useState('')
   const [reopenReason, setReopenReason] = useState('')
+  const [withdrawReason, setWithdrawReason] = useState('')
 
   const commentMutation = useCommentDisputeMutation()
   const transitionMutation = useTransitionDisputeMutation()
@@ -86,6 +87,7 @@ function DisputeDetailPane({
       toast.success('Dispute updated.')
       setEvidenceNote('')
       setReopenReason('')
+      setWithdrawReason('')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not update this dispute.')
     }
@@ -210,9 +212,27 @@ function DisputeDetailPane({
       )}
 
       {canWithdraw && (
-        <Button variant="outline" onClick={() => handleTransition('closed')}>
-          Withdraw dispute
-        </Button>
+        <div className="rounded-lg border border-border bg-surface-subtle p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Withdraw this dispute
+          </p>
+          <div className="mt-3 flex flex-col gap-3">
+            <Textarea
+              value={withdrawReason}
+              onChange={(event) => setWithdrawReason(event.target.value)}
+              placeholder="Say why you're withdrawing it (required)"
+              aria-label="Withdrawal reason"
+            />
+            <Button
+              variant="outline"
+              disabled={!withdrawReason.trim() || transitionMutation.isPending}
+              onClick={() => handleTransition('closed', withdrawReason.trim())}
+              fullWidth
+            >
+              Withdraw dispute
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   )

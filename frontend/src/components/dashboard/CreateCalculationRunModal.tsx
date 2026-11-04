@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CalculatorIcon } from '@heroicons/react/24/outline'
 
 import { calculationRunDetailPath } from '../../constants'
 import { useCreateCalculationRunMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
-import { Button, Field, Input, Modal } from '../ui'
+import { Button, Field, Input, SidePanel } from '../ui'
 
 export interface CreateCalculationRunModalProps {
   open: boolean
@@ -55,9 +56,10 @@ export function CreateCalculationRunModal({ open, onClose }: CreateCalculationRu
   }
 
   return (
-    <Modal
+    <SidePanel
       open={open}
       onClose={handleClose}
+      eyebrow="Calculation runs"
       title="Store a calculation run"
       subtitle="Freezes that month's figures for every site. Running it again always creates a new, separate run."
       footer={
@@ -65,7 +67,12 @@ export function CreateCalculationRunModal({ open, onClose }: CreateCalculationRu
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button type="submit" form="create-run-form" loading={mutation.isPending}>
+          <Button
+            type="submit"
+            form="create-run-form"
+            icon={CalculatorIcon}
+            loading={mutation.isPending}
+          >
             Store run
           </Button>
         </>
@@ -108,6 +115,6 @@ export function CreateCalculationRunModal({ open, onClose }: CreateCalculationRu
           />
         </Field>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }

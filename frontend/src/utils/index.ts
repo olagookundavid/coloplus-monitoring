@@ -35,6 +35,7 @@ export { getInitials } from './initials'
 export { lazyNamed } from './lazyImport'
 export {
   formatDateTimeWAT,
+  formatTimeWAT,
   formatAge,
   formatAuditWhen,
   formatRelativeShort,

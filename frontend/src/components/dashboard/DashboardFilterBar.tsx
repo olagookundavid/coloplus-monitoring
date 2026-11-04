@@ -65,6 +65,9 @@ export interface DashboardFilterBarProps {
   regionOptions: string[]
   period: string
   onPeriodChange: (period: string) => void
+  /** The real ISO timestamp this page's data was generated at. Omit when
+      the page has no single cohesive data snapshot to date (e.g. Reports). */
+  isoTimestamp?: string
 }
 
 export function DashboardFilterBar({
@@ -73,6 +76,7 @@ export function DashboardFilterBar({
   regionOptions,
   period,
   onPeriodChange,
+  isoTimestamp,
 }: DashboardFilterBarProps) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -107,7 +111,7 @@ export function DashboardFilterBar({
           </Select>
         </div>
       </div>
-      <DataRecencyIndicator />
+      <DataRecencyIndicator isoTimestamp={isoTimestamp} />
     </div>
   )
 }

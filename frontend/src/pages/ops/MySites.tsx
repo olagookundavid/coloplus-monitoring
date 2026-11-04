@@ -86,7 +86,7 @@ export function MySites() {
         subtitle={`The ${rows.length} ${rows.length === 1 ? 'site' : 'sites'} assigned to you in ${regionLabel}. You only see sites assigned to you.`}
       />
 
-      <DataRecencyIndicator label="Updated" />
+      <DataRecencyIndicator label="Updated" isoTimestamp={mySitesQuery.data?.generatedAt} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">

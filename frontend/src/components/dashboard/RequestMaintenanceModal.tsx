@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { WrenchScrewdriverIcon } from '@heroicons/react/24/outline'
 
 import { useAdminSites, useRequestMaintenanceMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
@@ -9,7 +10,7 @@ import {
   toast,
   type RequestMaintenanceFormValues,
 } from '../../utils'
-import { Button, Field, Input, Modal, Select, Textarea } from '../ui'
+import { Button, Field, Input, Select, SidePanel, Textarea } from '../ui'
 
 export interface RequestMaintenanceModalProps {
   open: boolean
@@ -94,9 +95,10 @@ export function RequestMaintenanceModal({ open, onClose, rules }: RequestMainten
   }
 
   return (
-    <Modal
+    <SidePanel
       open={open}
       onClose={handleClose}
+      eyebrow="Planned maintenance"
       title="Request maintenance"
       subtitle="Another person approves this before it's scheduled."
       footer={
@@ -104,7 +106,12 @@ export function RequestMaintenanceModal({ open, onClose, rules }: RequestMainten
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
-          <Button type="submit" form="request-maintenance-form" loading={mutation.isPending}>
+          <Button
+            type="submit"
+            form="request-maintenance-form"
+            icon={WrenchScrewdriverIcon}
+            loading={mutation.isPending}
+          >
             Request
           </Button>
         </>
@@ -184,6 +191,6 @@ export function RequestMaintenanceModal({ open, onClose, rules }: RequestMainten
           />
         </Field>
       </form>
-    </Modal>
+    </SidePanel>
   )
 }
