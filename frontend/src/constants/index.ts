@@ -1,1 +1,1 @@
-export { ROUTES, siteDetailPath, ticketDetailPath } from './routes'
+export { ROUTES, siteDetailPath, ticketDetailPath, calculationRunDetailPath } from './routes'

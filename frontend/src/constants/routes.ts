@@ -31,6 +31,10 @@ export const ROUTES = {
   OPS_AUDIT_LOG: '/audit-log',
   OPS_EMAIL_LOG: '/email-log',
   OPS_SETTINGS: '/settings',
+  OPS_PERIODS: '/periods',
+  OPS_MAINTENANCE: '/maintenance',
+  OPS_CALCULATION_RUNS: '/calculation-runs',
+  CALCULATION_RUN_DETAIL_PATTERN: '/calculation-runs/:id',
   OPS_REPORTER_OVERVIEW: '/reporting',
   OPS_MY_SITES: '/my-sites',
   OPS_DAILY_REPORTS: '/daily-reports',
@@ -50,4 +54,8 @@ export function siteDetailPath(id: string): string {
 
 export function ticketDetailPath(id: string): string {
   return `/support-tickets/${id}`
+}
+
+export function calculationRunDetailPath(id: string): string {
+  return `/calculation-runs/${id}`
 }

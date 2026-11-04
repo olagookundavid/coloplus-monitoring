@@ -128,3 +128,20 @@ export type {
 } from './attachment'
 export type { NotificationStatus, Notification, NotificationListResult } from './notification'
 export type { Alert, AlertListResult, DigestPreference } from './alert'
+export type { SiteImportRowAction, SiteImportRow, SiteImportResult } from './siteImport'
+export type { PeriodClosure } from './periodClosure'
+export type {
+  MaintenanceStatus,
+  MaintenanceRules,
+  MaintenanceWindow,
+  MaintenanceListResult,
+  MaintenanceFilter,
+} from './maintenance'
+export type {
+  CalculationRunRow,
+  CalculationRun,
+  CalculationRunListResult,
+  RunChange,
+  RunComparison,
+  CreateCalculationRunInput,
+} from './calculationRun'

@@ -34,6 +34,12 @@ const OpsApprovals = lazyNamed(() => import('./pages/ops/Approvals'), 'Approvals
 const OpsAuditLog = lazyNamed(() => import('./pages/ops/AuditLog'), 'AuditLog')
 const OpsEmailLog = lazyNamed(() => import('./pages/ops/EmailLog'), 'EmailLog')
 const OpsSettings = lazyNamed(() => import('./pages/ops/Settings'), 'Settings')
+const Periods = lazyNamed(() => import('./pages/ops/Periods'), 'Periods')
+const Maintenance = lazyNamed(() => import('./pages/ops/Maintenance'), 'Maintenance')
+const CalculationRuns = lazyNamed(
+  () => import('./pages/ops/CalculationRuns'),
+  'CalculationRuns'
+)
 const ReporterOverview = lazyNamed(() => import('./pages/ops/ReporterOverview'), 'ReporterOverview')
 const MySites = lazyNamed(() => import('./pages/ops/MySites'), 'MySites')
 const DailyReports = lazyNamed(() => import('./pages/ops/DailyReports'), 'DailyReports')
@@ -127,6 +133,14 @@ export function App() {
           <Route path={ROUTES.OPS_SITES} element={<OpsSites />} />
           <Route path={ROUTES.OPS_SITE_ASSIGNMENTS} element={<OpsSiteAssignments />} />
           <Route path={ROUTES.OPS_SETTINGS} element={<OpsSettings />} />
+          {/* Gated here on users.manage like the rest of this block, not a
+              new exports.create block: the backend's real check for
+              /calculation-runs is exports.create AND Actor.AllSites AND NOT
+              published.read, and only admin currently holds AllSites, so
+              users.manage is the permission that actually matches who can
+              use this page today (see opsNav.ts for the same note). */}
+          <Route path={ROUTES.OPS_CALCULATION_RUNS} element={<CalculationRuns />} />
+          <Route path={ROUTES.CALCULATION_RUN_DETAIL_PATTERN} element={<CalculationRuns />} />
         </Route>
 
         {/* A separate block, not folded into the one above: Approvals is the
@@ -145,6 +159,25 @@ export function App() {
           }
         >
           <Route path={ROUTES.OPS_APPROVALS} element={<OpsApprovals />} />
+        </Route>
+
+        {/* periods.manage is admin-only today, like users.manage, but kept
+            as its own block for the same reason as audit.read/
+            notifications.read below: it's the permission that actually
+            controls this data, not guaranteed to stay bundled with
+            users.manage forever. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="periods.manage">
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_PERIODS} element={<Periods />} />
         </Route>
 
         {/* Another separate block: audit.read is the permission that
@@ -226,6 +259,26 @@ export function App() {
           <Route path={ROUTES.OPS_SUPERVISOR_OVERVIEW} element={<SupervisorOverview />} />
           <Route path={ROUTES.OPS_SUPERVISOR_SITES} element={<SupervisorSites />} />
           <Route path={ROUTES.OPS_SUPERVISOR_INCIDENTS} element={<SupervisorIncidents />} />
+        </Route>
+
+        {/* A seventh, separate block: maintenance.request is held by all
+            three ops roles (admin, supervisor, reporter) -- the one
+            permission that exactly matches "everyone who can at least
+            request a maintenance window," distinct from every existing
+            list above. Approve/reject/cancel are gated per-row inside
+            Maintenance.tsx on maintenance.approve or being the requester. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="maintenance.request">
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_MAINTENANCE} element={<Maintenance />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

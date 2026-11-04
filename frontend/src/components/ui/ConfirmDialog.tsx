@@ -22,6 +22,10 @@ export interface ConfirmDialogProps {
   tone: ConfirmDialogTone
   icon?: ComponentType<SVGProps<SVGSVGElement>>
   pending?: boolean
+  /** Keeps the confirm button disabled until the caller's own condition is
+      met (e.g. a required reason textarea in `body` hasn't reached its
+      minimum length yet). */
+  confirmDisabled?: boolean
   maxWidth?: ModalMaxWidth
   /** A stable, page+operation-scoped key (e.g. "ops-approvals:approve").
       Offers a "don't ask me again" checkbox; once checked and confirmed,
@@ -79,6 +83,7 @@ export function ConfirmDialog({
   tone,
   icon: Icon,
   pending = false,
+  confirmDisabled = false,
   maxWidth = 'md',
   dontAskAgainKey,
   dontAskAgainLabel = "Don't ask me again",
@@ -126,7 +131,12 @@ export function ConfirmDialog({
           <Button variant="outline" onClick={onCancel} disabled={pending}>
             Cancel
           </Button>
-          <Button variant={TONE_BUTTON_VARIANT[tone]} onClick={handleConfirm} loading={pending}>
+          <Button
+            variant={TONE_BUTTON_VARIANT[tone]}
+            onClick={handleConfirm}
+            loading={pending}
+            disabled={confirmDisabled}
+          >
             {confirmLabel}
           </Button>
         </>

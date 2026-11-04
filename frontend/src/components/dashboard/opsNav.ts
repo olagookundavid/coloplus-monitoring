@@ -1,14 +1,17 @@
 import {
   ArrowUturnLeftIcon,
+  CalculatorIcon,
   ClipboardDocumentCheckIcon,
   ClipboardDocumentListIcon,
   Cog6ToothIcon,
   DocumentTextIcon,
   EnvelopeIcon,
   ExclamationTriangleIcon,
+  LockClosedIcon,
   MapIcon,
   Squares2X2Icon,
   UserGroupIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline'
 
 import { ROUTES } from '../../constants'
@@ -35,6 +38,19 @@ import type { NavGroup } from './navTypes'
 // buildOpsNavGroups takes a live Corrections badge count (how many of the
 // reporter's own reports are currently returned) -- a zero-arg call renders
 // the group without one, for a caller with nothing to count yet.
+//
+// Maintenance has a copy in all three "Workspace" groups below, same as
+// Approvals/Reports to review -- but each copy is gated on that group's own
+// identity permission (users.manage / reports.review / reports.create), NOT
+// on maintenance.request itself. The Sidebar filters each group's items by
+// permission independently, so gating every copy on maintenance.request
+// (which all three roles hold) would make every group "survive" filtering
+// for every role -- an admin would see it three times, once per group,
+// including two orphaned "Workspace" headings with nothing else in them.
+// Gating each copy on its own group's mutually exclusive identity
+// permission means exactly one copy is ever visible, and it always lands
+// inside that role's own already-surviving group. maintenance.request still
+// guards the route itself (App.tsx) -- this only decides nav placement.
 export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
   return [
     {
@@ -68,6 +84,29 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           label: 'Approvals',
           to: ROUTES.OPS_APPROVALS,
           icon: ClipboardDocumentCheckIcon,
+          permission: 'users.manage',
+        },
+        // Gated on users.manage, not exports.create: the backend's real
+        // check for /calculation-runs is exports.create AND Actor.AllSites
+        // AND NOT published.read, and only admin currently holds AllSites.
+        // exports.create is also held by supervisor and both Airtel roles,
+        // who would get a 403 if this nav item used that permission name.
+        {
+          label: 'Calculation runs',
+          to: ROUTES.OPS_CALCULATION_RUNS,
+          icon: CalculatorIcon,
+          permission: 'users.manage',
+        },
+        {
+          label: 'Periods',
+          to: ROUTES.OPS_PERIODS,
+          icon: LockClosedIcon,
+          permission: 'periods.manage',
+        },
+        {
+          label: 'Maintenance',
+          to: ROUTES.OPS_MAINTENANCE,
+          icon: WrenchScrewdriverIcon,
           permission: 'users.manage',
         },
         {
@@ -111,6 +150,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           icon: ClipboardDocumentCheckIcon,
           permission: 'reports.review',
         },
+        {
+          label: 'Maintenance',
+          to: ROUTES.OPS_MAINTENANCE,
+          icon: WrenchScrewdriverIcon,
+          permission: 'reports.review',
+        },
       ],
     },
     {
@@ -146,6 +191,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           icon: ArrowUturnLeftIcon,
           permission: 'reports.create',
           badge: correctionsBadge || undefined,
+        },
+        {
+          label: 'Maintenance',
+          to: ROUTES.OPS_MAINTENANCE,
+          icon: WrenchScrewdriverIcon,
+          permission: 'reports.create',
         },
       ],
     },

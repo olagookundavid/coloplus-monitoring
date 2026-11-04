@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline'
+import { DocumentArrowUpIcon, PencilSquareIcon, PlusIcon } from '@heroicons/react/24/outline'
 
-import { DashboardPageHeader, SiteFormPanel } from '../../components/dashboard'
+import { DashboardPageHeader, ImportSitesModal, SiteFormPanel } from '../../components/dashboard'
 import {
   Button,
   DataTable,
@@ -10,17 +10,19 @@ import {
   type Column,
   type RowAction,
 } from '../../components/ui'
-import { useSiteProfiles } from '../../hooks'
+import { usePermissions, useSiteProfiles } from '../../hooks'
 import { POWER_SOURCE_LABELS, type SiteProfile } from '../../types'
 import { siteStatusLabel } from '../../utils'
 
 const NO_SITES: SiteProfile[] = []
 
 export function Sites() {
+  const { can } = usePermissions()
   const sitesQuery = useSiteProfiles()
   const sites = sitesQuery.data ?? NO_SITES
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [editSite, setEditSite] = useState<SiteProfile | null>(null)
 
   const columns: Column<SiteProfile>[] = useMemo(
@@ -83,9 +85,20 @@ export function Sites() {
         title="Sites"
         subtitle="The site master record: codes, location, power, fuel and reporting rules."
         actions={
-          <Button icon={PlusIcon} onClick={() => setCreateOpen(true)}>
-            New site
-          </Button>
+          <>
+            {can('sites.manage') && (
+              <Button
+                variant="outline"
+                icon={DocumentArrowUpIcon}
+                onClick={() => setImportOpen(true)}
+              >
+                Import CSV
+              </Button>
+            )}
+            <Button icon={PlusIcon} onClick={() => setCreateOpen(true)}>
+              New site
+            </Button>
+          </>
         }
       />
 
@@ -106,6 +119,8 @@ export function Sites() {
         onClose={() => setEditSite(null)}
         site={editSite ?? undefined}
       />
+
+      <ImportSitesModal open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   )
 }
