@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { DashboardPageHeader } from '../../components/dashboard'
 import { SkeletonListItems } from '../../components/skeletons'
 import { SidePanel, StatusBadge, Tabs, type TabItem } from '../../components/ui'
+import { ROUTES, incidentDetailPath } from '../../constants'
 import { useAdminSites, usePublishedIncidents } from '../../hooks'
 import type { AdminSite, PublishedIncident } from '../../types'
 import { describeIncidentStatus, formatDateTimeWAT, severityLabel } from '../../utils'
@@ -24,7 +26,8 @@ export function Incidents() {
   const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('open')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { id: selectedId } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
 
   const counts = useMemo(() => {
     const result = { open: 0, closed: 0 }
@@ -38,11 +41,22 @@ export function Incidents() {
   const visibleIncidents = useMemo(() => {
     if (tab === 'all') return incidents
     return incidents.filter(
-      (incident) => (describeIncidentStatus(incident.status).bucket === 'closed') === (tab === 'closed')
+      (incident) =>
+        (describeIncidentStatus(incident.status).bucket === 'closed') === (tab === 'closed')
     )
   }, [incidents, tab])
 
-  const selectedIncident = incidents.find((incident) => incident.id === selectedId) ?? null
+  const selectedIncident = selectedId
+    ? (incidents.find((incident) => incident.id === selectedId) ?? null)
+    : null
+
+  // A stale or mistyped incident id in the URL -- send the viewer back to
+  // the list rather than leaving the panel open with nothing to show.
+  useEffect(() => {
+    if (selectedId && !incidentsQuery.isLoading && !selectedIncident) {
+      navigate(ROUTES.CUSTOMER_INCIDENTS, { replace: true })
+    }
+  }, [selectedId, incidentsQuery.isLoading, selectedIncident, navigate])
 
   const tabItems: TabItem<TabValue>[] = [
     { value: 'open', label: `Open ${counts.open}` },
@@ -75,7 +89,7 @@ export function Incidents() {
               <li key={incident.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedId(incident.id)}
+                  onClick={() => navigate(incidentDetailPath(incident.id))}
                   className="w-full rounded-lg border border-border bg-surface p-4 text-left transition-colors hover:bg-surface-subtle"
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -98,7 +112,7 @@ export function Incidents() {
 
       <SidePanel
         open={Boolean(selectedIncident)}
-        onClose={() => setSelectedId(null)}
+        onClose={() => navigate(ROUTES.CUSTOMER_INCIDENTS)}
         eyebrow={selectedIncident?.ref}
         title={selectedIncident?.title ?? ''}
         subtitle={

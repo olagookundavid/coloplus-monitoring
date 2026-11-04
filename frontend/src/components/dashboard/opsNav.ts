@@ -1,4 +1,5 @@
 import {
+  ArchiveBoxIcon,
   ArrowUturnLeftIcon,
   CalculatorIcon,
   ClipboardDocumentCheckIcon,
@@ -51,6 +52,10 @@ import type { NavGroup } from './navTypes'
 // permission means exactly one copy is ever visible, and it always lands
 // inside that role's own already-surviving group. maintenance.request still
 // guards the route itself (App.tsx) -- this only decides nav placement.
+//
+// Issued exports follows the same rule, with a copy in the admin and
+// supervisor groups only (reporter lacks exports.create, the route's real
+// permission, so there's no third copy to add).
 export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
   return [
     {
@@ -110,6 +115,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           permission: 'users.manage',
         },
         {
+          label: 'Issued exports',
+          to: ROUTES.OPS_ISSUED_EXPORTS,
+          icon: ArchiveBoxIcon,
+          permission: 'users.manage',
+        },
+        {
           label: 'Audit log',
           to: ROUTES.OPS_AUDIT_LOG,
           icon: ClipboardDocumentListIcon,
@@ -154,6 +165,12 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           label: 'Maintenance',
           to: ROUTES.OPS_MAINTENANCE,
           icon: WrenchScrewdriverIcon,
+          permission: 'reports.review',
+        },
+        {
+          label: 'Issued exports',
+          to: ROUTES.OPS_ISSUED_EXPORTS,
+          icon: ArchiveBoxIcon,
           permission: 'reports.review',
         },
       ],

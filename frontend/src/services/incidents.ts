@@ -82,15 +82,3 @@ export async function fetchPublishedIncidents(
     throw mapAxiosError(error, 'Could not load incidents.')
   }
 }
-
-export async function fetchPublishedIncidentDetail(id: string): Promise<PublishedIncident> {
-  try {
-    const { data } = await getApi().get<{ published?: PublishedIncidentDTO }>(`/incidents/${id}`)
-    if (!data.published) {
-      throw new Error('This incident is not available.')
-    }
-    return mapPublishedIncident(data.published)
-  } catch (error) {
-    throw mapAxiosError(error, 'Could not load this incident.')
-  }
-}

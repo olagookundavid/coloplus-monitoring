@@ -18,6 +18,7 @@ export const ROUTES = {
   CUSTOMER_ACCEPTANCE: '/acceptance',
   SITE_DETAIL_PATTERN: '/sites/:id',
   TICKET_DETAIL_PATTERN: '/support-tickets/:id',
+  INCIDENT_DETAIL_PATTERN: '/incident-register/:id',
   // These names stay OPS_* (the Coloplus-staff portal they belong to,
   // pages/ops/) even though their URLs carry no "/ops" prefix -- the portal
   // split is an internal/file-structure concern, not something the URL bar
@@ -33,6 +34,7 @@ export const ROUTES = {
   OPS_SETTINGS: '/settings',
   OPS_PERIODS: '/periods',
   OPS_MAINTENANCE: '/maintenance',
+  OPS_ISSUED_EXPORTS: '/issued-exports',
   OPS_CALCULATION_RUNS: '/calculation-runs',
   CALCULATION_RUN_DETAIL_PATTERN: '/calculation-runs/:id',
   OPS_REPORTER_OVERVIEW: '/reporting',
@@ -54,6 +56,10 @@ export function siteDetailPath(id: string): string {
 
 export function ticketDetailPath(id: string): string {
   return `/support-tickets/${id}`
+}
+
+export function incidentDetailPath(id: string): string {
+  return `/incident-register/${id}`
 }
 
 export function calculationRunDetailPath(id: string): string {

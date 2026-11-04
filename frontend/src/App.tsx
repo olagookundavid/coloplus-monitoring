@@ -36,6 +36,7 @@ const OpsEmailLog = lazyNamed(() => import('./pages/ops/EmailLog'), 'EmailLog')
 const OpsSettings = lazyNamed(() => import('./pages/ops/Settings'), 'Settings')
 const Periods = lazyNamed(() => import('./pages/ops/Periods'), 'Periods')
 const Maintenance = lazyNamed(() => import('./pages/ops/Maintenance'), 'Maintenance')
+const IssuedExports = lazyNamed(() => import('./pages/ops/IssuedExports'), 'IssuedExports')
 const CalculationRuns = lazyNamed(
   () => import('./pages/ops/CalculationRuns'),
   'CalculationRuns'
@@ -110,6 +111,7 @@ export function App() {
           <Route path={ROUTES.CUSTOMER_SITES} element={<Sites />} />
           <Route path={ROUTES.SITE_DETAIL_PATTERN} element={<Sites />} />
           <Route path={ROUTES.CUSTOMER_INCIDENTS} element={<CustomerIncidents />} />
+          <Route path={ROUTES.INCIDENT_DETAIL_PATTERN} element={<CustomerIncidents />} />
           <Route path={ROUTES.CUSTOMER_DISPUTES} element={<Disputes />} />
           <Route path={ROUTES.CUSTOMER_ACCEPTANCE} element={<Acceptance />} />
           <Route path={ROUTES.CUSTOMER_TICKETS} element={<SupportTickets />} />
@@ -279,6 +281,26 @@ export function App() {
           }
         >
           <Route path={ROUTES.OPS_MAINTENANCE} element={<Maintenance />} />
+        </Route>
+
+        {/* An eighth, separate block: exports.create is held by admin and
+            supervisor alike (and by both Airtel roles, who never reach the
+            ops portal at all) -- the real permission the backend checks for
+            /exports/issued. Who actually sees in it (own exports vs
+            everyone's) is decided server-side by audit.read, not by
+            anything this route checks. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission="exports.create">
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_ISSUED_EXPORTS} element={<IssuedExports />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

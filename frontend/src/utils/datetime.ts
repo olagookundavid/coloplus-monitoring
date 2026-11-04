@@ -50,6 +50,24 @@ export function formatAuditWhen(iso: string): { time: string; day: string } {
   return { time, day }
 }
 
+// Snaps any "YYYY-MM-DD" to that week's Monday -- pure UTC calendar math,
+// deliberately not going through a local-timezone-sensitive Date method,
+// since this is calendar arithmetic, not a display timestamp. Used so a
+// weekly export's week_start (which the backend requires to be a Monday)
+// can never fail that check just because of which day was picked.
+export function mondayOf(dateStr: string): string {
+  const parts = dateStr.split('-')
+  const year = Number(parts[0])
+  const month = Number(parts[1])
+  const day = Number(parts[2])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  const weekday = date.getUTCDay() // 0 = Sunday .. 6 = Saturday
+  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`
+}
+
 // Finer-grained than formatAge -- minutes under an hour, hours under a day,
 // "Yesterday", then whole days -- for compact feeds like the notifications
 // dropdown.

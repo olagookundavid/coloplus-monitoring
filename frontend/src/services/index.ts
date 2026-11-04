@@ -22,11 +22,7 @@ export {
   linkTicketIncident,
 } from './tickets'
 export type { TicketFilter } from './tickets'
-export {
-  fetchPublishedIncidents,
-  fetchPublishedIncidentDetail,
-  mapPublishedIncident,
-} from './incidents'
+export { fetchPublishedIncidents, mapPublishedIncident } from './incidents'
 export type { PublishedIncidentFilter } from './incidents'
 export {
   fetchDisputes,
@@ -44,8 +40,19 @@ export {
   requestAcceptance,
 } from './acceptance'
 export type { AcceptanceFilter, RequestAcceptanceInput } from './acceptance'
-export { downloadDailySummariesCsv, downloadIncidentRegisterCsv } from './exports'
-export type { ExportDateRange } from './exports'
+export {
+  downloadDailySummariesCsv,
+  downloadIncidentRegisterCsv,
+  downloadMonthlyPerformanceCsv,
+  downloadWeeklyExceptionsCsv,
+  downloadCommissioningBacklogCsv,
+} from './exports'
+export type {
+  ExportDateRange,
+  MonthlyPerformanceParams,
+  WeeklyExceptionsParams,
+  CommissioningBacklogParams,
+} from './exports'
 export {
   fetchUsers,
   createUser,
@@ -126,3 +133,5 @@ export {
   fetchCalculationRun,
   fetchCalculationRunComparison,
 } from './calculationRuns'
+export { fetchIssuedExports, fetchIssuedExportDownload } from './issuedExports'
+export type { IssuedExportsQuery } from './issuedExports'

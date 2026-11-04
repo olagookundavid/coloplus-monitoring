@@ -1,7 +1,18 @@
 import { useMutation } from '@tanstack/react-query'
 
-import { downloadDailySummariesCsv, downloadIncidentRegisterCsv } from '../services'
-import type { ExportDateRange } from '../services'
+import {
+  downloadCommissioningBacklogCsv,
+  downloadDailySummariesCsv,
+  downloadIncidentRegisterCsv,
+  downloadMonthlyPerformanceCsv,
+  downloadWeeklyExceptionsCsv,
+} from '../services'
+import type {
+  CommissioningBacklogParams,
+  ExportDateRange,
+  MonthlyPerformanceParams,
+  WeeklyExceptionsParams,
+} from '../services'
 
 export function useDownloadDailySummariesMutation() {
   return useMutation({
@@ -12,5 +23,23 @@ export function useDownloadDailySummariesMutation() {
 export function useDownloadIncidentRegisterMutation() {
   return useMutation({
     mutationFn: (range: ExportDateRange) => downloadIncidentRegisterCsv(range),
+  })
+}
+
+export function useDownloadMonthlyPerformanceMutation() {
+  return useMutation({
+    mutationFn: (params: MonthlyPerformanceParams) => downloadMonthlyPerformanceCsv(params),
+  })
+}
+
+export function useDownloadWeeklyExceptionsMutation() {
+  return useMutation({
+    mutationFn: (params: WeeklyExceptionsParams) => downloadWeeklyExceptionsCsv(params),
+  })
+}
+
+export function useDownloadCommissioningBacklogMutation() {
+  return useMutation({
+    mutationFn: (params: CommissioningBacklogParams) => downloadCommissioningBacklogCsv(params),
   })
 }

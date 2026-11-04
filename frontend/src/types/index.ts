@@ -145,3 +145,4 @@ export type {
   RunComparison,
   CreateCalculationRunInput,
 } from './calculationRun'
+export type { IssuedExport, IssuedExportListResult, IssuedExportDownload } from './issuedExport'

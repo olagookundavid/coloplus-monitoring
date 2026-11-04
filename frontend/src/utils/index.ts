@@ -33,7 +33,13 @@ export { getManagedUserStatus, getManagedUserStatusTone } from './userStatus'
 export type { ManagedUserStatus } from './userStatus'
 export { getInitials } from './initials'
 export { lazyNamed } from './lazyImport'
-export { formatDateTimeWAT, formatAge, formatAuditWhen, formatRelativeShort } from './datetime'
+export {
+  formatDateTimeWAT,
+  formatAge,
+  formatAuditWhen,
+  formatRelativeShort,
+  mondayOf,
+} from './datetime'
 export { landingRouteFor } from './authRedirect'
 export { categorizeAuditEvent, describeAuditEvent, resolveAuditActorName } from './auditDisplay'
 export { toCsv, downloadCsv, downloadTextFile } from './csv'
@@ -55,3 +61,8 @@ export { maintenanceStatusLabel } from './maintenanceStatus'
 export { requestMaintenanceSchema } from './maintenanceValidation'
 export type { RequestMaintenanceFormValues } from './maintenanceValidation'
 export { calculationRunLabel, formatRunPercent } from './calculationRunDisplay'
+export {
+  issuedExportKindLabel,
+  issuedByLabel,
+  describeIssuedExportParams,
+} from './issuedExportDisplay'

@@ -18,10 +18,6 @@ export { useReopenTicketMutation } from './useReopenTicketMutation'
 export { useLinkTicketIncidentMutation } from './useLinkTicketIncidentMutation'
 export type { LinkTicketIncidentInput } from './useLinkTicketIncidentMutation'
 export { usePublishedIncidents, PUBLISHED_INCIDENTS_QUERY_KEY } from './usePublishedIncidents'
-export {
-  usePublishedIncidentDetail,
-  PUBLISHED_INCIDENT_QUERY_KEY,
-} from './usePublishedIncidentDetail'
 export { useDisputes, DISPUTES_QUERY_KEY } from './useDisputes'
 export { useDisputeDetail, DISPUTE_DETAIL_QUERY_KEY } from './useDisputeDetail'
 export { useDisputeSummary, DISPUTE_SUMMARY_QUERY_KEY } from './useDisputeSummary'
@@ -35,6 +31,9 @@ export { useRequestAcceptanceMutation } from './useRequestAcceptanceMutation'
 export {
   useDownloadDailySummariesMutation,
   useDownloadIncidentRegisterMutation,
+  useDownloadMonthlyPerformanceMutation,
+  useDownloadWeeklyExceptionsMutation,
+  useDownloadCommissioningBacklogMutation,
 } from './useExportMutations'
 export { useManagedUsers, MANAGED_USERS_QUERY_KEY } from './useManagedUsers'
 export { useCreateUserMutation } from './useCreateUserMutation'
@@ -121,3 +120,5 @@ export {
   CALCULATION_RUN_COMPARISON_QUERY_KEY,
 } from './useCalculationRunComparison'
 export { useCreateCalculationRunMutation } from './useCreateCalculationRunMutation'
+export { useIssuedExports, ISSUED_EXPORTS_QUERY_KEY } from './useIssuedExports'
+export { useDownloadIssuedExportUrl } from './useDownloadIssuedExportUrl'
