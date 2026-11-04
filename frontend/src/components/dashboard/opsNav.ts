@@ -56,6 +56,23 @@ import type { NavGroup } from './navTypes'
 // Issued exports follows the same rule, with a copy in the admin and
 // supervisor groups only (reporter lacks exports.create, the route's real
 // permission, so there's no third copy to add).
+//
+// The auditor group below needs the opposite trick: every one of auditor's
+// five permissions (sites.read, reports.read, audit.read, alerts.read,
+// maintenance.read) is ALSO held by admin, and three of them
+// (sites.read/maintenance.read, and alerts.read which isn't used for nav)
+// by reporter and supervisor too -- there's no permission unique to
+// auditor to gate a whole group on. Each item here is gated on its real
+// permission PLUS `excludePermission: AUDITOR_HOME_EXCLUDES` (the three
+// mutually exclusive identity permissions the other three groups already
+// use), so admin/supervisor/reporter are excluded from every item here
+// while auditor sees all five, keeping the "exactly one Workspace group
+// per role" pattern intact. The admin group's own "Audit log" item above
+// changed from bare `audit.read` to `users.manage` for the same reason --
+// it would otherwise independently survive filtering for auditor too,
+// since audit.read is the one permission admin and auditor share alone.
+const AUDITOR_HOME_EXCLUDES = ['users.manage', 'reports.review', 'reports.create']
+
 export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
   return [
     {
@@ -124,7 +141,7 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           label: 'Audit log',
           to: ROUTES.OPS_AUDIT_LOG,
           icon: ClipboardDocumentListIcon,
-          permission: 'audit.read',
+          permission: 'users.manage',
         },
         {
           label: 'Email log',
@@ -214,6 +231,46 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
           to: ROUTES.OPS_MAINTENANCE,
           icon: WrenchScrewdriverIcon,
           permission: 'reports.create',
+        },
+      ],
+    },
+    {
+      label: 'Workspace',
+      items: [
+        {
+          label: 'Overview',
+          to: ROUTES.OPS_AUDITOR_OVERVIEW,
+          icon: Squares2X2Icon,
+          permission: 'audit.read',
+          excludePermission: AUDITOR_HOME_EXCLUDES,
+        },
+        {
+          label: 'Sites',
+          to: ROUTES.OPS_SITES,
+          icon: MapIcon,
+          permission: 'sites.read',
+          excludePermission: AUDITOR_HOME_EXCLUDES,
+        },
+        {
+          label: 'Reports',
+          to: ROUTES.OPS_APPROVALS,
+          icon: ClipboardDocumentCheckIcon,
+          permission: 'reports.read',
+          excludePermission: AUDITOR_HOME_EXCLUDES,
+        },
+        {
+          label: 'Maintenance',
+          to: ROUTES.OPS_MAINTENANCE,
+          icon: WrenchScrewdriverIcon,
+          permission: 'maintenance.read',
+          excludePermission: AUDITOR_HOME_EXCLUDES,
+        },
+        {
+          label: 'Audit log',
+          to: ROUTES.OPS_AUDIT_LOG,
+          icon: ClipboardDocumentListIcon,
+          permission: 'audit.read',
+          excludePermission: AUDITOR_HOME_EXCLUDES,
         },
       ],
     },

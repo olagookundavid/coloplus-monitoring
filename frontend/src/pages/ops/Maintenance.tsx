@@ -225,9 +225,11 @@ export function Maintenance() {
         title="Maintenance"
         subtitle="Planned power or equipment maintenance windows, excluded from a site's eligible time once approved."
         actions={
-          <Button icon={WrenchScrewdriverIcon} onClick={() => setRequestOpen(true)}>
-            Request maintenance
-          </Button>
+          can('maintenance.request') && (
+            <Button icon={WrenchScrewdriverIcon} onClick={() => setRequestOpen(true)}>
+              Request maintenance
+            </Button>
+          )
         }
       />
 

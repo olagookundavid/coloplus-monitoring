@@ -1,6 +1,7 @@
 // The real, backend-known roles (backend/internal/domain/user.go) — never
 // invent a role here that has no permission set behind it.
-export type StaffRole = 'admin' | 'reporter' | 'supervisor' | 'airtel_viewer' | 'airtel_reviewer'
+export type StaffRole =
+  'admin' | 'reporter' | 'supervisor' | 'airtel_viewer' | 'airtel_reviewer' | 'auditor'
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   admin: 'Coloplus administrator',
@@ -8,6 +9,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   supervisor: 'Operations supervisor',
   airtel_viewer: 'Airtel viewer',
   airtel_reviewer: 'Airtel reviewer',
+  auditor: 'Auditor',
 }
 
 export const STAFF_ROLES: StaffRole[] = [
@@ -16,6 +18,7 @@ export const STAFF_ROLES: StaffRole[] = [
   'supervisor',
   'airtel_viewer',
   'airtel_reviewer',
+  'auditor',
 ]
 
 // The admin's view of *another* account — distinct from types/auth.ts's

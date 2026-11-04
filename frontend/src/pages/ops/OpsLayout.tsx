@@ -6,7 +6,9 @@ import { useMyReports, usePermissions } from '../../hooks'
 export function OpsLayout() {
   // A supervisor reaches this layout too (Approvals, reports.review) without
   // holding users.manage -- "Admin portal" would misdescribe their view.
-  // A field reporter holds neither.
+  // A field reporter holds neither. Checked last: auditor holds audit.read,
+  // which admin also holds, but admin always resolves via users.manage
+  // first, so this branch is reached only by a real auditor.
   const { can } = usePermissions()
   const portalLabel = can('users.manage')
     ? 'Admin portal'
@@ -14,7 +16,9 @@ export function OpsLayout() {
       ? 'Operations supervisor portal'
       : can('reports.create')
         ? 'Field reporting portal'
-        : 'Operations supervisor portal'
+        : can('audit.read')
+          ? 'Auditor portal'
+          : 'Operations supervisor portal'
 
   // Only field reporters see the Corrections badge; fetching their own
   // rejected-report count for anyone else would be a wasted, permission-

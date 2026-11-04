@@ -18,6 +18,7 @@ const NO_SITES: SiteProfile[] = []
 
 export function Sites() {
   const { can } = usePermissions()
+  const canManage = can('sites.manage')
   const sitesQuery = useSiteProfiles()
   const sites = sitesQuery.data ?? NO_SITES
 
@@ -65,6 +66,7 @@ export function Sites() {
         accessor: () => null,
         align: 'right',
         cell: (site) => {
+          if (!canManage) return null
           const actions: RowAction[] = [
             {
               label: 'Edit',
@@ -76,7 +78,7 @@ export function Sites() {
         },
       },
     ],
-    []
+    [canManage]
   )
 
   return (
@@ -85,8 +87,8 @@ export function Sites() {
         title="Sites"
         subtitle="The site master record: codes, location, power, fuel and reporting rules."
         actions={
-          <>
-            {can('sites.manage') && (
+          canManage && (
+            <>
               <Button
                 variant="outline"
                 icon={DocumentArrowUpIcon}
@@ -94,11 +96,11 @@ export function Sites() {
               >
                 Import CSV
               </Button>
-            )}
-            <Button icon={PlusIcon} onClick={() => setCreateOpen(true)}>
-              New site
-            </Button>
-          </>
+              <Button icon={PlusIcon} onClick={() => setCreateOpen(true)}>
+                New site
+              </Button>
+            </>
+          )
         }
       />
 

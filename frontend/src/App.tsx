@@ -37,10 +37,8 @@ const OpsSettings = lazyNamed(() => import('./pages/ops/Settings'), 'Settings')
 const Periods = lazyNamed(() => import('./pages/ops/Periods'), 'Periods')
 const Maintenance = lazyNamed(() => import('./pages/ops/Maintenance'), 'Maintenance')
 const IssuedExports = lazyNamed(() => import('./pages/ops/IssuedExports'), 'IssuedExports')
-const CalculationRuns = lazyNamed(
-  () => import('./pages/ops/CalculationRuns'),
-  'CalculationRuns'
-)
+const CalculationRuns = lazyNamed(() => import('./pages/ops/CalculationRuns'), 'CalculationRuns')
+const AuditorOverview = lazyNamed(() => import('./pages/ops/AuditorOverview'), 'AuditorOverview')
 const ReporterOverview = lazyNamed(() => import('./pages/ops/ReporterOverview'), 'ReporterOverview')
 const MySites = lazyNamed(() => import('./pages/ops/MySites'), 'MySites')
 const DailyReports = lazyNamed(() => import('./pages/ops/DailyReports'), 'DailyReports')
@@ -132,7 +130,6 @@ export function App() {
         >
           <Route path={ROUTES.OPS_OVERVIEW} element={<OpsOverview />} />
           <Route path={ROUTES.OPS_USERS} element={<OpsUsers />} />
-          <Route path={ROUTES.OPS_SITES} element={<OpsSites />} />
           <Route path={ROUTES.OPS_SITE_ASSIGNMENTS} element={<OpsSiteAssignments />} />
           <Route path={ROUTES.OPS_SETTINGS} element={<OpsSettings />} />
           {/* Gated here on users.manage like the rest of this block, not a
@@ -145,14 +142,32 @@ export function App() {
           <Route path={ROUTES.CALCULATION_RUN_DETAIL_PATTERN} element={<CalculationRuns />} />
         </Route>
 
-        {/* A separate block, not folded into the one above: Approvals is the
-            one ops page a supervisor (reports.review, no users.manage) must
-            reach too, alongside an admin viewing read-only. Users and site
-            assignments stay admin-only, unchanged. */}
+        {/* A separate block, not folded into the one above: auditor (sites.read,
+            no users.manage) reads the site directory too, read-only (Sites.tsx
+            guards every write control on sites.manage internally). */}
         <Route
           element={
             <RequireAuth>
-              <RequireRole permission={['users.manage', 'reports.review']}>
+              <RequireRole permission={['users.manage', 'sites.read']}>
+                <Suspense fallback={<MainLoader />}>
+                  <OpsLayout />
+                </Suspense>
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path={ROUTES.OPS_SITES} element={<OpsSites />} />
+        </Route>
+
+        {/* A separate block, not folded into the one above: Approvals is the
+            one ops page a supervisor (reports.review, no users.manage) and an
+            auditor (reports.read, neither) must reach too, alongside an admin
+            viewing read-only. Users and site assignments stay admin-only,
+            unchanged. */}
+        <Route
+          element={
+            <RequireAuth>
+              <RequireRole permission={['users.manage', 'reports.review', 'reports.read']}>
                 <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>
@@ -184,8 +199,11 @@ export function App() {
 
         {/* Another separate block: audit.read is the permission that
             actually controls this data, held by admin today but not
-            necessarily bundled with users.manage forever (the PRD's
-            read-only "management/auditor" role would hold audit.read alone). */}
+            necessarily bundled with users.manage forever -- the PRD's
+            read-only "management/auditor" role now holds audit.read alone,
+            and gets its own Overview page bundled into this same block
+            (same one-permission-one-block pattern as the reporter/
+            supervisor blocks below carrying several routes each). */}
         <Route
           element={
             <RequireAuth>
@@ -198,6 +216,7 @@ export function App() {
           }
         >
           <Route path={ROUTES.OPS_AUDIT_LOG} element={<OpsAuditLog />} />
+          <Route path={ROUTES.OPS_AUDITOR_OVERVIEW} element={<AuditorOverview />} />
         </Route>
 
         {/* notifications.read is its own permission too, admin-only today
@@ -267,12 +286,15 @@ export function App() {
             three ops roles (admin, supervisor, reporter) -- the one
             permission that exactly matches "everyone who can at least
             request a maintenance window," distinct from every existing
-            list above. Approve/reject/cancel are gated per-row inside
-            Maintenance.tsx on maintenance.approve or being the requester. */}
+            list above. maintenance.read (auditor) is widened in here too,
+            read-only: Maintenance.tsx guards the "Request maintenance"
+            button on maintenance.request internally, and approve/reject/
+            cancel are already gated per-row on maintenance.approve or being
+            the requester. */}
         <Route
           element={
             <RequireAuth>
-              <RequireRole permission="maintenance.request">
+              <RequireRole permission={['maintenance.request', 'maintenance.read']}>
                 <Suspense fallback={<MainLoader />}>
                   <OpsLayout />
                 </Suspense>

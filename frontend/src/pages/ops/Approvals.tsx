@@ -53,7 +53,10 @@ export function Approvals() {
   const canReview = can('reports.review')
 
   const sitesQuery = useAdminSites()
-  const usersQuery = useManagedUsers()
+  // Auditor reaches this page via reports.read alone and lacks users.manage
+  // -- author/reviewer names are best-effort for them (usersById.get(...)
+  // falls back to the raw id throughout this file), not worth a doomed call.
+  const usersQuery = useManagedUsers(can('users.manage'))
   const sites = sitesQuery.data ?? NO_SITES
   const users = usersQuery.data ?? NO_USERS
   const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])

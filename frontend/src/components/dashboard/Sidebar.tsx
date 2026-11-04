@@ -52,7 +52,11 @@ export function Sidebar({ nav, portalLabel, orgBadge, supportCard }: SidebarProp
   const visibleGroups = nav
     .map((group) => ({
       ...group,
-      items: group.items.filter((item) => !item.permission || can(item.permission)),
+      items: group.items.filter(
+        (item) =>
+          (!item.permission || can(item.permission)) &&
+          !(item.excludePermission && can(item.excludePermission))
+      ),
     }))
     .filter((group) => group.items.length > 0)
   const [collapsed, setCollapsed] = useState(readStoredCollapsed)

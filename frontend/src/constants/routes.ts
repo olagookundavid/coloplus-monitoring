@@ -35,6 +35,7 @@ export const ROUTES = {
   OPS_PERIODS: '/periods',
   OPS_MAINTENANCE: '/maintenance',
   OPS_ISSUED_EXPORTS: '/issued-exports',
+  OPS_AUDITOR_OVERVIEW: '/auditor-overview',
   OPS_CALCULATION_RUNS: '/calculation-runs',
   CALCULATION_RUN_DETAIL_PATTERN: '/calculation-runs/:id',
   OPS_REPORTER_OVERVIEW: '/reporting',

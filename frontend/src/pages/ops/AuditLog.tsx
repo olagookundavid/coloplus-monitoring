@@ -3,7 +3,7 @@ import { ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
 import { AuditEventDetailPanel, DashboardPageHeader } from '../../components/dashboard'
 import { Button, DataTable, Select, StatusBadge, Tabs, type Column } from '../../components/ui'
-import { useAuditEvents, useManagedUsers } from '../../hooks'
+import { useAuditEvents, useManagedUsers, usePermissions } from '../../hooks'
 import {
   AUDIT_CATEGORY_LABELS,
   AUDIT_CATEGORY_TONES,
@@ -50,7 +50,11 @@ function computeFrom(range: DateRange): string | undefined {
 }
 
 export function AuditLog() {
-  const usersQuery = useManagedUsers()
+  const { can } = usePermissions()
+  // Auditor reaches this page via audit.read alone and lacks users.manage --
+  // resolving actor names is best-effort for them (degrades to raw ids via
+  // resolveActorName/describeEvent's own fallback), not worth a doomed call.
+  const usersQuery = useManagedUsers(can('users.manage'))
   const users = usersQuery.data ?? NO_USERS
   const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 

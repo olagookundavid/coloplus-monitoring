@@ -2,7 +2,12 @@ import { useMemo, useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
 import { useNavigate } from 'react-router-dom'
 
-import { DashboardPageHeader, InviteUserModal, UserDetailPanel } from '../../components/dashboard'
+import {
+  DashboardPageHeader,
+  EditAuditorSitesModal,
+  InviteUserModal,
+  UserDetailPanel,
+} from '../../components/dashboard'
 import { Button, DataTable, StatusBadge, Tabs, type Column } from '../../components/ui'
 import { ROUTES } from '../../constants'
 import { useAdminSites, useManagedUsers } from '../../hooks'
@@ -32,6 +37,7 @@ export function Users() {
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [siteModalUserId, setSiteModalUserId] = useState<string | null>(null)
 
   const users = usersQuery.data ?? NO_USERS
   const sites = sitesQuery.data ?? NO_SITES
@@ -39,6 +45,7 @@ export function Users() {
   // latest data once a mutation (role change, suspend, MFA reset)
   // invalidates and refetches the list.
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null
+  const siteModalUser = users.find((user) => user.id === siteModalUserId) ?? null
 
   const roleCounts = useMemo(() => {
     const counts = new Map<StaffRole, number>()
@@ -140,7 +147,24 @@ export function Users() {
         sites={sites}
         open={selectedUser !== null}
         onClose={() => setSelectedUserId(null)}
-        onEditSiteScope={() => navigate(ROUTES.OPS_SITE_ASSIGNMENTS)}
+        onEditSiteScope={() => {
+          // Auditor is site-scoped but doesn't fit SiteAssignments.tsx's
+          // one-reporter/one-supervisor-per-site pickers -- a dedicated
+          // checklist modal instead of a navigation for that one role.
+          if (selectedUser?.role === 'auditor') {
+            setSiteModalUserId(selectedUser.id)
+          } else {
+            navigate(ROUTES.OPS_SITE_ASSIGNMENTS)
+          }
+        }}
+      />
+
+      <EditAuditorSitesModal
+        key={siteModalUser?.id}
+        user={siteModalUser}
+        sites={sites}
+        open={siteModalUser !== null}
+        onClose={() => setSiteModalUserId(null)}
       />
     </div>
   )
