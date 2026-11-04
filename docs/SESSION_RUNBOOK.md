@@ -1,0 +1,80 @@
+# Test-session runbook (David)
+
+For the session on 4 November 2026. The test plan page is what the testers follow; this is what you do around it. Nothing here is a product rule, and nothing is committed to the server.
+
+## Before the session
+
+1. Server `.env` has `WEEKLY_DIGEST_ENABLED=true`, `SLA_TARGET_PERCENT=99.5`, `RETENTION_ENABLED=true`, a live `RESEND_API_KEY` and a verified `MAIL_FROM`; then `docker compose up -d` in `~/apps/coloplus`.
+2. `curl -s https://api.remotems.com/healthcheck` answers `{"status":"ok"}`; the front end loads at https://www.remotems.com and you can sign in.
+3. Load the ten `TEST-` sites (the CSV is on the plan's Test data tab): the site import screen, or `POST /sites/import` with `{"csv": "...", "dry_run": true}` first.
+4. Invite the users (Users screen): two supervisors, two reporters, the Airtel reviewer, an optional Airtel viewer, a spare account for the lockout test, and **one more supervisor for yourself** (see below).
+5. Site assignments: reporters and supervisors as on the Test data tab. User detail, site scope: the Airtel reviewer gets the eight sites that are not Kano or Port Harcourt.
+6. Send one test invitation to yourself first and confirm the link opens the set-password page on www.remotems.com.
+
+## Why you need a supervisor login of your own
+
+Coloplus's side of disputes, support tickets and acceptance belongs to the **supervisor** role (`disputes.manage`, `tickets.manage`, `acceptance.manage`). The administrator cannot do them, and the front end has no screen for them yet (listed in `docs/FRONTEND.md`). Invite yourself as an extra supervisor with a second email address, finish two-step setup, and give that account the Lagos sites and TEST-ENU-001. Then use the commands below for tests C8, C9 and C10.
+
+## Commands
+
+Needs `curl` and `jq`. The cookie file holds your session, so keep it out of the repository.
+
+```bash
+API=https://api.remotems.com/api/v1
+JAR=$HOME/.coloplus-session.jar
+login() {
+  read -r -p "Email: " E; read -rs -p "Password: " P; echo; read -r -p "Authenticator code: " C
+  curl -sS -c "$JAR" -H 'Content-Type: application/json' \
+    -d "{\"email\":\"$E\",\"password\":\"$P\",\"totp_code\":\"$C\"}" "$API/auth/login" | jq .
+}
+call() { curl -sS -b "$JAR" -c "$JAR" -H 'Content-Type: application/json' "$@"; }
+```
+
+Run `login` once; the session lasts about twelve hours. Every write needs the JSON header, which `call` adds.
+
+### C8: a dispute, Coloplus's side
+
+```bash
+call "$API/disputes" | jq .                       # find the dispute id
+D=<dispute id>
+call -X POST "$API/disputes/$D/transition" -d '{"status":"under_review","note":"We are checking the report against the site log."}' | jq .
+call -X POST "$API/disputes/$D/transition" -d '{"status":"awaiting_evidence","note":"Please send your NOC log extract."}' | jq .
+# The Airtel reviewer comments in the portal. Then:
+call -X POST "$API/disputes/$D/comments" -d '{"body":"Thanks, we have your log.","internal":false}' | jq .
+call -X POST "$API/disputes/$D/transition" -d '{"status":"under_review","note":"Evidence received."}' | jq .
+call -X POST "$API/disputes/$D/transition" -d '{"status":"resolved","outcome":"not_upheld","note":"The report matches the site log."}' | jq .
+```
+
+The reviewer then acknowledges and closes it in the portal. To show an upheld dispute: have Reporter A request a correction and Supervisor A approve it, then send `{"status":"agreed_correction","note":"...","resolution_report_id":"<the new report id>"}` before `resolved` with `"outcome":"upheld"`. A step the rules do not allow is refused with the reason.
+
+### C9: a support ticket
+
+```bash
+call "$API/tickets" | jq .
+T=<ticket id>
+call -X POST "$API/tickets/$T/transition" -d '{"status":"in_progress","note":"Checking with the site team."}' | jq .
+call -X POST "$API/tickets/$T/comments" -d '{"body":"The key holder is the Lekki site manager.","internal":false}' | jq .
+call -X POST "$API/tickets/$T/comments" -d '{"body":"Internal: confirm with Ops.","internal":true}' | jq .   # Airtel must never see this one
+call -X POST "$API/tickets/$T/transition" -d '{"status":"resolved","note":"Answered."}' | jq .
+```
+
+### C10: acceptance of TEST-ENU-001
+
+```bash
+S=$(call "$API/sites" | jq -r '.. | objects | select(.airtel_code? == "TEST-ENU-001") | .id' | head -1); echo "$S"
+call -X POST "$API/sites/$S/acceptance" -d '{"next_action":"Finish the build","due_at":"2026-11-18T00:00:00Z"}' | jq .
+call -X POST "$API/sites/$S/acceptance/transition" -d '{"stage":"built","note":"Build complete."}' | jq .
+call -X POST "$API/sites/$S/acceptance/transition" -d '{"stage":"ready_for_inspection","note":"Dossier submitted."}' | jq .
+```
+
+Then the Airtel reviewer marks it inspected, then accepted, in the portal. A site that reaches accepted becomes active.
+
+## Known gaps to say out loud
+
+- **Outage reason.** A report with an outage cannot be submitted without an outage reason, and a late report needs a late reason. The report form does not send them yet (the first item in `docs/FRONTEND.md`). Until it does, test R5 is Blocked and everything built on the outage day (C6, C7, E3, E5) needs a stand-in: submit that day's outage report as Reporter A through the API, or pick the generator-day report instead.
+- No Coloplus-side screens for disputes, tickets and acceptance.
+- Everything else not in this release is listed on the plan's first tab.
+
+## After the session
+
+Copy each person's results (Sign-off tab) into one place, list the failures with owners, and fix the Blocked ones first. Wipe the database before real data goes in: drop it, `api migrate`, then `api create-admin`. The audit log cannot be edited, so do not delete rows one by one.
