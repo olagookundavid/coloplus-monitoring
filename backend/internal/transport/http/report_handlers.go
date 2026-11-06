@@ -26,10 +26,10 @@ func (a *api) reportBody(actor domain.Actor, r domain.DailyReport) (*dto.ReportD
 func (a *api) writeReport(c *gin.Context, status int, r domain.DailyReport) {
 	internal, published := a.reportBody(actorFrom(c), r)
 	if internal != nil {
-		c.JSON(status, internal)
+		a.respondNamed(c, status, internal)
 		return
 	}
-	c.JSON(status, published)
+	a.respondNamed(c, status, published)
 }
 
 // createReport godoc
@@ -225,7 +225,7 @@ func (a *api) getReport(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.ReportDetailResponse{
+	a.respondNamed(c, http.StatusOK, dto.ReportDetailResponse{
 		Report: internal, Published: published,
 		Summary: toSummaryDTO(view.Summary), Calculation: toCalculationDTO(view.Calculation, a.loc),
 		OpenDisputes: open[view.Report.ID],
@@ -286,7 +286,7 @@ func (a *api) listReports(c *gin.Context) {
 			resp.Published = append(resp.Published, *published)
 		}
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // parsePowerStatus reads the reporter's simplified toggle. An empty or
@@ -350,7 +350,7 @@ func (a *api) overview(c *gin.Context) {
 		}
 		resp.Sites = kept
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // mySites godoc
@@ -367,7 +367,7 @@ func (a *api) mySites(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toMySitesResponse(m))
+	a.respondNamed(c, http.StatusOK, toMySitesResponse(m))
 }
 
 // trend godoc
@@ -399,7 +399,7 @@ func (a *api) trend(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toTrendResponse(t))
+	a.respondNamed(c, http.StatusOK, toTrendResponse(t))
 }
 
 // dashboardPeriod reads date, or from and to, and the region. With

@@ -75,7 +75,7 @@ func (a *api) recordFuel(c *gin.Context) {
 	}
 	out := toFuelEntryDTO(e.Entry, a.fuel.IsStaff(actor))
 	out.Variance = toFuelVarianceDTO(e.Variance)
-	c.JSON(http.StatusCreated, out)
+	a.respondNamed(c, http.StatusCreated, out)
 }
 
 // fuelStatus godoc
@@ -102,7 +102,7 @@ func (a *api) fuelStatus(c *gin.Context) {
 		ed.Variance = toFuelVarianceDTO(v.Variances[e.ID])
 		resp.Entries = append(resp.Entries, ed)
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // voidFuel godoc
@@ -128,5 +128,5 @@ func (a *api) voidFuel(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toFuelEntryDTO(e, a.fuel.IsStaff(actor)))
+	a.respondNamed(c, http.StatusOK, toFuelEntryDTO(e, a.fuel.IsStaff(actor)))
 }

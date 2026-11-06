@@ -35,7 +35,7 @@ func (a *api) requestAcceptance(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toAcceptanceDTO(acc, a.clock.Now()))
+	a.respondNamed(c, http.StatusCreated, toAcceptanceDTO(acc, a.clock.Now()))
 }
 
 // getAcceptance godoc
@@ -57,7 +57,7 @@ func (a *api) getAcceptance(c *gin.Context) {
 	for _, e := range v.Events {
 		resp.Events = append(resp.Events, toAcceptanceEventDTO(e))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // transitionAcceptance godoc
@@ -86,7 +86,7 @@ func (a *api) transitionAcceptance(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toAcceptanceDTO(acc, a.clock.Now()))
+	a.respondNamed(c, http.StatusOK, toAcceptanceDTO(acc, a.clock.Now()))
 }
 
 // listAcceptances godoc
@@ -121,5 +121,5 @@ func (a *api) listAcceptances(c *gin.Context) {
 	for _, acc := range list {
 		resp.Acceptances = append(resp.Acceptances, toAcceptanceDTO(acc, now))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }

@@ -50,7 +50,7 @@ func (a *api) requestUpload(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, dto.RequestUploadResponse{
+	a.respondNamed(c, http.StatusCreated, dto.RequestUploadResponse{
 		Attachment: toAttachmentDTO(up.Attachment, a.attachments.IsStaff(actor)),
 		Upload: dto.UploadTarget{
 			Method: up.Upload.Method, URL: up.Upload.URL, Headers: up.Upload.Headers, ExpiresAt: up.Upload.ExpiresAt,
@@ -75,7 +75,7 @@ func (a *api) completeUpload(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toAttachmentDTO(att, a.attachments.IsStaff(actor)))
+	a.respondNamed(c, http.StatusOK, toAttachmentDTO(att, a.attachments.IsStaff(actor)))
 }
 
 // listAttachments godoc
@@ -100,7 +100,7 @@ func (a *api) listAttachments(c *gin.Context) {
 	for _, att := range list {
 		resp.Attachments = append(resp.Attachments, toAttachmentDTO(att, staff))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // downloadAttachment godoc
@@ -120,5 +120,5 @@ func (a *api) downloadAttachment(c *gin.Context) {
 		return
 	}
 	c.Header("Cache-Control", "no-store")
-	c.JSON(http.StatusOK, dto.DownloadResponse{URL: link.URL, ExpiresAt: link.ExpiresAt, Filename: link.Filename})
+	a.respondNamed(c, http.StatusOK, dto.DownloadResponse{URL: link.URL, ExpiresAt: link.ExpiresAt, Filename: link.Filename})
 }

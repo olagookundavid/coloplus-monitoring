@@ -35,7 +35,7 @@ func (a *api) listPeriods(c *gin.Context) {
 	for i, p := range l {
 		out.Periods[i] = toPeriodDTO(p)
 	}
-	c.JSON(http.StatusOK, out)
+	a.respondNamed(c, http.StatusOK, out)
 }
 
 // closePeriod godoc
@@ -60,7 +60,7 @@ func (a *api) closePeriod(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toPeriodDTO(closure))
+	a.respondNamed(c, http.StatusCreated, toPeriodDTO(closure))
 }
 
 // reopenPeriod godoc
@@ -91,5 +91,5 @@ func (a *api) reopenPeriod(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toPeriodDTO(closure))
+	a.respondNamed(c, http.StatusOK, toPeriodDTO(closure))
 }

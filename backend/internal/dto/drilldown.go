@@ -46,9 +46,10 @@ type IncidentOutageDTO struct {
 // IncidentOutagesResponse links an incident to the outage the daily reports show
 // during it. Nothing here is added to the daily figures a second time.
 type IncidentOutagesResponse struct {
-	IncidentID string    `json:"incident_id"`
-	From       time.Time `json:"from"`
-	To         time.Time `json:"to"`
+	IncidentID    string    `json:"incident_id"`
+	IncidentLabel string    `json:"incident_label,omitempty" names:"IncidentID:incident"`
+	From          time.Time `json:"from"`
+	To            time.Time `json:"to"`
 	// Open: the incident is not restored yet, so the window runs to now.
 	Open bool `json:"open"`
 	// TotalMinutes is the outage inside the window, each minute counted once.

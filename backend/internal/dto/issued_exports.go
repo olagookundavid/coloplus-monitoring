@@ -14,9 +14,13 @@ type IssuedExportDTO struct {
 	SizeBytes int64  `json:"size_bytes"`
 	SHA256    string `json:"sha256"`
 	// Stored: the exact file was kept and can be fetched again.
-	Stored    bool      `json:"stored"`
-	IssuedBy  string    `json:"issued_by"`
-	CreatedAt time.Time `json:"created_at"`
+	Stored   bool   `json:"stored"`
+	IssuedBy string `json:"issued_by"`
+	// SiteID and SiteName repeat the site the export was limited to, taken from params.
+	SiteID       string    `json:"site_id,omitempty"`
+	SiteName     string    `json:"site_name,omitempty" names:"SiteID:site"`
+	IssuedByName string    `json:"issued_by_name,omitempty" names:"IssuedBy:user"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type IssuedExportListResponse struct {

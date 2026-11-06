@@ -48,7 +48,7 @@ func (a *api) raiseDispute(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toDisputeDTO(d, a.disputes.IsStaff(actorFrom(c))))
+	a.respondNamed(c, http.StatusCreated, toDisputeDTO(d, a.disputes.IsStaff(actorFrom(c))))
 }
 
 // listDisputes godoc
@@ -84,7 +84,7 @@ func (a *api) listDisputes(c *gin.Context) {
 	for _, d := range list {
 		resp.Disputes = append(resp.Disputes, toDisputeDTO(d, staff))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // disputeSummary godoc
@@ -100,7 +100,7 @@ func (a *api) disputeSummary(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.DisputeSummaryResponse{Open: n.Open, WithColoplus: n.WithColoplus, WithAirtel: n.WithAirtel})
+	a.respondNamed(c, http.StatusOK, dto.DisputeSummaryResponse{Open: n.Open, WithColoplus: n.WithColoplus, WithAirtel: n.WithAirtel})
 }
 
 // getDispute godoc
@@ -125,7 +125,7 @@ func (a *api) getDispute(c *gin.Context) {
 	for _, e := range v.Events {
 		resp.Events = append(resp.Events, toDisputeEventDTO(e, staff))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // commentDispute godoc
@@ -151,7 +151,7 @@ func (a *api) commentDispute(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toDisputeEventDTO(e, a.disputes.IsStaff(actor)))
+	a.respondNamed(c, http.StatusCreated, toDisputeEventDTO(e, a.disputes.IsStaff(actor)))
 }
 
 // transitionDispute godoc
@@ -182,5 +182,5 @@ func (a *api) transitionDispute(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toDisputeDTO(d, a.disputes.IsStaff(actor)))
+	a.respondNamed(c, http.StatusOK, toDisputeDTO(d, a.disputes.IsStaff(actor)))
 }

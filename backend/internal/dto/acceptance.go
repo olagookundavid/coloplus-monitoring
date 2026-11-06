@@ -20,9 +20,10 @@ type TransitionAcceptanceRequest struct {
 }
 
 type AcceptanceDTO struct {
-	ID     string `json:"id"`
-	SiteID string `json:"site_id"`
-	Stage  string `json:"stage"`
+	ID       string `json:"id"`
+	SiteID   string `json:"site_id"`
+	SiteName string `json:"site_name,omitempty" names:"SiteID:site"`
+	Stage    string `json:"stage"`
 	// HeldFrom is the stage a hold returns to.
 	HeldFrom string `json:"held_from,omitempty"`
 	// WaitingOn is coloplus or airtel: whose move it is.

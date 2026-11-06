@@ -46,7 +46,7 @@ func (a *api) listOutages(c *gin.Context) {
 			ReportID: it.ReportID, ReportDate: it.ReportDate.Format("2006-01-02"), ReportRevision: it.Revision, Reason: it.Reason,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // incidentOutages godoc
@@ -75,5 +75,5 @@ func (a *api) incidentOutages(c *gin.Context) {
 			ReportID: it.ReportID, ReportDate: it.ReportDate.Format("2006-01-02"), ReportRevision: it.Revision,
 		})
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }

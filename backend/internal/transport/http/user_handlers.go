@@ -15,7 +15,7 @@ func toUserDetail(v services.UserView) dto.UserDetailDTO {
 	if ids == nil {
 		ids = []string{}
 	}
-	return dto.UserDetailDTO{UserDTO: toUserDTO(v.User), SiteIDs: ids}
+	return dto.UserDetailDTO{UserDTO: toUserDTO(v.User), SiteIDs: ids, Sites: []dto.SiteRefDTO{}}
 }
 
 // createUser godoc
@@ -44,7 +44,9 @@ func (a *api) createUser(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toUserDetail(view))
+	one := []dto.UserDetailDTO{toUserDetail(view)}
+	a.nameUserSites(c, one)
+	c.JSON(http.StatusCreated, one[0])
 }
 
 // listUsers godoc
@@ -64,6 +66,7 @@ func (a *api) listUsers(c *gin.Context) {
 	for i, v := range views {
 		out[i] = toUserDetail(v)
 	}
+	a.nameUserSites(c, out)
 	c.JSON(http.StatusOK, dto.UserListResponse{Users: out})
 }
 
@@ -82,7 +85,9 @@ func (a *api) getUser(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toUserDetail(view))
+	one := []dto.UserDetailDTO{toUserDetail(view)}
+	a.nameUserSites(c, one)
+	c.JSON(http.StatusOK, one[0])
 }
 
 // updateUser godoc
@@ -112,7 +117,9 @@ func (a *api) updateUser(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toUserDetail(view))
+	one := []dto.UserDetailDTO{toUserDetail(view)}
+	a.nameUserSites(c, one)
+	c.JSON(http.StatusOK, one[0])
 }
 
 // resetUserMFA godoc

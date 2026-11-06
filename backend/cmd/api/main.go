@@ -197,6 +197,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 	sla := domain.SLA{TargetPercent: cfg.SLA.TargetPercent, AtRiskPoints: cfg.SLA.AtRiskPoints}
 	maintenanceRepo := postgres.NewMaintenanceRepository(db)
 	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, cfg.Figures.MidnightCarryOver)
+	directory := services.NewDirectoryService(postgres.NewDirectoryRepository(db), log)
 	dashboard := services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, cfg.Dashboard.CacheTTL, cfg.Fuel.LowHours).WithSLA(sla).WithAdjustments(adjustments)
 	periodRepo := postgres.NewPeriodClosureRepository(db)
 	exportService := services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).WithAcceptances(acceptanceRepo).WithSnapshots(postgres.NewIssuedExportRepository(db), objectStore).WithRuns(postgres.NewCalculationRunRepository(db)).WithSLA(sla).WithAdjustments(adjustments)
@@ -356,6 +357,7 @@ func serve(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		Exports:   exportService,
 		Periods:   periods,
 		Dashboard: dashboard,
+		Directory: directory,
 		Digest:    digest,
 	})
 	srv := &http.Server{

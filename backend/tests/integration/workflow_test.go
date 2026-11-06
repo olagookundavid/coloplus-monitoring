@@ -281,6 +281,9 @@ func TestDailyReport_CorrectionKeepsTheOriginalUntilApproved(t *testing.T) {
 	corr := w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/corrections",
 		map[string]any{"reason": "outage was 45 minutes, not 30"}, w.reporter), 201)
 	corrID := corr.str("id")
+	if corr.str("supersedes_label") == "" || corr.str("author_name") == "" || corr.str("site_name") == "" {
+		t.Fatalf("correction carries no names: %s", corr.Raw)
+	}
 	if corr.str("revision") != "2" || corr.str("supersedes_id") != orig || corr.str("status") != "draft" {
 		t.Fatalf("correction = %s", corr.Raw)
 	}

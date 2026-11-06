@@ -49,7 +49,7 @@ func (a *api) requestMaintenance(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, a.toMaintenanceDTO(actor, w))
+	a.respondNamed(c, http.StatusCreated, a.toMaintenanceDTO(actor, w))
 }
 
 // listMaintenance godoc
@@ -103,7 +103,7 @@ func (a *api) listMaintenance(c *gin.Context) {
 	for i, w := range list {
 		out.Windows[i] = a.toMaintenanceDTO(actor, w)
 	}
-	c.JSON(http.StatusOK, out)
+	a.respondNamed(c, http.StatusOK, out)
 }
 
 func (a *api) decideMaintenance(c *gin.Context, do func(*services.MaintenanceService, *gin.Context, domain.Actor, string, string) (domain.MaintenanceWindow, error)) {
@@ -118,7 +118,7 @@ func (a *api) decideMaintenance(c *gin.Context, do func(*services.MaintenanceSer
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, a.toMaintenanceDTO(actor, w))
+	a.respondNamed(c, http.StatusOK, a.toMaintenanceDTO(actor, w))
 }
 
 // approveMaintenance godoc

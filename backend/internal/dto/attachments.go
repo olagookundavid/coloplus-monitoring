@@ -27,6 +27,7 @@ type AttachmentDTO struct {
 	OwnerType   string `json:"owner_type"`
 	OwnerID     string `json:"owner_id"`
 	SiteID      string `json:"site_id"`
+	SiteName    string `json:"site_name,omitempty" names:"SiteID:site"`
 	Filename    string `json:"filename"`
 	ContentType string `json:"content_type"`
 	SizeBytes   int64  `json:"size_bytes"`
@@ -34,12 +35,13 @@ type AttachmentDTO struct {
 	// Status is pending until the upload is confirmed, then ready.
 	Status string `json:"status"`
 	// Party is who sent it: airtel or coloplus.
-	Party       string     `json:"party"`
-	CreatedAt   time.Time  `json:"created_at"`
-	ConfirmedAt *time.Time `json:"confirmed_at,omitempty"`
-	Internal    bool       `json:"internal,omitempty"`
-	UploadedBy  string     `json:"uploaded_by,omitempty"`
-	ScanStatus  string     `json:"scan_status,omitempty"`
+	Party          string     `json:"party"`
+	CreatedAt      time.Time  `json:"created_at"`
+	ConfirmedAt    *time.Time `json:"confirmed_at,omitempty"`
+	Internal       bool       `json:"internal,omitempty"`
+	UploadedBy     string     `json:"uploaded_by,omitempty"`
+	UploadedByName string     `json:"uploaded_by_name,omitempty" names:"UploadedBy:user"`
+	ScanStatus     string     `json:"scan_status,omitempty"`
 }
 
 // UploadTarget is where to send the file: a PUT with exactly these headers.

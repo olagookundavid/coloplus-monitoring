@@ -17,21 +17,25 @@ type RejectCorrectionRequest struct {
 }
 
 type IncidentCorrectionDTO struct {
-	ID             string     `json:"id"`
-	Ref            string     `json:"ref" example:"COR-000058"`
-	IncidentID     string     `json:"incident_id"`
-	SiteID         string     `json:"site_id"`
-	Field          string     `json:"field"`
-	OriginalValue  time.Time  `json:"original_value"`
-	CorrectedValue time.Time  `json:"corrected_value"`
-	Reason         string     `json:"reason"`
-	Status         string     `json:"status"`
-	RequestedBy    string     `json:"requested_by"`
-	ReviewedBy     string     `json:"reviewed_by,omitempty"`
-	ReviewedAt     *time.Time `json:"reviewed_at,omitempty"`
-	ReviewNote     string     `json:"review_note,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID              string     `json:"id"`
+	Ref             string     `json:"ref" example:"COR-000058"`
+	IncidentID      string     `json:"incident_id"`
+	IncidentLabel   string     `json:"incident_label,omitempty" names:"IncidentID:incident"`
+	SiteID          string     `json:"site_id"`
+	SiteName        string     `json:"site_name,omitempty" names:"SiteID:site"`
+	Field           string     `json:"field"`
+	OriginalValue   time.Time  `json:"original_value"`
+	CorrectedValue  time.Time  `json:"corrected_value"`
+	Reason          string     `json:"reason"`
+	Status          string     `json:"status"`
+	RequestedBy     string     `json:"requested_by"`
+	RequestedByName string     `json:"requested_by_name,omitempty" names:"RequestedBy:user"`
+	ReviewedBy      string     `json:"reviewed_by,omitempty"`
+	ReviewedByName  string     `json:"reviewed_by_name,omitempty" names:"ReviewedBy:user"`
+	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
+	ReviewNote      string     `json:"review_note,omitempty"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 type IncidentCorrectionListResponse struct {

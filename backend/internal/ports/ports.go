@@ -29,6 +29,17 @@ type AuditStore interface {
 	Search(ctx context.Context, f AuditFilter) (events []domain.AuditEvent, total int, err error)
 }
 
+// Directory turns ids into the words a person recognises (a user's name, a
+// site's name, "INC-000012 · title"). Each call is one query for the whole
+// batch; ids it does not know are simply missing from the answer.
+type Directory interface {
+	UserNames(ctx context.Context, ids []string) (map[string]string, error)
+	SiteNames(ctx context.Context, ids []string) (map[string]string, error)
+	// EntityLabels names records of one audit entity type; a type it cannot
+	// name comes back empty.
+	EntityLabels(ctx context.Context, entityType string, ids []string) (map[string]string, error)
+}
+
 // AuditFilter narrows an audit search. When AllSites is false only events
 // that carry one of SiteIDs in their metadata are returned, so a reader
 // scoped to some sites never sees the rest.

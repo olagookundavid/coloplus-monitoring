@@ -64,6 +64,8 @@ type UserDTO struct {
 type UserDetailDTO struct {
 	UserDTO
 	SiteIDs []string `json:"site_ids"`
+	// Sites names the assigned sites, in the same order as site_ids.
+	Sites []SiteRefDTO `json:"sites"`
 }
 
 type CreateUserRequest struct {
@@ -120,4 +122,10 @@ type NotificationListResponse struct {
 	Total         int               `json:"total"`
 	Limit         int               `json:"limit"`
 	Offset        int               `json:"offset"`
+}
+
+// SiteRefDTO is a site named for a list, so a screen never shows a bare id.
+type SiteRefDTO struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }

@@ -172,6 +172,7 @@ func newStack(t *testing.T) *stack {
 	accounts := services.NewAccountService(userRepo, userTokenRepo, hasher, tx, notifications, audit, clock, "https://app.test")
 	maintenanceRepo := postgres.NewMaintenanceRepository(db)
 	adjustments := services.NewAdjustments(maintenanceRepo, reportRepo, loc, true)
+	directory := services.NewDirectoryService(postgres.NewDirectoryRepository(db), log)
 	dashboard := services.NewDashboardService(siteRepo, reportRepo, incidentRepo, fuelRepo, clock, loc, dashboardTTL(), 24).WithAdjustments(adjustments)
 	digest := services.NewDigestService(userRepo, postgres.NewDigestPreferenceRepository(db), auth, dashboard, incidentRepo, notifications, clock, loc, "https://app.test")
 	anomalies := services.NewAnomalyService(siteRepo, reportRepo, incidentRepo, userRepo, notifications, clock, loc, "https://app.test")
@@ -219,6 +220,7 @@ func newStack(t *testing.T) *stack {
 		Exports:       exportService,
 		Periods:       periods,
 		Dashboard:     dashboard,
+		Directory:     directory,
 		Digest:        digest,
 	})
 	return &stack{t: t, handler: handler, pool: pool, users: userRepo, hasher: hasher, loc: loc, batcher: batcher,

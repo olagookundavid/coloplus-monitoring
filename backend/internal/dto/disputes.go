@@ -45,32 +45,38 @@ type DisputeCommentRequest struct {
 // DisputeDTO is one dispute. RaisedBy, OwnerID and ResolvedBy are Coloplus's
 // own view and are left out for Airtel.
 type DisputeDTO struct {
-	ID         string `json:"id"`
-	Ref        string `json:"ref" example:"DSP-000123"`
-	SiteID     string `json:"site_id"`
-	ReportID   string `json:"report_id,omitempty"`
-	IntervalID string `json:"interval_id,omitempty"`
-	Metric     string `json:"metric,omitempty"`
-	PeriodFrom string `json:"period_from,omitempty"`
-	PeriodTo   string `json:"period_to,omitempty"`
-	Category   string `json:"category"`
-	Title      string `json:"title"`
+	ID          string `json:"id"`
+	Ref         string `json:"ref" example:"DSP-000123"`
+	SiteID      string `json:"site_id"`
+	SiteName    string `json:"site_name,omitempty" names:"SiteID:site"`
+	ReportID    string `json:"report_id,omitempty"`
+	ReportLabel string `json:"report_label,omitempty" names:"ReportID:daily_report"`
+	IntervalID  string `json:"interval_id,omitempty"`
+	Metric      string `json:"metric,omitempty"`
+	PeriodFrom  string `json:"period_from,omitempty"`
+	PeriodTo    string `json:"period_to,omitempty"`
+	Category    string `json:"category"`
+	Title       string `json:"title"`
 	// Description is what Airtel wrote when raising it.
 	Description string `json:"description"`
 	Status      string `json:"status"`
 	// WaitingOn is whose move it is: coloplus or airtel; empty once closed.
 	WaitingOn string `json:"waiting_on,omitempty"`
 	// Outcome is upheld or not_upheld once Coloplus resolves it, withdrawn if Airtel dropped it.
-	Outcome            string `json:"outcome,omitempty"`
-	Resolution         string `json:"resolution,omitempty"`
-	ResolutionReportID string `json:"resolution_report_id,omitempty"`
+	Outcome               string `json:"outcome,omitempty"`
+	Resolution            string `json:"resolution,omitempty"`
+	ResolutionReportID    string `json:"resolution_report_id,omitempty"`
+	ResolutionReportLabel string `json:"resolution_report_label,omitempty" names:"ResolutionReportID:daily_report"`
 	// ResolvedAt is Coloplus's decision; AcknowledgedAt is Airtel's agreement.
 	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
 	AcknowledgedAt *time.Time `json:"acknowledged_at,omitempty"`
 	ReopenCount    int        `json:"reopen_count"`
 	RaisedBy       string     `json:"raised_by,omitempty"`
+	RaisedByName   string     `json:"raised_by_name,omitempty" names:"RaisedBy:user"`
 	OwnerID        string     `json:"owner_id,omitempty"`
+	OwnerName      string     `json:"owner_name,omitempty" names:"OwnerID:user"`
 	ResolvedBy     string     `json:"resolved_by,omitempty"`
+	ResolvedByName string     `json:"resolved_by_name,omitempty" names:"ResolvedBy:user"`
 	CreatedAt      time.Time  `json:"created_at"`
 	UpdatedAt      time.Time  `json:"updated_at"`
 }
@@ -84,9 +90,10 @@ type DisputeEventDTO struct {
 	ToStatus   string `json:"to_status,omitempty"`
 	Body       string `json:"body,omitempty"`
 	// Internal and AuthorID are only ever sent to Coloplus staff.
-	Internal  bool      `json:"internal,omitempty"`
-	AuthorID  string    `json:"author_id,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Internal   bool      `json:"internal,omitempty"`
+	AuthorID   string    `json:"author_id,omitempty"`
+	AuthorName string    `json:"author_name,omitempty" names:"AuthorID:user"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type DisputeDetailResponse struct {

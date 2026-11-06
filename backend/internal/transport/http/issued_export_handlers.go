@@ -10,8 +10,10 @@ import (
 )
 
 func toIssuedDTO(e domain.IssuedExport) dto.IssuedExportDTO {
+	siteID, _ := e.Params["site_id"].(string)
 	return dto.IssuedExportDTO{
-		ID: e.ID, Kind: e.Kind, Filename: e.Filename, Params: e.Params, RowCount: e.RowCount, SizeBytes: e.SizeBytes,
+		SiteID: siteID,
+		ID:     e.ID, Kind: e.Kind, Filename: e.Filename, Params: e.Params, RowCount: e.RowCount, SizeBytes: e.SizeBytes,
 		SHA256: e.SHA256, Stored: e.Stored(), IssuedBy: e.IssuedBy, CreatedAt: e.CreatedAt,
 	}
 }
@@ -36,7 +38,7 @@ func (a *api) listIssuedExports(c *gin.Context) {
 	for _, e := range l.Items {
 		resp.Exports = append(resp.Exports, toIssuedDTO(e))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // downloadIssuedExport godoc
@@ -56,5 +58,5 @@ func (a *api) downloadIssuedExport(c *gin.Context) {
 		return
 	}
 	c.Header("Cache-Control", "no-store")
-	c.JSON(http.StatusOK, dto.DownloadResponse{URL: url, ExpiresAt: exp, Filename: e.Filename})
+	a.respondNamed(c, http.StatusOK, dto.DownloadResponse{URL: url, ExpiresAt: exp, Filename: e.Filename})
 }

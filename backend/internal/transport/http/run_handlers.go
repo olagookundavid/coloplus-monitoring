@@ -64,7 +64,7 @@ func (a *api) storeRun(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toRunDTO(run, false))
+	a.respondNamed(c, http.StatusCreated, toRunDTO(run, false))
 }
 
 // listRuns godoc
@@ -88,7 +88,7 @@ func (a *api) listRuns(c *gin.Context) {
 	for i, r := range runs {
 		out.Runs[i] = toRunDTO(r, false)
 	}
-	c.JSON(http.StatusOK, out)
+	a.respondNamed(c, http.StatusOK, out)
 }
 
 // getRun godoc
@@ -106,7 +106,7 @@ func (a *api) getRun(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toRunDTO(run, true))
+	a.respondNamed(c, http.StatusOK, toRunDTO(run, true))
 }
 
 // compareRun godoc
@@ -142,5 +142,5 @@ func (a *api) compareRun(c *gin.Context) {
 		}
 		out.Changes[i] = row
 	}
-	c.JSON(http.StatusOK, out)
+	a.respondNamed(c, http.StatusOK, out)
 }

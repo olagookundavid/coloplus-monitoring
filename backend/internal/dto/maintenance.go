@@ -18,18 +18,21 @@ type MaintenanceDecisionRequest struct {
 // MaintenanceDTO is a planned maintenance window. While approved, its time is
 // taken out of the site's eligible time.
 type MaintenanceDTO struct {
-	ID           string     `json:"id"`
-	SiteID       string     `json:"site_id"`
-	StartsAt     time.Time  `json:"starts_at"`
-	EndsAt       time.Time  `json:"ends_at"`
-	Minutes      int        `json:"minutes"`
-	Reason       string     `json:"reason"`
-	Status       string     `json:"status" example:"approved"`
-	RequestedBy  string     `json:"requested_by,omitempty"`
-	RequestedAt  time.Time  `json:"requested_at"`
-	DecidedBy    string     `json:"decided_by,omitempty"`
-	DecidedAt    *time.Time `json:"decided_at,omitempty"`
-	DecisionNote string     `json:"decision_note,omitempty"`
+	ID              string     `json:"id"`
+	SiteID          string     `json:"site_id"`
+	SiteName        string     `json:"site_name,omitempty" names:"SiteID:site"`
+	StartsAt        time.Time  `json:"starts_at"`
+	EndsAt          time.Time  `json:"ends_at"`
+	Minutes         int        `json:"minutes"`
+	Reason          string     `json:"reason"`
+	Status          string     `json:"status" example:"approved"`
+	RequestedBy     string     `json:"requested_by,omitempty"`
+	RequestedByName string     `json:"requested_by_name,omitempty" names:"RequestedBy:user"`
+	RequestedAt     time.Time  `json:"requested_at"`
+	DecidedBy       string     `json:"decided_by,omitempty"`
+	DecidedByName   string     `json:"decided_by_name,omitempty" names:"DecidedBy:user"`
+	DecidedAt       *time.Time `json:"decided_at,omitempty"`
+	DecisionNote    string     `json:"decision_note,omitempty"`
 }
 
 // MaintenanceRulesDTO are the limits a request is held to.

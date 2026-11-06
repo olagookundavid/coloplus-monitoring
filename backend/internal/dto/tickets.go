@@ -45,6 +45,7 @@ type TicketDTO struct {
 	ID           string `json:"id"`
 	Ref          string `json:"ref" example:"TKT-000123"`
 	SiteID       string `json:"site_id"`
+	SiteName     string `json:"site_name,omitempty" names:"SiteID:site"`
 	Category     string `json:"category"`
 	Priority     string `json:"priority"`
 	Subject      string `json:"subject"`
@@ -53,16 +54,19 @@ type TicketDTO struct {
 	// Status is open, in_progress or resolved.
 	Status string `json:"status"`
 	// Resolution is how Coloplus resolved it.
-	Resolution  string     `json:"resolution,omitempty"`
-	ResolvedAt  *time.Time `json:"resolved_at,omitempty"`
-	ReopenCount int        `json:"reopen_count"`
-	IncidentID  string     `json:"incident_id,omitempty"`
-	IncidentRef string     `json:"incident_ref,omitempty"`
-	RaisedBy    string     `json:"raised_by,omitempty"`
-	AssigneeID  string     `json:"assignee_id,omitempty"`
-	ResolvedBy  string     `json:"resolved_by,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	Resolution     string     `json:"resolution,omitempty"`
+	ResolvedAt     *time.Time `json:"resolved_at,omitempty"`
+	ReopenCount    int        `json:"reopen_count"`
+	IncidentID     string     `json:"incident_id,omitempty"`
+	IncidentRef    string     `json:"incident_ref,omitempty"`
+	RaisedBy       string     `json:"raised_by,omitempty"`
+	RaisedByName   string     `json:"raised_by_name,omitempty" names:"RaisedBy:user"`
+	AssigneeID     string     `json:"assignee_id,omitempty"`
+	AssigneeName   string     `json:"assignee_name,omitempty" names:"AssigneeID:user"`
+	ResolvedBy     string     `json:"resolved_by,omitempty"`
+	ResolvedByName string     `json:"resolved_by_name,omitempty" names:"ResolvedBy:user"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 type TicketEventDTO struct {
@@ -75,9 +79,10 @@ type TicketEventDTO struct {
 	ToStatus   string `json:"to_status,omitempty"`
 	Body       string `json:"body,omitempty"`
 	// Internal and AuthorID are only ever sent to Coloplus staff.
-	Internal  bool      `json:"internal,omitempty"`
-	AuthorID  string    `json:"author_id,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Internal   bool      `json:"internal,omitempty"`
+	AuthorID   string    `json:"author_id,omitempty"`
+	AuthorName string    `json:"author_name,omitempty" names:"AuthorID:user"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type TicketDetailResponse struct {

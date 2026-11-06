@@ -58,6 +58,8 @@ type Deps struct {
 	SiteOverviews *services.SiteOverviewService
 	Exports       *services.ExportService
 	Dashboard     *services.DashboardService
+	// Directory names the users and sites a response mentions. Optional.
+	Directory *services.DirectoryService
 }
 
 // api carries what every handler shares.
@@ -87,6 +89,7 @@ type api struct {
 	siteOverviews *services.SiteOverviewService
 	exports       *services.ExportService
 	dashboard     *services.DashboardService
+	directory     *services.DirectoryService
 }
 
 type clock struct{ now func() time.Time }
@@ -125,7 +128,7 @@ func NewRouter(d Deps) *gin.Engine {
 
 	h := &api{
 		log: d.Log, cookie: d.Cookie, loc: d.Loc, clock: clock{d.Now},
-		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, alerts: d.Alerts, digest: d.Digest, periods: d.Periods, maintenance: d.Maintenance, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard,
+		auth: d.Auth, accounts: d.Accounts, notifications: d.Notifications, users: d.Users, sites: d.Sites, reports: d.Reports, incidents: d.Incidents, corrections: d.Corrections, disputes: d.Disputes, tickets: d.Tickets, attachments: d.Attachments, fuel: d.Fuel, alerts: d.Alerts, digest: d.Digest, periods: d.Periods, maintenance: d.Maintenance, audit: d.Audit, acceptance: d.Acceptance, siteOverviews: d.SiteOverviews, exports: d.Exports, dashboard: d.Dashboard, directory: d.Directory,
 	}
 
 	v1 := r.Group("/api/v1", limitBody(), jsonWrites())

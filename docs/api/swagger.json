@@ -4153,6 +4153,9 @@
                 "site_id": {
                     "type": "string"
                 },
+                "site_name": {
+                    "type": "string"
+                },
                 "stage": {
                     "type": "string"
                 },
@@ -4337,6 +4340,9 @@
                 "site_id": {
                     "type": "string"
                 },
+                "site_name": {
+                    "type": "string"
+                },
                 "size_bytes": {
                     "type": "integer"
                 },
@@ -4345,6 +4351,9 @@
                     "type": "string"
                 },
                 "uploaded_by": {
+                    "type": "string"
+                },
+                "uploaded_by_name": {
                     "type": "string"
                 }
             }
@@ -4370,7 +4379,13 @@
                 "actor_id": {
                     "type": "string"
                 },
+                "actor_name": {
+                    "type": "string"
+                },
                 "entity_id": {
+                    "type": "string"
+                },
+                "entity_name": {
                     "type": "string"
                 },
                 "entity_type": {
@@ -4461,6 +4476,9 @@
                     "type": "string"
                 },
                 "created_by": {
+                    "type": "string"
+                },
+                "created_by_name": {
                     "type": "string"
                 },
                 "formula": {
@@ -4700,6 +4718,9 @@
                 "owner_id": {
                     "type": "string"
                 },
+                "owner_name": {
+                    "type": "string"
+                },
                 "period_from": {
                     "type": "string"
                 },
@@ -4707,6 +4728,9 @@
                     "type": "string"
                 },
                 "raised_by": {
+                    "type": "string"
+                },
+                "raised_by_name": {
                     "type": "string"
                 },
                 "ref": {
@@ -4719,10 +4743,16 @@
                 "report_id": {
                     "type": "string"
                 },
+                "report_label": {
+                    "type": "string"
+                },
                 "resolution": {
                     "type": "string"
                 },
                 "resolution_report_id": {
+                    "type": "string"
+                },
+                "resolution_report_label": {
                     "type": "string"
                 },
                 "resolved_at": {
@@ -4732,7 +4762,13 @@
                 "resolved_by": {
                     "type": "string"
                 },
+                "resolved_by_name": {
+                    "type": "string"
+                },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "status": {
@@ -4768,6 +4804,9 @@
             "type": "object",
             "properties": {
                 "author_id": {
+                    "type": "string"
+                },
+                "author_name": {
                     "type": "string"
                 },
                 "body": {
@@ -4930,7 +4969,13 @@
                 "recorded_by": {
                     "type": "string"
                 },
+                "recorded_by_name": {
+                    "type": "string"
+                },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "variance": {
@@ -5047,6 +5092,9 @@
                 },
                 "site_id": {
                     "type": "string"
+                },
+                "site_name": {
+                    "type": "string"
                 }
             }
         },
@@ -5100,6 +5148,9 @@
                 "incident_id": {
                     "type": "string"
                 },
+                "incident_label": {
+                    "type": "string"
+                },
                 "original_value": {
                     "type": "string"
                 },
@@ -5113,6 +5164,9 @@
                 "requested_by": {
                     "type": "string"
                 },
+                "requested_by_name": {
+                    "type": "string"
+                },
                 "review_note": {
                     "type": "string"
                 },
@@ -5122,7 +5176,13 @@
                 "reviewed_by": {
                     "type": "string"
                 },
+                "reviewed_by_name": {
+                    "type": "string"
+                },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "status": {
@@ -5189,6 +5249,9 @@
                 "owner_id": {
                     "type": "string"
                 },
+                "owner_name": {
+                    "type": "string"
+                },
                 "published_at": {
                     "type": "string"
                 },
@@ -5197,6 +5260,9 @@
                     "example": "INC-000123"
                 },
                 "reporter_id": {
+                    "type": "string"
+                },
+                "reporter_name": {
                     "type": "string"
                 },
                 "restoration_target": {
@@ -5208,6 +5274,9 @@
                 "restored_by": {
                     "type": "string"
                 },
+                "restored_by_name": {
+                    "type": "string"
+                },
                 "root_cause": {
                     "type": "string"
                 },
@@ -5215,6 +5284,9 @@
                     "type": "string"
                 },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "started_at": {
@@ -5233,6 +5305,9 @@
                     "type": "string"
                 },
                 "verified_by": {
+                    "type": "string"
+                },
+                "verified_by_name": {
                     "type": "string"
                 }
             }
@@ -5314,6 +5389,9 @@
                 "incident_id": {
                     "type": "string"
                 },
+                "incident_label": {
+                    "type": "string"
+                },
                 "open": {
                     "description": "Open: the incident is not restored yet, so the window runs to now.",
                     "type": "boolean"
@@ -5355,6 +5433,9 @@
             "type": "object",
             "properties": {
                 "author_id": {
+                    "type": "string"
+                },
+                "author_name": {
                     "type": "string"
                 },
                 "body": {
@@ -5451,6 +5532,9 @@
                 "issued_by": {
                     "type": "string"
                 },
+                "issued_by_name": {
+                    "type": "string"
+                },
                 "kind": {
                     "type": "string",
                     "example": "monthly_performance"
@@ -5463,6 +5547,13 @@
                     "type": "integer"
                 },
                 "sha256": {
+                    "type": "string"
+                },
+                "site_id": {
+                    "description": "SiteID and SiteName repeat the site the export was limited to, taken from params.",
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "size_bytes": {
@@ -5564,6 +5655,9 @@
                 "decided_by": {
                     "type": "string"
                 },
+                "decided_by_name": {
+                    "type": "string"
+                },
                 "decision_note": {
                     "type": "string"
                 },
@@ -5585,7 +5679,13 @@
                 "requested_by": {
                     "type": "string"
                 },
+                "requested_by_name": {
+                    "type": "string"
+                },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "starts_at": {
@@ -6014,6 +6114,9 @@
                 "closed_by": {
                     "type": "string"
                 },
+                "closed_by_name": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -6031,6 +6134,9 @@
                     "type": "string"
                 },
                 "reopened_by": {
+                    "type": "string"
+                },
+                "reopened_by_name": {
                     "type": "string"
                 },
                 "run_id": {
@@ -6089,6 +6195,9 @@
                 "site_id": {
                     "type": "string"
                 },
+                "site_name": {
+                    "type": "string"
+                },
                 "started_at": {
                     "type": "string"
                 },
@@ -6134,6 +6243,9 @@
                     "type": "integer"
                 },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "status": {
@@ -6292,6 +6404,9 @@
                 "author_id": {
                     "type": "string"
                 },
+                "author_name": {
+                    "type": "string"
+                },
                 "correction_reason": {
                     "type": "string"
                 },
@@ -6333,6 +6448,9 @@
                 "reviewer_id": {
                     "type": "string"
                 },
+                "reviewer_name": {
+                    "type": "string"
+                },
                 "revision": {
                     "type": "integer"
                 },
@@ -6342,6 +6460,9 @@
                 "site_id": {
                     "type": "string"
                 },
+                "site_name": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -6349,6 +6470,9 @@
                     "type": "string"
                 },
                 "supersedes_id": {
+                    "type": "string"
+                },
+                "supersedes_label": {
                     "type": "string"
                 },
                 "updated_at": {
@@ -6962,6 +7086,17 @@
                 }
             }
         },
+        "dto.SiteRefDTO": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.SiteRequest": {
             "type": "object",
             "properties": {
@@ -7219,6 +7354,9 @@
                 "assignee_id": {
                     "type": "string"
                 },
+                "assignee_name": {
+                    "type": "string"
+                },
                 "category": {
                     "type": "string"
                 },
@@ -7246,6 +7384,9 @@
                 "raised_by": {
                     "type": "string"
                 },
+                "raised_by_name": {
+                    "type": "string"
+                },
                 "ref": {
                     "type": "string",
                     "example": "TKT-000123"
@@ -7263,7 +7404,13 @@
                 "resolved_by": {
                     "type": "string"
                 },
+                "resolved_by_name": {
+                    "type": "string"
+                },
                 "site_id": {
+                    "type": "string"
+                },
+                "site_name": {
                     "type": "string"
                 },
                 "status": {
@@ -7296,6 +7443,9 @@
             "type": "object",
             "properties": {
                 "author_id": {
+                    "type": "string"
+                },
+                "author_name": {
                     "type": "string"
                 },
                 "body": {
@@ -7627,6 +7777,13 @@
                     "type": "array",
                     "items": {
                         "type": "string"
+                    }
+                },
+                "sites": {
+                    "description": "Sites names the assigned sites, in the same order as site_ids.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.SiteRefDTO"
                     }
                 }
             }

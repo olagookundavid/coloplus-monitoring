@@ -65,17 +65,21 @@ type CorrectionRequest struct {
 type ReportDTO struct {
 	ID               string        `json:"id"`
 	SiteID           string        `json:"site_id"`
+	SiteName         string        `json:"site_name,omitempty" names:"SiteID:site"`
 	ReportDate       string        `json:"report_date"`
 	Revision         int           `json:"revision"`
 	Status           string        `json:"status"`
 	AuthorID         string        `json:"author_id"`
+	AuthorName       string        `json:"author_name,omitempty" names:"AuthorID:user"`
 	Notes            string        `json:"notes"`
 	Intervals        []IntervalDTO `json:"intervals,omitempty"`
 	SubmittedAt      *time.Time    `json:"submitted_at,omitempty"`
 	ReviewedAt       *time.Time    `json:"reviewed_at,omitempty"`
 	ReviewerID       string        `json:"reviewer_id,omitempty"`
+	ReviewerName     string        `json:"reviewer_name,omitempty" names:"ReviewerID:user"`
 	ReviewComment    string        `json:"review_comment,omitempty"`
 	SupersedesID     string        `json:"supersedes_id,omitempty"`
+	SupersedesLabel  string        `json:"supersedes_label,omitempty" names:"SupersedesID:daily_report"`
 	CorrectionReason string        `json:"correction_reason,omitempty"`
 	RowVersion       int           `json:"row_version"`
 	CreatedAt        time.Time     `json:"created_at"`
@@ -92,6 +96,7 @@ type ReportDTO struct {
 type PublishedReportDTO struct {
 	ID             string        `json:"id"`
 	SiteID         string        `json:"site_id"`
+	SiteName       string        `json:"site_name,omitempty" names:"SiteID:site"`
 	ReportDate     string        `json:"report_date"`
 	Revision       int           `json:"revision"`
 	Status         string        `json:"status"`

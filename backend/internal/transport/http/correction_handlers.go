@@ -37,7 +37,7 @@ func (a *api) requestIncidentCorrection(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toIncidentCorrectionDTO(corr))
+	a.respondNamed(c, http.StatusCreated, toIncidentCorrectionDTO(corr))
 }
 
 // listIncidentCorrections godoc
@@ -72,7 +72,7 @@ func (a *api) listIncidentCorrections(c *gin.Context) {
 	for _, corr := range list {
 		resp.Corrections = append(resp.Corrections, toIncidentCorrectionDTO(corr))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // getIncidentCorrection godoc
@@ -90,7 +90,7 @@ func (a *api) getIncidentCorrection(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toIncidentCorrectionDTO(corr))
+	a.respondNamed(c, http.StatusOK, toIncidentCorrectionDTO(corr))
 }
 
 // approveIncidentCorrection godoc
@@ -110,7 +110,7 @@ func (a *api) approveIncidentCorrection(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toIncidentCorrectionDTO(corr))
+	a.respondNamed(c, http.StatusOK, toIncidentCorrectionDTO(corr))
 }
 
 // rejectIncidentCorrection godoc
@@ -135,5 +135,5 @@ func (a *api) rejectIncidentCorrection(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toIncidentCorrectionDTO(corr))
+	a.respondNamed(c, http.StatusOK, toIncidentCorrectionDTO(corr))
 }

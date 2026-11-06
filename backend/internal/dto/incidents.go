@@ -53,6 +53,7 @@ type IncidentDTO struct {
 	ID                string     `json:"id"`
 	Ref               string     `json:"ref" example:"INC-000123"`
 	SiteID            string     `json:"site_id"`
+	SiteName          string     `json:"site_name,omitempty" names:"SiteID:site"`
 	Category          string     `json:"category"`
 	Severity          string     `json:"severity"`
 	Impact            string     `json:"impact"`
@@ -62,15 +63,19 @@ type IncidentDTO struct {
 	StartedAt         time.Time  `json:"started_at"`
 	DetectedAt        time.Time  `json:"detected_at"`
 	ReporterID        string     `json:"reporter_id"`
+	ReporterName      string     `json:"reporter_name,omitempty" names:"ReporterID:user"`
 	OwnerID           string     `json:"owner_id,omitempty"`
+	OwnerName         string     `json:"owner_name,omitempty" names:"OwnerID:user"`
 	NextAction        string     `json:"next_action,omitempty"`
 	NextUpdateDue     *time.Time `json:"next_update_due,omitempty"`
 	Overdue           bool       `json:"overdue"`
 	RestorationTarget *time.Time `json:"restoration_target,omitempty"`
 	RestoredAt        *time.Time `json:"restored_at,omitempty"`
 	RestoredBy        string     `json:"restored_by,omitempty"`
+	RestoredByName    string     `json:"restored_by_name,omitempty" names:"RestoredBy:user"`
 	VerifiedAt        *time.Time `json:"verified_at,omitempty"`
 	VerifiedBy        string     `json:"verified_by,omitempty"`
+	VerifiedByName    string     `json:"verified_by_name,omitempty" names:"VerifiedBy:user"`
 	ClosedAt          *time.Time `json:"closed_at,omitempty"`
 	RootCause         string     `json:"root_cause,omitempty"`
 	PublishedAt       *time.Time `json:"published_at,omitempty"`
@@ -81,6 +86,7 @@ type IncidentDTO struct {
 type IncidentUpdateDTO struct {
 	ID              string     `json:"id"`
 	AuthorID        string     `json:"author_id"`
+	AuthorName      string     `json:"author_name,omitempty" names:"AuthorID:user"`
 	Kind            string     `json:"kind"`
 	FromStatus      string     `json:"from_status,omitempty"`
 	ToStatus        string     `json:"to_status,omitempty"`
@@ -96,6 +102,7 @@ type PublishedIncidentDTO struct {
 	ID                string               `json:"id"`
 	Ref               string               `json:"ref"`
 	SiteID            string               `json:"site_id"`
+	SiteName          string               `json:"site_name,omitempty" names:"SiteID:site"`
 	Category          string               `json:"category"`
 	Severity          string               `json:"severity"`
 	Impact            string               `json:"impact"`

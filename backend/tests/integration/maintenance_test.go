@@ -32,6 +32,10 @@ func TestMaintenance_NoticeCapSecondPersonAndOverlap(t *testing.T) {
 
 	first := ask(w.reporter, 0, 8, "Generator service", 201)
 	id := first.str("id")
+	// Staff see the site and the person by name, never only by id.
+	if first.str("site_name") == "" || first.str("requested_by_name") == "" {
+		t.Fatalf("maintenance carries no names: %s", first.Raw)
+	}
 	// Over the monthly cap (8 + 8 > 12), and overlapping.
 	ask(w.reporter, 8, 16, "More work", 400)
 	ask(w.reporter, 2, 3, "Overlap", 409)
@@ -50,7 +54,7 @@ func TestMaintenance_NoticeCapSecondPersonAndOverlap(t *testing.T) {
 	// Cancelling needs a reason; the customer can see the window but not who asked.
 	w.expect(w.call("POST", "/api/v1/maintenance/"+id+"/cancel", map[string]any{"note": "x"}, w.reporter), 400)
 	seen := w.expect(w.call("GET", "/api/v1/maintenance?site_id="+w.site, nil, w.airtel), 200)
-	if len(seen.list("windows")) != 2 || seen.list("windows")[0].(map[string]any)["requested_by"] != nil {
+	if len(seen.list("windows")) != 2 || seen.list("windows")[0].(map[string]any)["requested_by"] != nil || seen.list("windows")[0].(map[string]any)["requested_by_name"] != nil {
 		t.Fatalf("customer view = %s", seen.Raw)
 	}
 	w.expect(w.call("POST", "/api/v1/maintenance/"+id+"/cancel", map[string]any{"note": "Work postponed"}, w.reporter), 200)

@@ -23,16 +23,18 @@ type VoidFuelRequest struct {
 // FuelEntryDTO is one delivery or reading. Note, RecordedBy and the void
 // details are only sent to Coloplus staff; a customer is never sent a voided entry.
 type FuelEntryDTO struct {
-	ID         string    `json:"id"`
-	SiteID     string    `json:"site_id"`
-	Kind       string    `json:"kind"`
-	Litres     float64   `json:"litres"`
-	OccurredAt time.Time `json:"occurred_at"`
-	Note       string    `json:"note,omitempty"`
-	RecordedBy string    `json:"recorded_by,omitempty"`
-	Voided     bool      `json:"voided,omitempty"`
-	VoidReason string    `json:"void_reason,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	SiteID         string    `json:"site_id"`
+	SiteName       string    `json:"site_name,omitempty" names:"SiteID:site"`
+	Kind           string    `json:"kind"`
+	Litres         float64   `json:"litres"`
+	OccurredAt     time.Time `json:"occurred_at"`
+	Note           string    `json:"note,omitempty"`
+	RecordedBy     string    `json:"recorded_by,omitempty"`
+	RecordedByName string    `json:"recorded_by_name,omitempty" names:"RecordedBy:user"`
+	Voided         bool      `json:"voided,omitempty"`
+	VoidReason     string    `json:"void_reason,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 	// Variance, on a tank reading, compares what it found with what the
 	// estimate expected just before it.
 	Variance *FuelVarianceDTO `json:"variance,omitempty"`
@@ -94,6 +96,7 @@ type FuelEstimateDTO struct {
 
 type FuelStatusResponse struct {
 	SiteID   string          `json:"site_id"`
+	SiteName string          `json:"site_name,omitempty" names:"SiteID:site"`
 	Estimate FuelEstimateDTO `json:"estimate"`
 	// Entries are newest first.
 	Entries []FuelEntryDTO `json:"entries"`

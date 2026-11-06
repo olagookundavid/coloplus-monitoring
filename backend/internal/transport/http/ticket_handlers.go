@@ -37,7 +37,7 @@ func (a *api) raiseTicket(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toTicketDTO(t, a.tickets.IsStaff(actor)))
+	a.respondNamed(c, http.StatusCreated, toTicketDTO(t, a.tickets.IsStaff(actor)))
 }
 
 // listTickets godoc
@@ -76,7 +76,7 @@ func (a *api) listTickets(c *gin.Context) {
 	for _, t := range list {
 		resp.Tickets = append(resp.Tickets, toTicketDTO(t, staff))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // ticketSummary godoc
@@ -92,7 +92,7 @@ func (a *api) ticketSummary(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.TicketSummaryResponse{Open: n.Open, InProgress: n.InProgress, Resolved: n.Resolved, CriticalOpen: n.CriticalOpen})
+	a.respondNamed(c, http.StatusOK, dto.TicketSummaryResponse{Open: n.Open, InProgress: n.InProgress, Resolved: n.Resolved, CriticalOpen: n.CriticalOpen})
 }
 
 // getTicket godoc
@@ -117,7 +117,7 @@ func (a *api) getTicket(c *gin.Context) {
 	for _, e := range v.Events {
 		resp.Events = append(resp.Events, toTicketEventDTO(e, staff))
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // commentTicket godoc
@@ -143,7 +143,7 @@ func (a *api) commentTicket(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toTicketEventDTO(e, a.tickets.IsStaff(actor)))
+	a.respondNamed(c, http.StatusCreated, toTicketEventDTO(e, a.tickets.IsStaff(actor)))
 }
 
 // transitionTicket godoc
@@ -173,7 +173,7 @@ func (a *api) transitionTicket(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toTicketDTO(t, a.tickets.IsStaff(actor)))
+	a.respondNamed(c, http.StatusOK, toTicketDTO(t, a.tickets.IsStaff(actor)))
 }
 
 // linkTicketIncident godoc
@@ -200,5 +200,5 @@ func (a *api) linkTicketIncident(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toTicketDTO(t, a.tickets.IsStaff(actor)))
+	a.respondNamed(c, http.StatusOK, toTicketDTO(t, a.tickets.IsStaff(actor)))
 }

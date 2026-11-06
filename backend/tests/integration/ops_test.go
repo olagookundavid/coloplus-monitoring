@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/csv"
 	"encoding/hex"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -65,7 +66,23 @@ func TestAudit_SearchNeedsAccessAndRespectsSiteScope(t *testing.T) {
 	if found.str("total") != "1" {
 		t.Fatalf("admin search = %s", found.Raw)
 	}
+	// The log names the person and the record, not just their ids.
+	if ev, _ := found.list("events")[0].(map[string]any); ev["actor_name"] == "" || ev["actor_name"] == nil || !strings.HasPrefix(fmt.Sprint(ev["entity_name"]), "INC-") {
+		t.Fatalf("audit event carries no names: %s", found.Raw)
+	}
 	w.expect(w.call("GET", "/api/v1/audit?from=yesterday", nil, w.admin), 400)
+	// A user's assigned sites come with their names.
+	named := false
+	for _, u := range w.expect(w.call("GET", "/api/v1/users", nil, w.admin), 200).list("users") {
+		for _, s := range u.(map[string]any)["sites"].([]any) {
+			if s.(map[string]any)["name"] != "" {
+				named = true
+			}
+		}
+	}
+	if !named {
+		t.Fatal("user list names no assigned site")
+	}
 
 	reader := func(sites ...string) domain.Actor {
 		ids := map[string]struct{}{}

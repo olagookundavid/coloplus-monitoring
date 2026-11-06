@@ -24,10 +24,10 @@ func (a *api) incidentBody(actor domain.Actor, i domain.Incident, updates []doma
 func (a *api) writeIncident(c *gin.Context, status int, i domain.Incident) {
 	internal, published := a.incidentBody(actorFrom(c), i, nil)
 	if internal != nil {
-		c.JSON(status, internal)
+		a.respondNamed(c, status, internal)
 		return
 	}
-	c.JSON(status, published)
+	a.respondNamed(c, status, published)
 }
 
 // reportIncident godoc
@@ -101,7 +101,7 @@ func (a *api) listIncidents(c *gin.Context) {
 			resp.Published = append(resp.Published, *published)
 		}
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // getIncident godoc
@@ -128,7 +128,7 @@ func (a *api) getIncident(c *gin.Context) {
 			resp.Updates = append(resp.Updates, toIncidentUpdateDTO(u))
 		}
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // assignIncident godoc
@@ -212,7 +212,7 @@ func (a *api) addIncidentUpdate(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toIncidentUpdateDTO(u))
+	a.respondNamed(c, http.StatusCreated, toIncidentUpdateDTO(u))
 }
 
 // publishIncident godoc
@@ -246,5 +246,5 @@ func (a *api) incidentSummary(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, dto.IncidentSummaryResponse{Open: n.Open, Active: n.Active, Critical: n.Critical, Overdue: n.Overdue})
+	a.respondNamed(c, http.StatusOK, dto.IncidentSummaryResponse{Open: n.Open, Active: n.Active, Critical: n.Critical, Overdue: n.Overdue})
 }

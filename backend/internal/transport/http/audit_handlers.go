@@ -3,6 +3,7 @@ package httpapi
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"coloplus-backend/internal/dto"
@@ -50,14 +51,38 @@ func (a *api) searchAudit(c *gin.Context) {
 	}
 	limit, offset := services.Page(in.Limit, in.Offset)
 	resp := dto.AuditListResponse{Events: make([]dto.AuditEventDTO, 0, len(events)), Total: total, Limit: limit, Offset: offset}
+	// Name the people and records an event mentions, one query per kind.
+	var actorIDs, siteIDs []string
+	refs := make([]services.EntityRef, 0, len(events))
+	for _, e := range events {
+		actorIDs = append(actorIDs, e.ActorID)
+		if id, ok := e.Metadata["site_id"].(string); ok {
+			siteIDs = append(siteIDs, id)
+		}
+		refs = append(refs, services.EntityRef{Type: e.EntityType, ID: e.EntityID})
+		for key, typ := range auditMetadataRefs {
+			if id, ok := e.Metadata[key].(string); ok {
+				refs = append(refs, services.EntityRef{Type: typ, ID: id})
+			}
+		}
+	}
+	ctx := c.Request.Context()
+	actors := a.directory.Users(ctx, actorIDs...)
+	sites := a.directory.Sites(ctx, siteIDs...)
+	labels := a.directory.EntityLabels(ctx, refs)
 	for _, e := range events {
 		meta := e.Metadata
 		if meta == nil {
 			meta = map[string]any{}
 		}
+		// Add names beside the ids in the metadata, on a copy of it.
+		if named := metadataWithNames(meta, sites, labels); named != nil {
+			meta = named
+		}
 		resp.Events = append(resp.Events, dto.AuditEventDTO{
-			ID: e.ID, OccurredAt: e.OccurredAt, ActorID: e.ActorID, Action: e.Action,
-			EntityType: e.EntityType, EntityID: e.EntityID, Metadata: meta,
+			ID: e.ID, OccurredAt: e.OccurredAt, ActorID: e.ActorID, ActorName: actors.Get(e.ActorID),
+			Action: e.Action, EntityType: e.EntityType, EntityID: e.EntityID,
+			EntityName: labels[services.EntityRef{Type: e.EntityType, ID: e.EntityID}], Metadata: meta,
 		})
 	}
 	c.JSON(http.StatusOK, resp)
@@ -72,4 +97,38 @@ func optionalTime(v string) (*time.Time, error) {
 		return nil, fmt.Errorf("%w: times must look like 2026-12-01T06:00:00+01:00", apperrors.ErrInvalidInput)
 	}
 	return &t, nil
+}
+
+// auditMetadataRefs are metadata keys that hold the id of another record, and
+// what kind of record it is. Each gets a "<key without _id>_label" beside it.
+var auditMetadataRefs = map[string]string{
+	"run_id":        "calculation_run",
+	"supersedes_id": "daily_report",
+	"acceptance_id": "acceptance",
+}
+
+// metadataWithNames returns a copy of meta with the site's name and the
+// labels of the records it refers to added, or nil when there is nothing to add.
+func metadataWithNames(meta map[string]any, sites services.Names, labels map[services.EntityRef]string) map[string]any {
+	var out map[string]any
+	add := func(k string, v any) {
+		if out == nil {
+			out = make(map[string]any, len(meta)+2)
+			for key, val := range meta {
+				out[key] = val
+			}
+		}
+		out[k] = v
+	}
+	if id, ok := meta["site_id"].(string); ok && sites.Get(id) != "" {
+		add("site_name", sites.Get(id))
+	}
+	for key, typ := range auditMetadataRefs {
+		if id, ok := meta[key].(string); ok {
+			if label := labels[services.EntityRef{Type: typ, ID: id}]; label != "" {
+				add(strings.TrimSuffix(key, "_id")+"_label", label)
+			}
+		}
+	}
+	return out
 }

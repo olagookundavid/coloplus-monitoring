@@ -43,6 +43,7 @@ type CalculationRunDTO struct {
 	FormulaVersion string      `json:"formula_version"`
 	SiteCount      int         `json:"site_count"`
 	CreatedBy      string      `json:"created_by"`
+	CreatedByName  string      `json:"created_by_name,omitempty" names:"CreatedBy:user"`
 	CreatedAt      time.Time   `json:"created_at"`
 	Rows           []RunRowDTO `json:"rows,omitempty"`
 }

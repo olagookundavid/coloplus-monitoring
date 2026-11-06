@@ -43,7 +43,7 @@ func (a *api) createSite(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusCreated, toSiteDTO(created))
+	a.respondNamed(c, http.StatusCreated, toSiteDTO(created))
 }
 
 // listSites godoc
@@ -79,7 +79,7 @@ func (a *api) listSites(c *gin.Context) {
 	for i, s := range sites {
 		out[i] = toSiteDTO(s)
 	}
-	c.JSON(http.StatusOK, dto.SiteListResponse{Sites: out, Total: total, Limit: limit, Offset: offset})
+	a.respondNamed(c, http.StatusOK, dto.SiteListResponse{Sites: out, Total: total, Limit: limit, Offset: offset})
 }
 
 // getSite godoc
@@ -97,7 +97,7 @@ func (a *api) getSite(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toSiteDTO(site))
+	a.respondNamed(c, http.StatusOK, toSiteDTO(site))
 }
 
 // updateSite godoc
@@ -126,7 +126,7 @@ func (a *api) updateSite(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, toSiteDTO(updated))
+	a.respondNamed(c, http.StatusOK, toSiteDTO(updated))
 }
 
 // siteOverview godoc
@@ -182,7 +182,7 @@ func (a *api) siteOverview(c *gin.Context) {
 		acc := toAcceptanceDTO(*o.Acceptance, now)
 		resp.Acceptance = &acc
 	}
-	c.JSON(http.StatusOK, resp)
+	a.respondNamed(c, http.StatusOK, resp)
 }
 
 // importSites godoc
@@ -215,5 +215,5 @@ func (a *api) importSites(c *gin.Context) {
 	for i, r := range res.Rows {
 		out.Rows[i] = dto.SiteImportRowDTO{Line: r.Line, AirtelCode: r.AirtelCode, Action: string(r.Action), Problems: r.Problems}
 	}
-	c.JSON(http.StatusOK, out)
+	a.respondNamed(c, http.StatusOK, out)
 }
