@@ -15,14 +15,18 @@ export interface IncidentCorrection {
   /** Server-formatted, e.g. "COR-000058". */
   ref: string
   incidentId: string
+  incidentLabel?: string
   siteId: string
+  siteName?: string
   field: IncidentCorrectionField
   originalValue: string
   correctedValue: string
   reason: string
   status: IncidentCorrectionStatus
   requestedBy: string
+  requestedByName?: string
   reviewedBy?: string
+  reviewedByName?: string
   reviewedAt?: string
   reviewNote?: string
   createdAt: string

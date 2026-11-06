@@ -6,6 +6,7 @@ export interface AuditEvent {
   id: number
   occurredAt: string
   actorId?: string
+  actorName?: string
   action: string
   entityType: string
   entityId?: string
@@ -15,6 +16,7 @@ interface AuditEventDTO {
   id: number
   occurred_at: string
   actor_id?: string
+  actor_name?: string
   action: string
   entity_type: string
   entity_id?: string
@@ -25,6 +27,7 @@ function mapAuditEvent(dto: AuditEventDTO): AuditEvent {
     id: dto.id,
     occurredAt: dto.occurred_at,
     actorId: dto.actor_id,
+    actorName: dto.actor_name,
     action: dto.action,
     entityType: dto.entity_type,
     entityId: dto.entity_id,
@@ -46,9 +49,11 @@ interface AuditLogEventDTO {
   id: number
   occurred_at: string
   actor_id?: string
+  actor_name?: string
   action: string
   entity_type: string
   entity_id?: string
+  entity_name?: string
   metadata: Record<string, unknown>
 }
 
@@ -57,9 +62,11 @@ function mapAuditLogEvent(dto: AuditLogEventDTO): AuditLogEvent {
     id: dto.id,
     occurredAt: dto.occurred_at,
     actorId: dto.actor_id ?? '',
+    actorName: dto.actor_name,
     action: dto.action,
     entityType: dto.entity_type,
     entityId: dto.entity_id ?? '',
+    entityName: dto.entity_name,
     metadata: dto.metadata ?? {},
   }
 }

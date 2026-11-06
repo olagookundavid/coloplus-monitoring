@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import { TicketIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
-import { SkeletonDetailPane, SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
+import {
+  SkeletonDetailPane,
+  SkeletonListItems,
+  SkeletonStatCards,
+} from '../../components/skeletons'
 import {
   AttachmentList,
   Button,
@@ -19,7 +23,6 @@ import {
   type TabItem,
 } from '../../components/ui'
 import {
-  useAdminSites,
   useAttachments,
   useCommentTicketMutation,
   useLinkTicketIncidentMutation,
@@ -30,11 +33,16 @@ import {
   useTickets,
   useTransitionTicketMutation,
 } from '../../hooks'
-import type { AdminSite, ReporterIncident, Ticket, TicketEvent } from '../../types'
-import { ticketPriorityLabel, ticketStatusLabel, formatDateTimeWAT, toast } from '../../utils'
+import type { ReporterIncident, Ticket, TicketEvent } from '../../types'
+import {
+  ticketPriorityLabel,
+  ticketStatusLabel,
+  formatDateTimeWAT,
+  nameOrId,
+  toast,
+} from '../../utils'
 
 const NO_TICKETS: Ticket[] = []
-const NO_SITES: AdminSite[] = []
 const NO_INCIDENTS: ReporterIncident[] = []
 
 type Bucket = 'open' | 'inProgress' | 'resolved'
@@ -44,10 +52,6 @@ function bucketFor(ticket: Ticket): Bucket {
   if (ticket.status === 'in_progress') return 'inProgress'
   if (ticket.status === 'resolved') return 'resolved'
   return 'open'
-}
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  return sitesById.get(siteId)?.airtelCode ?? siteId
 }
 
 type PendingAction =
@@ -62,6 +66,15 @@ interface DetailPaneProps {
   siteIncidents: ReporterIncident[]
   canManage: boolean
   onRequestAction: (action: PendingAction) => void
+}
+
+function FactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+      <dt className="text-text-muted">{label}</dt>
+      <dd className="max-w-[60%] text-right font-medium text-text">{value}</dd>
+    </div>
+  )
 }
 
 function TicketDetailBody({
@@ -117,6 +130,21 @@ function TicketDetailBody({
         <p className="mt-1 text-sm text-text-muted">{ticket.description}</p>
       </div>
 
+      <dl className="divide-y divide-border rounded-lg border border-border">
+        {ticket.raisedBy && (
+          <FactRow label="Raised by" value={nameOrId(ticket.raisedByName, ticket.raisedBy)} />
+        )}
+        <FactRow
+          label="Assigned to"
+          value={
+            ticket.assigneeId ? nameOrId(ticket.assigneeName, ticket.assigneeId) : 'Unassigned'
+          }
+        />
+        {ticket.resolvedBy && (
+          <FactRow label="Resolved by" value={nameOrId(ticket.resolvedByName, ticket.resolvedBy)} />
+        )}
+      </dl>
+
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Timeline</p>
         {detailQuery.isLoading ? (
@@ -130,7 +158,12 @@ function TicketDetailBody({
                 <span className="w-32 shrink-0 text-text-muted">
                   {formatDateTimeWAT(event.createdAt)}
                 </span>
-                <span className="text-text">{eventBody(event)}</span>
+                <span className="text-text">
+                  {eventBody(event)}
+                  {event.authorName && (
+                    <span className="text-text-muted"> · {event.authorName}</span>
+                  )}
+                </span>
                 {event.internal && <StatusBadge label="Internal" tone="neutral" />}
               </li>
             ))}
@@ -240,9 +273,7 @@ function TicketDetailBody({
             />
             <Button
               disabled={!resolveNote.trim()}
-              onClick={() =>
-                onRequestAction({ kind: 'resolve', ticket, note: resolveNote.trim() })
-              }
+              onClick={() => onRequestAction({ kind: 'resolve', ticket, note: resolveNote.trim() })}
               fullWidth
             >
               Resolve ticket
@@ -288,9 +319,6 @@ export function SupervisorTickets() {
   const ticketsQuery = useTickets()
   const tickets = ticketsQuery.data ?? NO_TICKETS
   const summaryQuery = useTicketSummary()
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
   const incidentsQuery = useReporterIncidents()
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
 
@@ -313,9 +341,11 @@ export function SupervisorTickets() {
     [tickets, tab]
   )
 
-  const selectedTicket = visibleTickets.find((t) => t.id === selectedId) ?? visibleTickets[0] ?? null
+  const selectedTicket =
+    visibleTickets.find((t) => t.id === selectedId) ?? visibleTickets[0] ?? null
   const siteIncidents = useMemo(
-    () => (selectedTicket ? incidents.filter((i) => i.siteId === selectedTicket.siteId) : NO_INCIDENTS),
+    () =>
+      selectedTicket ? incidents.filter((i) => i.siteId === selectedTicket.siteId) : NO_INCIDENTS,
     [incidents, selectedTicket]
   )
 
@@ -398,7 +428,11 @@ export function SupervisorTickets() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
           <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={TicketIcon} />
-          <StatCard label="In progress" value={summaryQuery.data?.inProgress ?? 0} icon={TicketIcon} />
+          <StatCard
+            label="In progress"
+            value={summaryQuery.data?.inProgress ?? 0}
+            icon={TicketIcon}
+          />
           <StatCard label="Resolved" value={summaryQuery.data?.resolved ?? 0} icon={TicketIcon} />
           <StatCard
             label="Critical open"
@@ -443,7 +477,7 @@ export function SupervisorTickets() {
                         </div>
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {ticket.subject} · {siteLabelFor(sitesById, ticket.siteId)}
+                        {ticket.subject} · {nameOrId(ticket.siteName, ticket.siteId)}
                       </p>
                     </button>
                   </li>
@@ -464,7 +498,7 @@ export function SupervisorTickets() {
             <TicketDetailBody
               key={selectedTicket.id}
               ticket={selectedTicket}
-              siteLabel={siteLabelFor(sitesById, selectedTicket.siteId)}
+              siteLabel={nameOrId(selectedTicket.siteName, selectedTicket.siteId)}
               siteIncidents={siteIncidents}
               canManage={canManage}
               onRequestAction={setPendingAction}
@@ -484,7 +518,7 @@ export function SupervisorTickets() {
         body={
           pendingAction && (
             <ConfirmSummary
-              title={`${pendingAction.ticket.subject} · ${siteLabelFor(sitesById, pendingAction.ticket.siteId)}`}
+              title={`${pendingAction.ticket.subject} · ${nameOrId(pendingAction.ticket.siteName, pendingAction.ticket.siteId)}`}
               meta={pendingAction.ticket.ref}
               rows={
                 pendingAction.kind === 'linkIncident'

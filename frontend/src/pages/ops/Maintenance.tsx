@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import {
   CheckCircleIcon,
   NoSymbolIcon,
@@ -30,7 +30,7 @@ import {
   useRejectMaintenanceMutation,
 } from '../../hooks'
 import type { AdminSite, MaintenanceStatus, MaintenanceWindow } from '../../types'
-import { formatDateTimeWAT, maintenanceStatusLabel, toast } from '../../utils'
+import { formatDateTimeWAT, maintenanceStatusLabel, nameOrId, toast } from '../../utils'
 
 const NO_WINDOWS: MaintenanceWindow[] = []
 const NO_SITES: AdminSite[] = []
@@ -46,7 +46,6 @@ export function Maintenance() {
 
   const sitesQuery = useAdminSites()
   const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [siteFilter, setSiteFilter] = useState('')
@@ -113,7 +112,7 @@ export function Maintenance() {
   const columns: Column<MaintenanceWindow>[] = [
     {
       header: 'Site',
-      accessor: (w) => sitesById.get(w.siteId)?.name ?? w.siteId,
+      accessor: (w) => nameOrId(w.siteName, w.siteId),
     },
     {
       header: 'When',
@@ -145,7 +144,9 @@ export function Maintenance() {
       cell: (w) => (
         <div>
           <p className="text-text">{formatDateTimeWAT(w.requestedAt)}</p>
-          <p className="text-xs text-text-muted">{w.requestedBy ?? '—'}</p>
+          <p className="text-xs text-text-muted">
+            {w.requestedBy ? nameOrId(w.requestedByName, w.requestedBy) : '—'}
+          </p>
         </div>
       ),
     },
@@ -156,7 +157,9 @@ export function Maintenance() {
         w.decidedAt ? (
           <div>
             <p className="text-text">{formatDateTimeWAT(w.decidedAt)}</p>
-            <p className="text-xs text-text-muted">{w.decidedBy ?? '—'}</p>
+            <p className="text-xs text-text-muted">
+              {w.decidedBy ? nameOrId(w.decidedByName, w.decidedBy) : '—'}
+            </p>
             {w.decisionNote && (
               <p className="mt-0.5 text-xs text-text-muted">&ldquo;{w.decisionNote}&rdquo;</p>
             )}
@@ -300,9 +303,7 @@ export function Maintenance() {
           pendingAction && (
             <div className="flex flex-col gap-3">
               <ConfirmSummary
-                title={
-                  sitesById.get(pendingAction.window.siteId)?.name ?? pendingAction.window.siteId
-                }
+                title={nameOrId(pendingAction.window.siteName, pendingAction.window.siteId)}
                 meta={`${formatDateTimeWAT(pendingAction.window.startsAt)} – ${formatDateTimeWAT(pendingAction.window.endsAt)}`}
               />
               <Textarea

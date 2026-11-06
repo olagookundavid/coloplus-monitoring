@@ -15,6 +15,7 @@ interface TicketDTO {
   id: string
   ref: string
   site_id: string
+  site_name?: string
   category: TicketCategory
   priority: TicketPriority
   subject: string
@@ -29,8 +30,11 @@ interface TicketDTO {
   created_at: string
   updated_at: string
   raised_by?: string
+  raised_by_name?: string
   assignee_id?: string
+  assignee_name?: string
   resolved_by?: string
+  resolved_by_name?: string
 }
 
 interface TicketEventDTO {
@@ -42,6 +46,7 @@ interface TicketEventDTO {
   body?: string
   internal?: boolean
   author_id?: string
+  author_name?: string
   created_at: string
 }
 
@@ -62,6 +67,7 @@ function mapTicket(dto: TicketDTO): Ticket {
     id: dto.id,
     ref: dto.ref,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     category: dto.category,
     priority: dto.priority,
     subject: dto.subject,
@@ -76,8 +82,11 @@ function mapTicket(dto: TicketDTO): Ticket {
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     raisedBy: dto.raised_by,
+    raisedByName: dto.raised_by_name,
     assigneeId: dto.assignee_id,
+    assigneeName: dto.assignee_name,
     resolvedBy: dto.resolved_by,
+    resolvedByName: dto.resolved_by_name,
   }
 }
 
@@ -91,6 +100,7 @@ function mapEvent(dto: TicketEventDTO): TicketEvent {
     body: dto.body ?? '',
     internal: dto.internal,
     authorId: dto.author_id,
+    authorName: dto.author_name,
     createdAt: dto.created_at,
   }
 }
@@ -188,10 +198,7 @@ export interface TransitionTicketInput {
   note?: string
 }
 
-export async function transitionTicket(
-  id: string,
-  input: TransitionTicketInput
-): Promise<Ticket> {
+export async function transitionTicket(id: string, input: TransitionTicketInput): Promise<Ticket> {
   try {
     const { data } = await getApi().post<TicketDTO>(`/tickets/${id}/transition`, {
       status: input.status,

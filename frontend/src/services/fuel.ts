@@ -31,6 +31,7 @@ interface FuelEntryDTO {
   occurred_at: string
   note?: string
   recorded_by?: string
+  recorded_by_name?: string
   voided?: boolean
   void_reason?: string
   created_at: string
@@ -88,6 +89,7 @@ function mapEntry(dto: FuelEntryDTO): FuelEntry {
     occurredAt: dto.occurred_at,
     note: dto.note,
     recordedBy: dto.recorded_by,
+    recordedByName: dto.recorded_by_name,
     voided: dto.voided ?? false,
     voidReason: dto.void_reason,
     createdAt: dto.created_at,

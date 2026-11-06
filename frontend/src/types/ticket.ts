@@ -30,6 +30,7 @@ export interface TicketEvent {
   /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
   internal?: boolean
   authorId?: string
+  authorName?: string
   createdAt: string
 }
 
@@ -38,6 +39,7 @@ export interface Ticket {
   /** Server-formatted, e.g. "TKT-000123". */
   ref: string
   siteId: string
+  siteName?: string
   category: TicketCategory
   priority: TicketPriority
   subject: string
@@ -54,8 +56,11 @@ export interface Ticket {
   updatedAt: string
   /** Coloplus's own view; left out for Airtel. */
   raisedBy?: string
+  raisedByName?: string
   assigneeId?: string
+  assigneeName?: string
   resolvedBy?: string
+  resolvedByName?: string
 }
 
 export interface TicketDetail {

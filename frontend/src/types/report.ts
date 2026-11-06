@@ -24,10 +24,12 @@ export interface PowerInterval {
 export interface DailyReport {
   id: string
   siteId: string
+  siteName?: string
   reportDate: string
   revision: number
   status: ReportStatus
   authorId: string
+  authorName?: string
   notes: string
   intervals?: PowerInterval[]
   generatorHours?: number | null
@@ -36,8 +38,10 @@ export interface DailyReport {
   submittedAt?: string
   reviewedAt?: string
   reviewerId?: string
+  reviewerName?: string
   reviewComment?: string
   supersedesId?: string
+  supersedesLabel?: string
   correctionReason?: string
   rowVersion: number
   createdAt: string

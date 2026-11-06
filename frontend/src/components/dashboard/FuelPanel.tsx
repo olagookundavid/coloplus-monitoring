@@ -20,11 +20,17 @@ import {
   type Column,
   type RowAction,
 } from '../ui'
-import { useFuelStatus, usePermissions, useRecordFuelMutation, useVoidFuelMutation } from '../../hooks'
+import {
+  useFuelStatus,
+  usePermissions,
+  useRecordFuelMutation,
+  useVoidFuelMutation,
+} from '../../hooks'
 import type { FuelEntry, FuelEntryKind } from '../../types'
 import {
   formatDateTimeWAT,
   getFieldErrors,
+  nameOrId,
   recordFuelSchema,
   toast,
   voidReasonError,
@@ -169,7 +175,10 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
     ? [
         { label: 'Litres per running hour', value: `${estimate.consumptionLPH} L/h` },
         { label: 'Hours run since anchor', value: `${estimate.hoursRun}` },
-        { label: 'Litres consumed since anchor', value: `${Math.round(estimate.consumedLitres).toLocaleString()} L` },
+        {
+          label: 'Litres consumed since anchor',
+          value: `${Math.round(estimate.consumedLitres).toLocaleString()} L`,
+        },
         { label: 'Unreported days', value: `${estimate.unreportedDays}` },
         { label: 'As of', value: formatDateTimeWAT(estimate.asOf) },
       ]
@@ -177,9 +186,15 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
 
   const calculationWarnings: string[] = estimate
     ? [
-        estimate.overCapacity ? 'The estimate exceeds the tank capacity -- an entry is probably wrong.' : '',
-        estimate.provisional ? 'Provisional: some days in this period have no approved generator hours.' : '',
-        estimate.assumedEmptyStart ? 'Started from an assumed-empty tank -- no reading was available to anchor from.' : '',
+        estimate.overCapacity
+          ? 'The estimate exceeds the tank capacity -- an entry is probably wrong.'
+          : '',
+        estimate.provisional
+          ? 'Provisional: some days in this period have no approved generator hours.'
+          : '',
+        estimate.assumedEmptyStart
+          ? 'Started from an assumed-empty tank -- no reading was available to anchor from.'
+          : '',
       ].filter(Boolean)
     : []
 
@@ -214,7 +229,11 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
         if (!entry.variance) return <span className="text-text-muted">—</span>
         const sign = entry.variance.differenceLitres >= 0 ? '+' : ''
         return (
-          <span className={entry.variance.reviewWarning ? 'font-medium text-warning-700' : 'text-text-muted'}>
+          <span
+            className={
+              entry.variance.reviewWarning ? 'font-medium text-warning-700' : 'text-text-muted'
+            }
+          >
             {sign}
             {Math.round(entry.variance.differenceLitres).toLocaleString()} L
           </span>
@@ -227,7 +246,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
     {
       header: 'Recorded by',
       accessor: (entry) => entry.recordedBy ?? '',
-      cell: (entry) => entry.recordedBy || '—',
+      cell: (entry) => (entry.recordedBy ? nameOrId(entry.recordedByName, entry.recordedBy) : '—'),
     },
     ...(canManage
       ? [
@@ -289,21 +308,28 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
                 <BasisBadge basis="estimated" />
               </div>
 
-              {estimate.available && (estimate.low || estimate.estimatedEmpty || estimate.overCapacity) && (
-                <AlertBanner
-                  className="mt-3"
-                  tone={estimate.estimatedEmpty ? 'danger' : 'warning'}
-                  icon={ExclamationTriangleIcon}
-                  title={estimate.estimatedEmpty ? 'Estimated empty' : estimate.low ? 'Low fuel' : 'Check this estimate'}
-                  description={
-                    estimate.overCapacity
-                      ? 'The estimate exceeds the tank capacity.'
-                      : estimate.provisional
-                        ? 'Provisional -- some days have no approved generator hours.'
-                        : undefined
-                  }
-                />
-              )}
+              {estimate.available &&
+                (estimate.low || estimate.estimatedEmpty || estimate.overCapacity) && (
+                  <AlertBanner
+                    className="mt-3"
+                    tone={estimate.estimatedEmpty ? 'danger' : 'warning'}
+                    icon={ExclamationTriangleIcon}
+                    title={
+                      estimate.estimatedEmpty
+                        ? 'Estimated empty'
+                        : estimate.low
+                          ? 'Low fuel'
+                          : 'Check this estimate'
+                    }
+                    description={
+                      estimate.overCapacity
+                        ? 'The estimate exceeds the tank capacity.'
+                        : estimate.provisional
+                          ? 'Provisional -- some days have no approved generator hours.'
+                          : undefined
+                    }
+                  />
+                )}
 
               {estimate.available && (
                 <CalculationDetails
@@ -360,7 +386,11 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
               />
             </Field>
 
-            <Field label="Internal note" htmlFor="fuel-note" hint="(optional) Coloplus only -- never shown to Airtel.">
+            <Field
+              label="Internal note"
+              htmlFor="fuel-note"
+              hint="(optional) Coloplus only -- never shown to Airtel."
+            >
               <Textarea
                 id="fuel-note"
                 value={values.note}

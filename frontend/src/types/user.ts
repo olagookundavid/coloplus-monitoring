@@ -21,11 +21,13 @@ export const STAFF_ROLES: StaffRole[] = [
   'auditor',
 ]
 
+import type { SiteRef } from './adminSite'
+
 // The admin's view of *another* account — distinct from types/auth.ts's
 // `User`, which is the signed-in session's own shape from /auth/me.
 // `siteIds` is always present (both the list and single-user fetches return
 // it, batch-loaded server-side); still optional here since an admin's own
-// row carries none.
+// row carries none. `sites` names the same assignment, same order.
 export interface ManagedUser {
   id: string
   email: string
@@ -36,4 +38,5 @@ export interface ManagedUser {
   mfaEnabled: boolean
   lastLoginAt?: string
   siteIds?: string[]
+  sites?: SiteRef[]
 }

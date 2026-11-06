@@ -16,7 +16,7 @@ import {
 import { calculationRunDetailPath } from '../../constants'
 import { useReopenPeriodMutation, usePeriods } from '../../hooks'
 import type { PeriodClosure } from '../../types'
-import { formatDateTimeWAT, periodStatusLabel, toast } from '../../utils'
+import { formatDateTimeWAT, nameOrId, periodStatusLabel, toast } from '../../utils'
 
 const NO_PERIODS: PeriodClosure[] = []
 const MIN_REOPEN_REASON_LENGTH = 10
@@ -75,7 +75,9 @@ export function Periods() {
       cell: (period) => (
         <div>
           <p className="text-text">{formatDateTimeWAT(period.closedAt)}</p>
-          <p className="text-xs text-text-muted">{period.closedBy}</p>
+          <p className="text-xs text-text-muted">
+            {nameOrId(period.closedByName, period.closedBy)}
+          </p>
         </div>
       ),
     },
@@ -95,7 +97,9 @@ export function Periods() {
         period.reopenedAt ? (
           <div>
             <p className="text-text">{formatDateTimeWAT(period.reopenedAt)}</p>
-            <p className="text-xs text-text-muted">{period.reopenedBy}</p>
+            <p className="text-xs text-text-muted">
+              {nameOrId(period.reopenedByName, period.reopenedBy ?? '')}
+            </p>
             {period.reopenReason && (
               <p className="mt-0.5 text-xs text-text-muted">&ldquo;{period.reopenReason}&rdquo;</p>
             )}
@@ -157,7 +161,7 @@ export function Periods() {
             <div className="flex flex-col gap-3">
               <ConfirmSummary
                 title={pendingPeriod.month}
-                meta={`Closed ${formatDateTimeWAT(pendingPeriod.closedAt)} by ${pendingPeriod.closedBy}`}
+                meta={`Closed ${formatDateTimeWAT(pendingPeriod.closedAt)} by ${nameOrId(pendingPeriod.closedByName, pendingPeriod.closedBy)}`}
               />
               <Textarea
                 aria-label="Reason for reopening"

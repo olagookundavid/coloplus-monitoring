@@ -14,16 +14,12 @@ export type DisputeCategory =
   | 'other'
 
 // Mirrors domain.DisputeMetric.
-export type DisputeMetric = 'availability' | 'coverage' | 'outage_minutes' | 'served_minutes' | 'other'
+export type DisputeMetric =
+  'availability' | 'coverage' | 'outage_minutes' | 'served_minutes' | 'other'
 
 // Mirrors domain.DisputeStatus.
 export type DisputeStatus =
-  | 'open'
-  | 'under_review'
-  | 'awaiting_evidence'
-  | 'agreed_correction'
-  | 'resolved'
-  | 'closed'
+  'open' | 'under_review' | 'awaiting_evidence' | 'agreed_correction' | 'resolved' | 'closed'
 
 export type DisputeParty = 'airtel' | 'coloplus'
 export type DisputeOutcome = 'upheld' | 'not_upheld'
@@ -40,6 +36,7 @@ export interface DisputeEvent {
   /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
   internal?: boolean
   authorId?: string
+  authorName?: string
   createdAt: string
 }
 
@@ -48,7 +45,9 @@ export interface Dispute {
   /** Server-formatted, e.g. "DSP-000123". */
   ref: string
   siteId: string
+  siteName?: string
   reportId?: string
+  reportLabel?: string
   intervalId?: string
   metric?: DisputeMetric
   periodFrom?: string
@@ -62,6 +61,7 @@ export interface Dispute {
   outcome?: DisputeOutcome
   resolution?: string
   resolutionReportId?: string
+  resolutionReportLabel?: string
   /** Coloplus's decision. */
   resolvedAt?: string
   /** Airtel's agreement -- a resolved dispute isn't closed until this is set. */
@@ -71,8 +71,11 @@ export interface Dispute {
   updatedAt: string
   /** Coloplus's own view; left out for Airtel. */
   raisedBy?: string
+  raisedByName?: string
   ownerId?: string
+  ownerName?: string
   resolvedBy?: string
+  resolvedByName?: string
 }
 
 export interface DisputeDetail {

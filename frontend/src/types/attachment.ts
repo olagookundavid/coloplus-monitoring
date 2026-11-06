@@ -26,6 +26,7 @@ export interface Attachment {
   internal?: boolean
   /** Staff-only; absent for a customer. */
   uploadedBy?: string
+  uploadedByName?: string
 }
 
 // The upload target returned alongside a pending attachment -- a presigned,

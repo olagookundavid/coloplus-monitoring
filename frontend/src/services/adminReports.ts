@@ -15,8 +15,10 @@ import type {
 export interface PendingApproval {
   id: string
   siteId: string
+  siteName?: string
   reportDate: string
   authorId: string
+  authorName?: string
   isCorrection: boolean
   submittedAt?: string
 }
@@ -32,10 +34,12 @@ interface IntervalDTO {
 interface ReportDTO {
   id: string
   site_id: string
+  site_name?: string
   report_date: string
   revision: number
   status: ReportStatus
   author_id: string
+  author_name?: string
   notes: string
   intervals?: IntervalDTO[]
   generator_hours?: number | null
@@ -44,8 +48,10 @@ interface ReportDTO {
   submitted_at?: string
   reviewed_at?: string
   reviewer_id?: string
+  reviewer_name?: string
   review_comment?: string
   supersedes_id?: string
+  supersedes_label?: string
   correction_reason?: string
   row_version: number
   created_at: string
@@ -93,8 +99,10 @@ function mapPendingApproval(dto: ReportDTO): PendingApproval {
   return {
     id: dto.id,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     reportDate: dto.report_date,
     authorId: dto.author_id,
+    authorName: dto.author_name,
     isCorrection: Boolean(dto.supersedes_id),
     submittedAt: dto.submitted_at,
   }
@@ -104,10 +112,12 @@ function mapDailyReport(dto: ReportDTO): DailyReport {
   return {
     id: dto.id,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     reportDate: dto.report_date,
     revision: dto.revision,
     status: dto.status,
     authorId: dto.author_id,
+    authorName: dto.author_name,
     notes: dto.notes,
     intervals: dto.intervals?.map((iv) => ({
       start: iv.start,
@@ -122,8 +132,10 @@ function mapDailyReport(dto: ReportDTO): DailyReport {
     submittedAt: dto.submitted_at,
     reviewedAt: dto.reviewed_at,
     reviewerId: dto.reviewer_id,
+    reviewerName: dto.reviewer_name,
     reviewComment: dto.review_comment,
     supersedesId: dto.supersedes_id,
+    supersedesLabel: dto.supersedes_label,
     correctionReason: dto.correction_reason,
     rowVersion: dto.row_version,
     createdAt: dto.created_at,

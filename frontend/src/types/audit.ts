@@ -6,9 +6,11 @@ export interface AuditEvent {
   id: number
   occurredAt: string
   actorId: string
+  actorName?: string
   action: string
   entityType: string
   entityId: string
+  entityName?: string
   metadata: Record<string, unknown>
 }
 

@@ -5,25 +5,23 @@ import { DashboardPageHeader } from '../../components/dashboard'
 import { SkeletonListItems } from '../../components/skeletons'
 import { Spinner, SidePanel, StatusBadge, Tabs, type TabItem } from '../../components/ui'
 import { ROUTES, incidentDetailPath } from '../../constants'
-import { useAdminSites, useIncidentOutages, usePublishedIncidents } from '../../hooks'
-import type { AdminSite, PublishedIncident } from '../../types'
-import { describeIncidentStatus, formatDateTimeWAT, formatMinutes, severityLabel } from '../../utils'
+import { useIncidentOutages, usePublishedIncidents } from '../../hooks'
+import type { PublishedIncident } from '../../types'
+import {
+  describeIncidentStatus,
+  formatDateTimeWAT,
+  formatMinutes,
+  nameOrId,
+  severityLabel,
+} from '../../utils'
 
 const NO_INCIDENTS: PublishedIncident[] = []
-const NO_SITES: AdminSite[] = []
 
 type TabValue = 'open' | 'closed' | 'all'
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  return sitesById.get(siteId)?.airtelCode ?? siteId
-}
 
 export function Incidents() {
   const incidentsQuery = usePublishedIncidents()
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('open')
   const { id: selectedId } = useParams<{ id?: string }>()
@@ -98,7 +96,7 @@ export function Incidents() {
                     <span className="text-xs text-text-muted">{incident.ref}</span>
                   </div>
                   <p className="mt-2 font-medium text-text">
-                    {incident.title} · {siteLabelFor(sitesById, incident.siteId)}
+                    {incident.title} · {nameOrId(incident.siteName, incident.siteId)}
                   </p>
                   <p className="mt-1 text-sm text-text-muted">
                     {formatDateTimeWAT(incident.startedAt)} ·{' '}
@@ -131,7 +129,7 @@ export function Incidents() {
               <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <dt className="text-text-muted">Site</dt>
                 <dd className="font-medium text-text">
-                  {siteLabelFor(sitesById, selectedIncident.siteId)}
+                  {nameOrId(selectedIncident.siteName, selectedIncident.siteId)}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -185,7 +183,9 @@ export function Incidents() {
               {outagesQuery.isLoading ? (
                 <Spinner className="mt-3 h-5 w-5" />
               ) : !outagesQuery.data || outagesQuery.data.outages.length === 0 ? (
-                <p className="mt-3 text-sm text-text-muted">No approved report shows an outage yet.</p>
+                <p className="mt-3 text-sm text-text-muted">
+                  No approved report shows an outage yet.
+                </p>
               ) : (
                 <>
                   <p className="mt-3 text-sm text-text">

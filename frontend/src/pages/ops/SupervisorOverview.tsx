@@ -19,7 +19,7 @@ import {
 } from '../../hooks'
 import type { PendingApproval } from '../../services'
 import type { AdminSite, ReporterIncident } from '../../types'
-import { formatAge, severityLabel } from '../../utils'
+import { formatAge, nameOrId, severityLabel } from '../../utils'
 
 const NO_SITES: AdminSite[] = []
 const NO_APPROVALS: PendingApproval[] = []
@@ -35,12 +35,8 @@ export function SupervisorOverview() {
   const sites = sitesQuery.data ?? NO_SITES
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
   const approvals = approvalsQuery.data ?? NO_APPROVALS
-  const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])
 
-  const openIncidents = useMemo(
-    () => incidents.filter((i) => i.status !== 'closed'),
-    [incidents]
-  )
+  const openIncidents = useMemo(() => incidents.filter((i) => i.status !== 'closed'), [incidents])
 
   const incidentColumns: Column<ReporterIncident>[] = useMemo(
     () => [
@@ -54,12 +50,12 @@ export function SupervisorOverview() {
       },
       {
         header: 'Incident',
-        accessor: (i) => `${i.title} · ${sitesById.get(i.siteId)?.airtelCode ?? i.siteId}`,
+        accessor: (i) => `${i.title} · ${nameOrId(i.siteName, i.siteId)}`,
       },
       { header: 'Status', accessor: (i) => i.status.replace(/_/g, ' ') },
       { header: 'Started', accessor: (i) => formatAge(i.startedAt), align: 'right' },
     ],
-    [sitesById]
+    []
   )
 
   return (
@@ -85,11 +81,7 @@ export function SupervisorOverview() {
             value={summaryQuery.data?.overdue ?? 0}
             icon={ClockIcon}
           />
-          <StatCard
-            label="Reports to review"
-            value={approvals.length}
-            icon={CheckCircleIcon}
-          />
+          <StatCard label="Reports to review" value={approvals.length} icon={CheckCircleIcon} />
           <StatCard
             label="Outages this week"
             value={dashboardQuery.data?.outagesThisWeek ?? 0}
@@ -135,8 +127,7 @@ export function SupervisorOverview() {
               {approvals.slice(0, 5).map((approval) => (
                 <li key={approval.id} className="text-sm">
                   <p className="font-medium text-text">
-                    {sitesById.get(approval.siteId)?.name ?? approval.siteId} ·{' '}
-                    {approval.reportDate}
+                    {nameOrId(approval.siteName, approval.siteId)} · {approval.reportDate}
                   </p>
                   <p className="text-xs text-text-muted">
                     {approval.isCorrection ? 'Correction' : 'Publication'} ·{' '}

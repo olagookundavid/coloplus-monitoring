@@ -51,12 +51,12 @@ function computeFrom(range: DateRange): string | undefined {
 
 export function AuditLog() {
   const { can } = usePermissions()
-  // Auditor reaches this page via audit.read alone and lacks users.manage --
-  // resolving actor names is best-effort for them (degrades to raw ids via
-  // resolveActorName/describeEvent's own fallback), not worth a doomed call.
+  // Only drives the person-filter dropdown below -- actor/entity names on
+  // events themselves now come from the event, not a users-list join.
+  // Auditor reaches this page via audit.read alone and lacks users.manage,
+  // so the dropdown degrades to "Everyone" only, not worth a doomed call.
   const usersQuery = useManagedUsers(can('users.manage'))
   const users = usersQuery.data ?? NO_USERS
-  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 
   const [actorId, setActorId] = useState('')
   const [dateRange, setDateRange] = useState<DateRange>('all')
@@ -92,7 +92,7 @@ export function AuditLog() {
           )
         },
       },
-      { header: 'Who', accessor: (event) => resolveActorName(event, usersById) },
+      { header: 'Who', accessor: (event) => resolveActorName(event) },
       {
         header: 'Category',
         accessor: (event) => AUDIT_CATEGORY_LABELS[categorize(event)],
@@ -108,10 +108,10 @@ export function AuditLog() {
       },
       {
         header: 'Action',
-        accessor: (event) => describeEvent(event, categorize(event), usersById),
+        accessor: (event) => describeEvent(event, categorize(event)),
       },
     ],
-    [usersById]
+    []
   )
 
   function handleExport() {
@@ -119,9 +119,9 @@ export function AuditLog() {
       ['When (WAT)', 'Who', 'Category', 'Action', 'Entity type', 'Entity ID', 'Metadata'],
       ...filteredEvents.map((event) => [
         formatDateTimeWAT(event.occurredAt),
-        resolveActorName(event, usersById),
+        resolveActorName(event),
         AUDIT_CATEGORY_LABELS[categorize(event)],
-        describeEvent(event, categorize(event), usersById),
+        describeEvent(event, categorize(event)),
         event.entityType,
         event.entityId,
         JSON.stringify(event.metadata),
@@ -201,11 +201,9 @@ export function AuditLog() {
 
       <AuditEventDetailPanel
         event={selectedEvent}
-        description={
-          selectedEvent ? describeEvent(selectedEvent, categorize(selectedEvent), usersById) : ''
-        }
+        description={selectedEvent ? describeEvent(selectedEvent, categorize(selectedEvent)) : ''}
         category={selectedEvent ? categorize(selectedEvent) : 'other'}
-        actorName={selectedEvent ? resolveActorName(selectedEvent, usersById) : ''}
+        actorName={selectedEvent ? resolveActorName(selectedEvent) : ''}
         open={selectedEvent !== null}
         onClose={() => setSelectedEventId(null)}
       />

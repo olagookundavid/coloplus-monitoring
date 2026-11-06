@@ -2,7 +2,7 @@ import { ArrowDownTrayIcon, DocumentIcon } from '@heroicons/react/24/outline'
 
 import { useDownloadAttachment } from '../../hooks'
 import type { Attachment } from '../../types'
-import { formatDateTimeWAT, formatFileSize } from '../../utils'
+import { formatDateTimeWAT, formatFileSize, nameOrId } from '../../utils'
 import { IconButton } from './IconButton'
 import { Spinner } from './Spinner'
 import { StatusBadge } from './StatusBadge'
@@ -39,7 +39,8 @@ export function AttachmentList({
                 <p className="truncate font-medium text-text">{attachment.filename}</p>
                 <p className="truncate text-xs text-text-muted">
                   {formatFileSize(attachment.sizeBytes)} · {formatDateTimeWAT(attachment.createdAt)}
-                  {attachment.uploadedBy && ` · ${attachment.uploadedBy}`}
+                  {attachment.uploadedBy &&
+                    ` · ${nameOrId(attachment.uploadedByName, attachment.uploadedBy)}`}
                 </p>
               </div>
               {attachment.internal && <StatusBadge label="Internal" tone="neutral" />}

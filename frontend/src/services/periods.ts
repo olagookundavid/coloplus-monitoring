@@ -6,10 +6,12 @@ interface PeriodClosureDTO {
   id: string
   month: string
   closed_by: string
+  closed_by_name?: string
   closed_at: string
   run_id: string
   locked: boolean
   reopened_by?: string
+  reopened_by_name?: string
   reopened_at?: string
   reopen_reason?: string
 }
@@ -19,10 +21,12 @@ function mapPeriodClosure(dto: PeriodClosureDTO): PeriodClosure {
     id: dto.id,
     month: dto.month,
     closedBy: dto.closed_by,
+    closedByName: dto.closed_by_name,
     closedAt: dto.closed_at,
     runId: dto.run_id,
     locked: dto.locked,
     reopenedBy: dto.reopened_by,
+    reopenedByName: dto.reopened_by_name,
     reopenedAt: dto.reopened_at,
     reopenReason: dto.reopen_reason,
   }

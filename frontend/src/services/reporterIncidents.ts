@@ -16,6 +16,7 @@ interface IncidentDTO {
   id: string
   ref: string
   site_id: string
+  site_name?: string
   category: IncidentCategory
   severity: IncidentSeverity
   impact: IncidentImpact
@@ -24,12 +25,16 @@ interface IncidentDTO {
   status: IncidentWorkflowStatus
   started_at: string
   detected_at: string
+  reporter_name?: string
   owner_id?: string
+  owner_name?: string
   next_action?: string
   next_update_due?: string
   overdue: boolean
   restored_at?: string
+  restored_by_name?: string
   verified_at?: string
+  verified_by_name?: string
   closed_at?: string
   root_cause?: string
   published_at?: string
@@ -47,6 +52,7 @@ interface IncidentSummaryDTO {
 interface IncidentUpdateDTO {
   id: string
   author_id: string
+  author_name?: string
   kind: IncidentUpdateKind
   from_status?: IncidentWorkflowStatus
   to_status?: IncidentWorkflowStatus
@@ -71,6 +77,7 @@ export function mapIncident(dto: IncidentDTO): ReporterIncident {
     id: dto.id,
     ref: dto.ref,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     category: dto.category,
     severity: dto.severity,
     impact: dto.impact,
@@ -79,12 +86,16 @@ export function mapIncident(dto: IncidentDTO): ReporterIncident {
     status: dto.status,
     startedAt: dto.started_at,
     detectedAt: dto.detected_at,
+    reporterName: dto.reporter_name,
     ownerId: dto.owner_id,
+    ownerName: dto.owner_name,
     nextAction: dto.next_action,
     nextUpdateDue: dto.next_update_due,
     overdue: dto.overdue,
     restoredAt: dto.restored_at,
+    restoredByName: dto.restored_by_name,
     verifiedAt: dto.verified_at,
+    verifiedByName: dto.verified_by_name,
     closedAt: dto.closed_at,
     rootCause: dto.root_cause,
     publishedAt: dto.published_at,
@@ -104,6 +115,7 @@ function mapUpdate(dto: IncidentUpdateDTO): IncidentUpdateEntry {
     observedAt: dto.observed_at,
     createdAt: dto.created_at,
     authorId: dto.author_id,
+    authorName: dto.author_name,
   }
 }
 

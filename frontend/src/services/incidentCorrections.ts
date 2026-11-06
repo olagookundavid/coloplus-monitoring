@@ -6,14 +6,18 @@ interface IncidentCorrectionDTO {
   id: string
   ref: string
   incident_id: string
+  incident_label?: string
   site_id: string
+  site_name?: string
   field: IncidentCorrectionField
   original_value: string
   corrected_value: string
   reason: string
   status: IncidentCorrection['status']
   requested_by: string
+  requested_by_name?: string
   reviewed_by?: string
+  reviewed_by_name?: string
   reviewed_at?: string
   review_note?: string
   created_at: string
@@ -30,14 +34,18 @@ function mapCorrection(dto: IncidentCorrectionDTO): IncidentCorrection {
     id: dto.id,
     ref: dto.ref,
     incidentId: dto.incident_id,
+    incidentLabel: dto.incident_label,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     field: dto.field,
     originalValue: dto.original_value,
     correctedValue: dto.corrected_value,
     reason: dto.reason,
     status: dto.status,
     requestedBy: dto.requested_by,
+    requestedByName: dto.requested_by_name,
     reviewedBy: dto.reviewed_by,
+    reviewedByName: dto.reviewed_by_name,
     reviewedAt: dto.reviewed_at,
     reviewNote: dto.review_note,
     createdAt: dto.created_at,

@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import {
   ClipboardDocumentCheckIcon,
   MapIcon,
@@ -11,19 +10,16 @@ import { ButtonLink } from '../../components/ui'
 import { ROUTES } from '../../constants'
 import {
   useAdminSites,
-  useManagedUsers,
   useMaintenanceWindows,
   usePendingApprovals,
-  usePermissions,
   useRecentAuditEvents,
 } from '../../hooks'
 import type { PendingApproval } from '../../services'
-import type { AdminSite, ManagedUser } from '../../types'
-import { formatAge, formatDateTimeWAT } from '../../utils'
+import type { AdminSite } from '../../types'
+import { formatAge, formatDateTimeWAT, nameOrId } from '../../utils'
 
 const NO_SITES: AdminSite[] = []
 const NO_APPROVALS: PendingApproval[] = []
-const NO_USERS: ManagedUser[] = []
 
 // useRecentAuditEvents returns the lighter AuditEvent shape (no metadata),
 // so it uses this local action map rather than the richer utils/
@@ -56,21 +52,13 @@ function countOlderThan48Hours(approvals: PendingApproval[]): number {
 }
 
 export function AuditorOverview() {
-  const { can } = usePermissions()
-
   const sitesQuery = useAdminSites()
   const approvalsQuery = usePendingApprovals()
   const maintenanceQuery = useMaintenanceWindows({ status: 'requested' })
   const auditQuery = useRecentAuditEvents(8)
-  // Degrades to raw actor/author ids when disabled -- auditor lacks
-  // users.manage, so this mirrors AuditLog.tsx's own conditional fetch.
-  const usersQuery = useManagedUsers(can('users.manage'))
 
   const sites = sitesQuery.data ?? NO_SITES
   const approvals = approvalsQuery.data ?? NO_APPROVALS
-  const users = usersQuery.data ?? NO_USERS
-  const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])
-  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 
   const pendingMaintenance = maintenanceQuery.data?.windows ?? []
 
@@ -118,12 +106,11 @@ export function AuditorOverview() {
               {approvals.slice(0, 5).map((approval) => (
                 <li key={approval.id} className="text-sm">
                   <p className="font-medium text-text">
-                    {sitesById.get(approval.siteId)?.name ?? approval.siteId} ·{' '}
-                    {approval.reportDate}
+                    {nameOrId(approval.siteName, approval.siteId)} · {approval.reportDate}
                   </p>
                   <p className="text-xs text-text-muted">
                     {approval.isCorrection ? 'Correction' : 'Publication'} ·{' '}
-                    {usersById.get(approval.authorId)?.name ?? approval.authorId} ·{' '}
+                    {nameOrId(approval.authorName, approval.authorId)} ·{' '}
                     {formatAge(approval.submittedAt)}
                   </p>
                 </li>
@@ -145,7 +132,7 @@ export function AuditorOverview() {
               {auditQuery.data?.map((event) => (
                 <li key={event.id} className="text-sm">
                   <span className="font-medium text-text">
-                    {usersById.get(event.actorId ?? '')?.name ?? 'System'}
+                    {event.actorId ? nameOrId(event.actorName, event.actorId) : 'System'}
                   </span>{' '}
                   <span className="text-text-muted">{describeAction(event.action)}</span>
                   <p className="text-xs text-text-muted">{formatDateTimeWAT(event.occurredAt)}</p>

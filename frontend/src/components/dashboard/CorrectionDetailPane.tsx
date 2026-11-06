@@ -14,7 +14,7 @@ import {
 } from '../ui'
 import { useReportDetail } from '../../hooks'
 import type { CorrectionListItem, DailyReport, IncidentCorrection, MySiteRow } from '../../types'
-import { correctionFieldLabel, formatDateTimeWAT } from '../../utils'
+import { correctionFieldLabel, formatDateTimeWAT, nameOrId } from '../../utils'
 
 export interface CorrectionDetailPaneProps {
   item: CorrectionListItem
@@ -128,7 +128,10 @@ function ReportCorrectionBody({
   const superseded = supersededQuery.data
 
   const calculationRows: CalculationDetailRow[] = [
-    { label: 'Input report', value: `${calculation.inputReportId} · rev ${calculation.inputRevision}` },
+    {
+      label: 'Input report',
+      value: `${calculation.inputReportId} · rev ${calculation.inputRevision}`,
+    },
     { label: 'Window', value: `${calculation.windowStart} – ${calculation.windowEnd}` },
     { label: 'Computed', value: formatDateTimeWAT(calculation.computedAt) },
   ]
@@ -284,7 +287,9 @@ export function CorrectionDetailPane({
   onFixReport,
   onRequestAgain,
 }: CorrectionDetailPaneProps) {
-  const siteLabel = site?.airtelCode ?? item.siteId
+  const siteName =
+    item.kind === 'incidentCorrection' ? item.correction.siteName : item.report.siteName
+  const siteLabel = nameOrId(siteName ?? site?.airtelCode, item.siteId)
 
   return (
     <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 sm:p-6">

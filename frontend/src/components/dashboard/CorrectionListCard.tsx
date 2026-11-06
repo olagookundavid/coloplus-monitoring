@@ -1,6 +1,6 @@
 import { StatusBadge } from '../ui'
 import type { CorrectionListItem, MySiteRow } from '../../types'
-import { correctionFieldLabel, correctionTabInfo, formatAuditWhen } from '../../utils'
+import { correctionFieldLabel, correctionTabInfo, formatAuditWhen, nameOrId } from '../../utils'
 
 export interface CorrectionListCardProps {
   item: CorrectionListItem
@@ -39,7 +39,9 @@ function cardCopy(
 }
 
 export function CorrectionListCard({ item, site, selected, onSelect }: CorrectionListCardProps) {
-  const siteLabel = site?.airtelCode ?? item.siteId
+  const siteName =
+    item.kind === 'incidentCorrection' ? item.correction.siteName : item.report.siteName
+  const siteLabel = nameOrId(siteName ?? site?.airtelCode, item.siteId)
   const { badge, ref, title, sublineText } = cardCopy(item, siteLabel)
   const { label: tabLabel, tone } = correctionTabInfo(item.tab)
   const badgeTone = item.kind === 'returnedReport' ? 'warning' : 'info'

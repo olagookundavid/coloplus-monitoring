@@ -15,17 +15,15 @@ import {
 } from '../../components/ui'
 import {
   useAcceptances,
-  useAdminSites,
   useAttachments,
   usePermissions,
   useSiteAcceptance,
   useTransitionAcceptanceMutation,
 } from '../../hooks'
-import type { Acceptance, AdminSite } from '../../types'
-import { acceptanceStageLabel, formatDateTimeWAT, toast } from '../../utils'
+import type { Acceptance } from '../../types'
+import { acceptanceStageLabel, formatDateTimeWAT, nameOrId, toast } from '../../utils'
 
 const NO_ACCEPTANCES: Acceptance[] = []
-const NO_SITES: AdminSite[] = []
 
 type Bucket = 'airtel' | 'coloplus' | 'decided'
 type TabValue = Bucket | 'all'
@@ -33,11 +31,6 @@ type TabValue = Bucket | 'all'
 function bucketFor(acceptance: Acceptance): Bucket {
   if (acceptance.stage === 'accepted' || acceptance.stage === 'rejected') return 'decided'
   return acceptance.waitingOn === 'airtel' ? 'airtel' : 'coloplus'
-}
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  const site = sitesById.get(siteId)
-  return site ? `${site.name} (${site.airtelCode})` : siteId
 }
 
 function AcceptanceDetailPane({
@@ -62,7 +55,11 @@ function AcceptanceDetailPane({
     try {
       await transitionMutation.mutateAsync({ siteId: acceptance.siteId, input: { stage, note } })
       toast.success(
-        stage === 'accepted' ? 'Site accepted.' : stage === 'rejected' ? 'Site rejected.' : 'Marked inspected.'
+        stage === 'accepted'
+          ? 'Site accepted.'
+          : stage === 'rejected'
+            ? 'Site rejected.'
+            : 'Marked inspected.'
       )
       setRejectReason('')
     } catch (err) {
@@ -95,9 +92,7 @@ function AcceptanceDetailPane({
         {acceptance.dueAt && (
           <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
             <dt className="text-text-muted">Due</dt>
-            <dd
-              className={`font-medium ${acceptance.overdue ? 'text-danger' : 'text-text'}`}
-            >
+            <dd className={`font-medium ${acceptance.overdue ? 'text-danger' : 'text-text'}`}>
               {formatDateTimeWAT(acceptance.dueAt)}
             </dd>
           </div>
@@ -180,9 +175,6 @@ export function Acceptance() {
 
   const acceptancesQuery = useAcceptances()
   const acceptances = acceptancesQuery.data ?? NO_ACCEPTANCES
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('airtel')
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
@@ -246,7 +238,7 @@ export function Acceptance() {
                         {acceptance.overdue && <StatusBadge label="Overdue" tone="danger" />}
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {siteLabelFor(sitesById, acceptance.siteId)}
+                        {nameOrId(acceptance.siteName, acceptance.siteId)}
                       </p>
                     </button>
                   </li>
@@ -261,14 +253,17 @@ export function Acceptance() {
             <SkeletonDetailPane />
           ) : !selected ? (
             <div className="flex min-h-48 flex-col items-center justify-center rounded-lg border border-dashed border-border p-8 text-center text-sm text-text-muted">
-              <ClipboardDocumentCheckIcon className="mb-2 h-6 w-6 text-text-muted" aria-hidden="true" />
+              <ClipboardDocumentCheckIcon
+                className="mb-2 h-6 w-6 text-text-muted"
+                aria-hidden="true"
+              />
               Select a site to see its acceptance record.
             </div>
           ) : (
             <AcceptanceDetailPane
               key={selected.siteId}
               acceptance={selected}
-              siteLabel={siteLabelFor(sitesById, selected.siteId)}
+              siteLabel={nameOrId(selected.siteName, selected.siteId)}
               canAct={canReview}
             />
           )}

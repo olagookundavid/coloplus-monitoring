@@ -4,13 +4,7 @@
 
 // Mirrors domain.AcceptanceStage.
 export type AcceptanceStage =
-  | 'requested'
-  | 'built'
-  | 'ready_for_inspection'
-  | 'inspected'
-  | 'accepted'
-  | 'rejected'
-  | 'on_hold'
+  'requested' | 'built' | 'ready_for_inspection' | 'inspected' | 'accepted' | 'rejected' | 'on_hold'
 
 export type AcceptanceParty = 'airtel' | 'coloplus'
 
@@ -26,6 +20,7 @@ export interface AcceptanceEvent {
 export interface Acceptance {
   id: string
   siteId: string
+  siteName?: string
   stage: AcceptanceStage
   /** The stage a hold returns to. */
   heldFrom?: AcceptanceStage

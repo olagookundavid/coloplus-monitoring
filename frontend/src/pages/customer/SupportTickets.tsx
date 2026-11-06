@@ -1,20 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircleIcon, ClockIcon, LifebuoyIcon, PlusIcon, TicketIcon } from '@heroicons/react/24/outline'
+import {
+  CheckCircleIcon,
+  ClockIcon,
+  LifebuoyIcon,
+  PlusIcon,
+  TicketIcon,
+} from '@heroicons/react/24/outline'
 import { useNavigate, useParams } from 'react-router-dom'
 
 import { DashboardPageHeader, StatCard, TicketDetailPanel } from '../../components/dashboard'
 import { SkeletonStatCards } from '../../components/skeletons'
 import { Button, DataTable, Select, StatusBadge, type Column } from '../../components/ui'
 import { ROUTES, ticketDetailPath } from '../../constants'
-import { useAdminSites, useTicketSummary, useTickets } from '../../hooks'
-import type { AdminSite, Ticket, TicketStatus } from '../../types'
-import { formatDateTimeWAT, ticketPriorityLabel, ticketStatusLabel } from '../../utils'
+import { useTicketSummary, useTickets } from '../../hooks'
+import type { Ticket, TicketStatus } from '../../types'
+import { formatDateTimeWAT, nameOrId, ticketPriorityLabel, ticketStatusLabel } from '../../utils'
 import { useDashboardFilters } from './CustomerLayout'
 
 const NO_TICKETS: Ticket[] = []
-const NO_SITES: AdminSite[] = []
 
-const STATUS_FILTER_OPTIONS: Array<TicketStatus | 'all'> = ['all', 'open', 'in_progress', 'resolved']
+const STATUS_FILTER_OPTIONS: Array<TicketStatus | 'all'> = [
+  'all',
+  'open',
+  'in_progress',
+  'resolved',
+]
 
 export function SupportTickets() {
   const { openCreateTicket } = useDashboardFilters()
@@ -25,9 +35,6 @@ export function SupportTickets() {
   const ticketsQuery = useTickets()
   const tickets = ticketsQuery.data ?? NO_TICKETS
   const summaryQuery = useTicketSummary()
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const selectedTicket = selectedTicketId
     ? (tickets.find((ticket) => ticket.id === selectedTicketId) ?? null)
@@ -61,7 +68,7 @@ export function SupportTickets() {
       },
       {
         header: 'Site',
-        accessor: (ticket) => sitesById.get(ticket.siteId)?.airtelCode ?? ticket.siteId,
+        accessor: (ticket) => nameOrId(ticket.siteName, ticket.siteId),
         sortable: true,
       },
       {
@@ -89,7 +96,7 @@ export function SupportTickets() {
         sortable: true,
       },
     ],
-    [sitesById]
+    []
   )
 
   return (
@@ -111,8 +118,16 @@ export function SupportTickets() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="All tickets" value={tickets.length} icon={TicketIcon} />
           <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={ClockIcon} />
-          <StatCard label="In progress" value={summaryQuery.data?.inProgress ?? 0} icon={LifebuoyIcon} />
-          <StatCard label="Resolved" value={summaryQuery.data?.resolved ?? 0} icon={CheckCircleIcon} />
+          <StatCard
+            label="In progress"
+            value={summaryQuery.data?.inProgress ?? 0}
+            icon={LifebuoyIcon}
+          />
+          <StatCard
+            label="Resolved"
+            value={summaryQuery.data?.resolved ?? 0}
+            icon={CheckCircleIcon}
+          />
         </div>
       )}
 

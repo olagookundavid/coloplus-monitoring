@@ -21,19 +21,15 @@ import {
 import { useAuth } from '../../contexts'
 import {
   useAdminReports,
-  useAdminSites,
   useApproveReportMutation,
-  useManagedUsers,
   usePermissions,
   useRejectReportMutation,
   useReportDetail,
 } from '../../hooks'
-import type { AdminSite, DailyReport, ManagedUser, ReportDetail, ReportStatus } from '../../types'
-import { formatAge, formatDateTimeWAT, toast } from '../../utils'
+import type { DailyReport, ReportDetail, ReportStatus } from '../../types'
+import { formatAge, formatDateTimeWAT, nameOrId, toast } from '../../utils'
 
 const NO_REPORTS: DailyReport[] = []
-const NO_SITES: AdminSite[] = []
-const NO_USERS: ManagedUser[] = []
 
 type TypeFilter = 'all' | 'publication' | 'correction'
 type PendingAction = { kind: 'approve' | 'reject'; report: DailyReport }
@@ -53,16 +49,6 @@ export function Approvals() {
   const { user } = useAuth()
   const { can } = usePermissions()
   const canReview = can('reports.review')
-
-  const sitesQuery = useAdminSites()
-  // Auditor reaches this page via reports.read alone and lacks users.manage
-  // -- author/reviewer names are best-effort for them (usersById.get(...)
-  // falls back to the raw id throughout this file), not worth a doomed call.
-  const usersQuery = useManagedUsers(can('users.manage'))
-  const sites = sitesQuery.data ?? NO_SITES
-  const users = usersQuery.data ?? NO_USERS
-  const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])
-  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
 
   const pendingQuery = useAdminReports('submitted')
   const approvedQuery = useAdminReports('approved')
@@ -195,8 +181,6 @@ export function Approvals() {
             ) : (
               filteredReports.map((report) => {
                 const correction = isCorrection(report)
-                const site = sitesById.get(report.siteId)
-                const author = usersById.get(report.authorId)
                 const selected = report.id === selectedReportId
                 return (
                   <li key={report.id}>
@@ -219,10 +203,10 @@ export function Approvals() {
                         </span>
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {site?.name ?? report.siteId} · {report.reportDate}
+                        {nameOrId(report.siteName, report.siteId)} · {report.reportDate}
                       </p>
                       <p className="truncate text-sm text-text-muted">
-                        {author?.name ?? report.authorId}
+                        {nameOrId(report.authorName, report.authorId)}
                       </p>
                     </button>
                   </li>
@@ -243,11 +227,6 @@ export function Approvals() {
             <DetailCard
               detail={detail}
               superseded={superseded}
-              site={sitesById.get(detail.report.siteId)}
-              author={usersById.get(detail.report.authorId)}
-              reviewer={
-                detail.report.reviewerId ? usersById.get(detail.report.reviewerId) : undefined
-              }
               isSelfSubmitted={isSelfSubmitted}
               canReview={canReview}
               actionsEnabled={actionsEnabled}
@@ -274,7 +253,7 @@ export function Approvals() {
         body={
           pendingAction && (
             <ConfirmSummary
-              title={`${sitesById.get(pendingAction.report.siteId)?.name ?? pendingAction.report.siteId} · ${pendingAction.report.reportDate}`}
+              title={`${nameOrId(pendingAction.report.siteName, pendingAction.report.siteId)} · ${pendingAction.report.reportDate}`}
               meta={isCorrection(pendingAction.report) ? 'Correction' : 'Publication'}
             />
           )
@@ -293,9 +272,6 @@ export function Approvals() {
 interface DetailCardProps {
   detail: ReportDetail
   superseded?: ReportDetail
-  site?: AdminSite
-  author?: ManagedUser
-  reviewer?: ManagedUser
   isSelfSubmitted: boolean
   canReview: boolean
   actionsEnabled: boolean
@@ -309,9 +285,6 @@ interface DetailCardProps {
 function DetailCard({
   detail,
   superseded,
-  site,
-  author,
-  reviewer,
   isSelfSubmitted,
   canReview,
   actionsEnabled,
@@ -326,7 +299,10 @@ function DetailCard({
   const isPending = report.status === 'submitted'
 
   const calculationRows: CalculationDetailRow[] = [
-    { label: 'Input report', value: `${calculation.inputReportId} · rev ${calculation.inputRevision}` },
+    {
+      label: 'Input report',
+      value: `${calculation.inputReportId} · rev ${calculation.inputRevision}`,
+    },
     { label: 'Window', value: `${calculation.windowStart} – ${calculation.windowEnd}` },
     { label: 'Computed', value: formatDateTimeWAT(calculation.computedAt) },
   ]
@@ -339,7 +315,7 @@ function DetailCard({
           tone={correction ? 'warning' : 'info'}
         />
         <h2 className="mt-2 text-lg font-bold text-text">
-          {site?.name ?? report.siteId} · {report.reportDate}
+          {nameOrId(report.siteName, report.siteId)} · {report.reportDate}
         </h2>
         <p className="text-sm text-text-muted">Revision {report.revision}</p>
       </div>
@@ -421,7 +397,7 @@ function DetailCard({
                 value={
                   superseded
                     ? `${superseded.report.reportDate} · revision ${superseded.report.revision}`
-                    : (report.supersedesId ?? '—')
+                    : (report.supersedesLabel ?? report.supersedesId ?? '—')
                 }
               />
               {superseded && (
@@ -440,7 +416,10 @@ function DetailCard({
         <ul className="mt-2 flex flex-col gap-2 text-sm">
           <li>
             <span className="font-medium text-text">Submitted</span>
-            <span className="text-text-muted"> · {author?.name ?? report.authorId}</span>
+            <span className="text-text-muted">
+              {' '}
+              · {nameOrId(report.authorName, report.authorId)}
+            </span>
             {report.submittedAt && (
               <span className="text-text-muted"> · {formatDateTimeWAT(report.submittedAt)}</span>
             )}
@@ -457,7 +436,7 @@ function DetailCard({
               </span>
               <span className="text-text-muted">
                 {' '}
-                · {reviewer?.name ?? report.reviewerId ?? '—'}
+                · {report.reviewerId ? nameOrId(report.reviewerName, report.reviewerId) : '—'}
               </span>
               {report.reviewedAt && (
                 <span className="text-text-muted"> · {formatDateTimeWAT(report.reviewedAt)}</span>

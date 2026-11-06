@@ -11,14 +11,17 @@ import { mapAxiosError } from './auth'
 interface MaintenanceWindowDTO {
   id: string
   site_id: string
+  site_name?: string
   starts_at: string
   ends_at: string
   minutes: number
   reason: string
   status: MaintenanceStatus
   requested_by?: string
+  requested_by_name?: string
   requested_at: string
   decided_by?: string
+  decided_by_name?: string
   decided_at?: string
   decision_note?: string
 }
@@ -41,14 +44,17 @@ function mapMaintenanceWindow(dto: MaintenanceWindowDTO): MaintenanceWindow {
   return {
     id: dto.id,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     startsAt: dto.starts_at,
     endsAt: dto.ends_at,
     minutes: dto.minutes,
     reason: dto.reason,
     status: dto.status,
     requestedBy: dto.requested_by,
+    requestedByName: dto.requested_by_name,
     requestedAt: dto.requested_at,
     decidedBy: dto.decided_by,
+    decidedByName: dto.decided_by_name,
     decidedAt: dto.decided_at,
     decisionNote: dto.decision_note,
   }

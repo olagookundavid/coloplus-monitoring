@@ -20,7 +20,7 @@ import {
   useCalculationRuns,
 } from '../../hooks'
 import type { CalculationRun, CalculationRunRow, RunChange } from '../../types'
-import { calculationRunLabel, formatDateTimeWAT, formatRunPercent } from '../../utils'
+import { calculationRunLabel, formatDateTimeWAT, formatRunPercent, nameOrId } from '../../utils'
 
 const NO_RUNS: CalculationRun[] = []
 const NO_ROWS: CalculationRunRow[] = []
@@ -57,7 +57,7 @@ function RunList() {
       },
       { header: 'Formula version', accessor: (run) => `v${run.formulaVersion}` },
       { header: 'Sites', accessor: (run) => run.siteCount, align: 'right' },
-      { header: 'Created by', accessor: (run) => run.createdBy },
+      { header: 'Created by', accessor: (run) => nameOrId(run.createdByName, run.createdBy) },
       {
         header: 'Created at',
         accessor: (run) => run.createdAt,
@@ -142,7 +142,7 @@ function RunDetail({ id }: { id: string }) {
           { label: 'Period', value: `${run.periodFrom} – ${run.periodTo}` },
           { label: 'Region', value: run.region || 'All regions' },
           { label: 'Sites', value: String(run.siteCount) },
-          { label: 'Created by', value: run.createdBy },
+          { label: 'Created by', value: nameOrId(run.createdByName, run.createdBy) },
           { label: 'Created at', value: formatDateTimeWAT(run.createdAt) },
         ]}
       />

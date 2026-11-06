@@ -9,7 +9,11 @@ import {
 } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
-import { SkeletonDetailPane, SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
+import {
+  SkeletonDetailPane,
+  SkeletonListItems,
+  SkeletonStatCards,
+} from '../../components/skeletons'
 import {
   Button,
   ConfirmDialog,
@@ -25,7 +29,6 @@ import {
 } from '../../components/ui'
 import { useAuth } from '../../contexts'
 import {
-  useAdminSites,
   useApproveIncidentCorrectionMutation,
   useAssignIncidentMutation,
   useIncidentCorrections,
@@ -40,7 +43,6 @@ import {
   useTransitionIncidentMutation,
 } from '../../hooks'
 import type {
-  AdminSite,
   IncidentCorrection,
   IncidentWorkflowStatus,
   ReporterIncident,
@@ -50,13 +52,13 @@ import {
   correctionFieldLabel,
   formatAuditWhen,
   formatDateTimeWAT,
+  nameOrId,
   severityLabel,
   ticketStatusLabel,
   toast,
 } from '../../utils'
 
 const NO_INCIDENTS: ReporterIncident[] = []
-const NO_SITES: AdminSite[] = []
 const NO_CORRECTIONS: IncidentCorrection[] = []
 const NO_TICKETS: Ticket[] = []
 
@@ -90,10 +92,6 @@ const STATUS_LABEL: Record<IncidentWorkflowStatus, { label: string; tone: Status
   restored: { label: 'Restored — needs verification', tone: 'info' },
   verified: { label: 'Verified — ready to close', tone: 'info' },
   closed: { label: 'Closed', tone: 'neutral' },
-}
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  return sitesById.get(siteId)?.airtelCode ?? siteId
 }
 
 type PendingAction =
@@ -179,6 +177,10 @@ function IncidentDetailPane({
         <p className="mt-1 text-sm text-text-muted">{incident.description}</p>
       </div>
 
+      <p className="text-xs text-text-muted">
+        Owner: {incident.ownerId ? nameOrId(incident.ownerName, incident.ownerId) : 'Unassigned'}
+      </p>
+
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Timeline</p>
         {detailQuery.isLoading ? (
@@ -192,7 +194,12 @@ function IncidentDetailPane({
                 <span className="w-14 shrink-0 text-text-muted">
                   {formatAuditWhen(update.observedAt ?? update.createdAt).time}
                 </span>
-                <span className="text-text">{update.body || 'Update recorded'}</span>
+                <span className="text-text">
+                  {update.body || 'Update recorded'}
+                  {update.authorName && (
+                    <span className="text-text-muted"> — {update.authorName}</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
@@ -227,7 +234,7 @@ function IncidentDetailPane({
                 </div>
                 <p className="mt-2 text-sm text-text">{correction.reason}</p>
                 <p className="mt-1 text-xs text-text-muted">
-                  Requested by {correction.requestedBy}
+                  Requested by {nameOrId(correction.requestedByName, correction.requestedBy)}
                 </p>
 
                 {canManage && !isSelf && (
@@ -379,7 +386,7 @@ function IncidentDetailPane({
           </div>
           <p className="mt-2 text-xs text-text-muted">
             No people picker yet — paste the field officer's user ID. Current owner:{' '}
-            {incident.ownerId ?? 'unassigned'}.
+            {incident.ownerId ? nameOrId(incident.ownerName, incident.ownerId) : 'unassigned'}.
           </p>
         </div>
       )}
@@ -433,8 +440,8 @@ function IncidentDetailPane({
           <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Close</p>
           {!incident.publishedAt && (
             <p className="mt-1 text-xs text-warning-700">
-              Publish to Airtel first if this should be visible to them — a closed incident can't
-              be published afterward.
+              Publish to Airtel first if this should be visible to them — a closed incident can't be
+              published afterward.
             </p>
           )}
           <div className="mt-3 flex flex-col gap-3">
@@ -477,9 +484,6 @@ export function SupervisorIncidents() {
 
   const incidentsQuery = useReporterIncidents()
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
   const summaryQuery = useIncidentSummary()
   const correctionsQuery = useIncidentCorrections()
 
@@ -519,8 +523,7 @@ export function SupervisorIncidents() {
   }, [incidents])
 
   const visibleIncidents = useMemo(
-    () =>
-      tab === 'all' ? incidents : incidents.filter((i) => supervisorBucket(i.status) === tab),
+    () => (tab === 'all' ? incidents : incidents.filter((i) => supervisorBucket(i.status) === tab)),
     [incidents, tab]
   )
 
@@ -604,7 +607,7 @@ export function SupervisorIncidents() {
     },
     assign: {
       title: 'Assign this incident?',
-      description: "Hands ownership to the user ID you entered.",
+      description: 'Hands ownership to the user ID you entered.',
     },
     verify: {
       title: 'Mark this incident verified?',
@@ -643,10 +646,22 @@ export function SupervisorIncidents() {
         <SkeletonStatCards count={4} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-          <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={ExclamationTriangleIcon} />
+          <StatCard
+            label="Open"
+            value={summaryQuery.data?.open ?? 0}
+            icon={ExclamationTriangleIcon}
+          />
           <StatCard label="Active" value={summaryQuery.data?.active ?? 0} icon={BoltIcon} />
-          <StatCard label="Critical open" value={summaryQuery.data?.critical ?? 0} icon={FireIcon} />
-          <StatCard label="Overdue updates" value={summaryQuery.data?.overdue ?? 0} icon={ClockIcon} />
+          <StatCard
+            label="Critical open"
+            value={summaryQuery.data?.critical ?? 0}
+            icon={FireIcon}
+          />
+          <StatCard
+            label="Overdue updates"
+            value={summaryQuery.data?.overdue ?? 0}
+            icon={ClockIcon}
+          />
         </div>
       )}
 
@@ -683,10 +698,16 @@ export function SupervisorIncidents() {
                         <span className="shrink-0 text-xs text-text-muted">{incident.ref}</span>
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {incident.title} · {siteLabelFor(sitesById, incident.siteId)}
+                        {incident.title} · {nameOrId(incident.siteName, incident.siteId)}
                       </p>
                       <p className="mt-1 text-sm text-text-muted">
                         {day} · <StatusBadge label={statusText} tone={statusTone} />
+                      </p>
+                      <p className="mt-1 text-xs text-text-muted">
+                        Owner:{' '}
+                        {incident.ownerId
+                          ? nameOrId(incident.ownerName, incident.ownerId)
+                          : 'Unassigned'}
                       </p>
                       {pendingCorrectionsByIncident.has(incident.id) && (
                         <p className="mt-1.5">
@@ -712,11 +733,13 @@ export function SupervisorIncidents() {
             <IncidentDetailPane
               key={selectedIncident.id}
               incident={selectedIncident}
-              siteLabel={siteLabelFor(sitesById, selectedIncident.siteId)}
+              siteLabel={nameOrId(selectedIncident.siteName, selectedIncident.siteId)}
               canManage={canManage}
               canLinkTickets={canLinkTickets}
               currentUserId={user?.id}
-              pendingCorrections={pendingCorrectionsByIncident.get(selectedIncident.id) ?? NO_CORRECTIONS}
+              pendingCorrections={
+                pendingCorrectionsByIncident.get(selectedIncident.id) ?? NO_CORRECTIONS
+              }
               onRequestAction={setPendingAction}
             />
           )}
@@ -738,10 +761,11 @@ export function SupervisorIncidents() {
         body={
           pendingAction && (
             <ConfirmSummary
-              title={`${pendingAction.incident.title} · ${siteLabelFor(sitesById, pendingAction.incident.siteId)}`}
+              title={`${pendingAction.incident.title} · ${nameOrId(pendingAction.incident.siteName, pendingAction.incident.siteId)}`}
               meta={pendingAction.incident.ref}
               rows={
-                pendingAction.kind === 'approveCorrection' || pendingAction.kind === 'rejectCorrection'
+                pendingAction.kind === 'approveCorrection' ||
+                pendingAction.kind === 'rejectCorrection'
                   ? [
                       {
                         label: correctionFieldLabel(pendingAction.correction.field),

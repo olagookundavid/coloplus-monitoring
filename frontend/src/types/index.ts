@@ -30,7 +30,7 @@ export type {
   IncidentOutage,
   IncidentOutages,
 } from './outage'
-export type { AdminSite } from './adminSite'
+export type { AdminSite, SiteRef } from './adminSite'
 export type {
   SiteStatus,
   PowerSource,

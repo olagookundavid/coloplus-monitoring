@@ -19,25 +19,24 @@ import {
 import {
   useAddIncidentUpdateMutation,
   useAttachments,
-  useMySites,
   usePermissions,
   useReporterIncidentDetail,
   useReporterIncidents,
   useRestoreIncidentMutation,
 } from '../../hooks'
-import type { IncidentUpdateEntry, MySiteRow, ReporterIncident } from '../../types'
-import { describeIncidentStatus, formatAuditWhen, severityLabel, toast } from '../../utils'
+import type { IncidentUpdateEntry, ReporterIncident } from '../../types'
+import {
+  describeIncidentStatus,
+  formatAuditWhen,
+  nameOrId,
+  severityLabel,
+  toast,
+} from '../../utils'
 import type { IncidentBucket } from '../../utils'
 
 const NO_INCIDENTS: ReporterIncident[] = []
-const NO_SITES: MySiteRow[] = []
 
 type TabValue = IncidentBucket | 'all'
-
-function siteLabelFor(sitesById: Map<string, MySiteRow>, siteId: string): string {
-  const site = sitesById.get(siteId)
-  return site ? site.airtelCode : siteId
-}
 
 // Falls back to a plain description of the status change for an
 // auto-generated timeline row that carries no note (e.g. a bare restore with
@@ -115,6 +114,10 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
         <p className="mt-1 text-sm text-text-muted">{incident.description}</p>
       </div>
 
+      <p className="text-xs text-text-muted">
+        Owner: {incident.ownerId ? nameOrId(incident.ownerName, incident.ownerId) : 'Unassigned'}
+      </p>
+
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Timeline</p>
         {detailQuery.isLoading ? (
@@ -128,7 +131,12 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
                 <span className="w-14 shrink-0 text-text-muted">
                   {formatAuditWhen(update.observedAt ?? update.createdAt).time}
                 </span>
-                <span className="text-text">{describeUpdate(update)}</span>
+                <span className="text-text">
+                  {describeUpdate(update)}
+                  {update.authorName && (
+                    <span className="text-text-muted"> — {update.authorName}</span>
+                  )}
+                </span>
               </li>
             ))}
           </ul>
@@ -200,9 +208,6 @@ function IncidentDetailPane({ incident, siteLabel, onRequestRestore }: IncidentD
 export function ReporterIncidents() {
   const incidentsQuery = useReporterIncidents()
   const incidents = incidentsQuery.data ?? NO_INCIDENTS
-  const sitesQuery = useMySites()
-  const sites = sitesQuery.data?.sites ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.siteId, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('open')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -301,10 +306,16 @@ export function ReporterIncidents() {
                         <span className="shrink-0 text-xs text-text-muted">{incident.ref}</span>
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {incident.title} · {siteLabelFor(sitesById, incident.siteId)}
+                        {incident.title} · {nameOrId(incident.siteName, incident.siteId)}
                       </p>
                       <p className="mt-1 text-sm text-text-muted">
                         {day} · <StatusBadge label={statusText} tone={statusTone} />
+                      </p>
+                      <p className="mt-1 text-xs text-text-muted">
+                        Owner:{' '}
+                        {incident.ownerId
+                          ? nameOrId(incident.ownerName, incident.ownerId)
+                          : 'Unassigned'}
                       </p>
                     </button>
                   </li>
@@ -325,7 +336,7 @@ export function ReporterIncidents() {
             <IncidentDetailPane
               key={selectedIncident.id}
               incident={selectedIncident}
-              siteLabel={siteLabelFor(sitesById, selectedIncident.siteId)}
+              siteLabel={nameOrId(selectedIncident.siteName, selectedIncident.siteId)}
               onRequestRestore={(incident, atIso) => setPendingRestore({ incident, atIso })}
             />
           )}
@@ -345,7 +356,7 @@ export function ReporterIncidents() {
         body={
           pendingRestore && (
             <ConfirmSummary
-              title={`${pendingRestore.incident.title} · ${siteLabelFor(sitesById, pendingRestore.incident.siteId)}`}
+              title={`${pendingRestore.incident.title} · ${nameOrId(pendingRestore.incident.siteName, pendingRestore.incident.siteId)}`}
               meta={pendingRestore.incident.ref}
             />
           )

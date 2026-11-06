@@ -29,6 +29,7 @@ export interface CalculationRun {
   formulaVersion: string
   siteCount: number
   createdBy: string
+  createdByName?: string
   createdAt: string
   /** Present on GET /calculation-runs/:id, absent on the list and on
       create -- every site's frozen figures. */

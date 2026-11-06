@@ -1,4 +1,4 @@
-import type { AuditCategory, AuditEvent, ManagedUser } from '../types'
+import type { AuditCategory, AuditEvent } from '../types'
 
 // audit_log has no category column -- this buckets by action/metadata.
 // user.updated whose `changed` touched site_count is checked first, since
@@ -69,26 +69,18 @@ function humanizeAction(action: string): string {
 // Only names the entity when it's a *different* user from the actor and we
 // can actually resolve a name -- otherwise just the plain action phrase, no
 // invented specifics beyond what the record carries.
-export function describeAuditEvent(
-  event: AuditEvent,
-  category: AuditCategory,
-  usersById: Map<string, ManagedUser>
-): string {
+export function describeAuditEvent(event: AuditEvent, category: AuditCategory): string {
   const base =
     category === 'assignment'
       ? 'Updated site assignment'
       : (ACTION_LABELS[event.action] ?? humanizeAction(event.action))
   if (event.entityType === 'user' && event.entityId && event.entityId !== event.actorId) {
-    const targetName = usersById.get(event.entityId)?.name
-    if (targetName) return `${base} for ${targetName}`
+    if (event.entityName) return `${base} for ${event.entityName}`
   }
   return base
 }
 
-export function resolveAuditActorName(
-  event: AuditEvent,
-  usersById: Map<string, ManagedUser>
-): string {
+export function resolveAuditActorName(event: AuditEvent): string {
   if (!event.actorId) return 'System'
-  return usersById.get(event.actorId)?.name ?? event.actorId
+  return event.actorName ?? event.actorId
 }

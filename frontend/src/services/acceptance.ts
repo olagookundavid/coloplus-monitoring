@@ -11,6 +11,7 @@ import type {
 interface AcceptanceDTO {
   id: string
   site_id: string
+  site_name?: string
   stage: AcceptanceStage
   held_from?: AcceptanceStage
   waiting_on: AcceptanceParty
@@ -47,6 +48,7 @@ export function mapAcceptance(dto: AcceptanceDTO): Acceptance {
   return {
     id: dto.id,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     stage: dto.stage,
     heldFrom: dto.held_from,
     waitingOn: dto.waiting_on,
@@ -138,10 +140,10 @@ export async function transitionAcceptance(
   input: TransitionAcceptanceInput
 ): Promise<Acceptance> {
   try {
-    const { data } = await getApi().post<AcceptanceDTO>(
-      `/sites/${siteId}/acceptance/transition`,
-      { stage: input.stage, note: input.note }
-    )
+    const { data } = await getApi().post<AcceptanceDTO>(`/sites/${siteId}/acceptance/transition`, {
+      stage: input.stage,
+      note: input.note,
+    })
     return mapAcceptance(data)
   } catch (error) {
     throw mapAxiosError(error, 'Could not update this acceptance record.')

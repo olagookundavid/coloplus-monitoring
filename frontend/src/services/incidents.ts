@@ -18,6 +18,7 @@ interface PublishedIncidentDTO {
   id: string
   ref: string
   site_id: string
+  site_name?: string
   category: IncidentCategory
   severity: IncidentSeverity
   impact: IncidentImpact
@@ -45,6 +46,7 @@ export function mapPublishedIncident(dto: PublishedIncidentDTO): PublishedIncide
     id: dto.id,
     ref: dto.ref,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     category: dto.category,
     severity: dto.severity,
     impact: dto.impact,

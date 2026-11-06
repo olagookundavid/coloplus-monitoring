@@ -29,6 +29,7 @@ export interface FuelEntry {
   note?: string
   /** Coloplus-only; absent for a customer. */
   recordedBy?: string
+  recordedByName?: string
   voided: boolean
   voidReason?: string
   createdAt: string

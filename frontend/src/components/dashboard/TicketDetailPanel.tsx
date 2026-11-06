@@ -10,13 +10,37 @@ import {
   useTicketDetail,
 } from '../../hooks'
 import type { Ticket } from '../../types'
-import { formatDateTimeWAT, ticketPriorityLabel, ticketStatusLabel, toast } from '../../utils'
-import { AttachmentList, Button, FileDropZone, Input, SidePanel, Spinner, StatusBadge, Textarea } from '../ui'
+import {
+  formatDateTimeWAT,
+  nameOrId,
+  ticketPriorityLabel,
+  ticketStatusLabel,
+  toast,
+} from '../../utils'
+import {
+  AttachmentList,
+  Button,
+  FileDropZone,
+  Input,
+  SidePanel,
+  Spinner,
+  StatusBadge,
+  Textarea,
+} from '../ui'
 
 export interface TicketDetailPanelProps {
   ticket: Ticket | null
   open: boolean
   onClose: () => void
+}
+
+function FactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+      <dt className="text-text-muted">{label}</dt>
+      <dd className="max-w-[60%] text-right font-medium text-text">{value}</dd>
+    </div>
+  )
 }
 
 export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelProps) {
@@ -39,7 +63,9 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
   if (!ticket) return null
 
   const ticketId = ticket.id
-  const siteLabel = site ? `${site.name} (${site.airtelCode}) · ${site.region}` : ticket.siteId
+  const siteLabel = site
+    ? `${site.name} (${site.airtelCode}) · ${site.region}`
+    : nameOrId(ticket.siteName, ticket.siteId)
   const { label: statusLabel, tone: statusTone } = ticketStatusLabel(ticket.status)
   const { label: priorityLabel, tone: priorityTone } = ticketPriorityLabel(ticket.priority)
 
@@ -92,6 +118,31 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
           <p className="mt-3 text-sm text-text-muted">{ticket.description}</p>
         </div>
 
+        {isStaff && (
+          <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
+            <h3 className="text-base font-semibold text-text">Ownership</h3>
+            <dl className="mt-3 divide-y divide-border rounded-lg border border-border">
+              {ticket.raisedBy && (
+                <FactRow label="Raised by" value={nameOrId(ticket.raisedByName, ticket.raisedBy)} />
+              )}
+              <FactRow
+                label="Assigned to"
+                value={
+                  ticket.assigneeId
+                    ? nameOrId(ticket.assigneeName, ticket.assigneeId)
+                    : 'Unassigned'
+                }
+              />
+              {ticket.resolvedBy && (
+                <FactRow
+                  label="Resolved by"
+                  value={nameOrId(ticket.resolvedByName, ticket.resolvedBy)}
+                />
+              )}
+            </dl>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-5 sm:p-6">
           <h3 className="text-base font-semibold text-text">Attachments</h3>
           <AttachmentList
@@ -115,7 +166,11 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
                     {formatDateTimeWAT(event.createdAt)}
                   </span>
                   <span className="text-text">
-                    {event.body || `${event.party === 'airtel' ? 'You' : 'Coloplus'} updated the status`}
+                    {event.body ||
+                      `${event.party === 'airtel' ? 'You' : 'Coloplus'} updated the status`}
+                    {isStaff && event.authorName && (
+                      <span className="text-text-muted"> · {event.authorName}</span>
+                    )}
                   </span>
                 </li>
               ))}

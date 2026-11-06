@@ -19,6 +19,7 @@ import {
   formatDateTimeWAT,
   getManagedUserStatus,
   getManagedUserStatusTone,
+  nameOrId,
 } from '../../utils'
 
 const NO_USERS: ManagedUser[] = []
@@ -65,9 +66,6 @@ export function Overview() {
   const sites = sitesQuery.data ?? NO_SITES
   const approvals = approvalsQuery.data ?? NO_APPROVALS
 
-  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users])
-  const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites])
-
   const activeUsers = users.filter((u) => getManagedUserStatus(u) === 'Active').length
   const invitedUsers = users.filter((u) => getManagedUserStatus(u) === 'Invited').length
 
@@ -104,15 +102,15 @@ export function Overview() {
       },
       {
         header: 'Item',
-        accessor: (a) => `${sitesById.get(a.siteId)?.name ?? a.siteId} · ${a.reportDate}`,
+        accessor: (a) => `${nameOrId(a.siteName, a.siteId)} · ${a.reportDate}`,
       },
       {
         header: 'Requested by',
-        accessor: (a) => usersById.get(a.authorId)?.name ?? a.authorId,
+        accessor: (a) => nameOrId(a.authorName, a.authorId),
       },
       { header: 'Age', accessor: (a) => formatAge(a.submittedAt), align: 'right' },
     ],
-    [sitesById, usersById]
+    []
   )
 
   const previewUserColumns: Column<ManagedUser>[] = useMemo(
@@ -258,7 +256,7 @@ export function Overview() {
                 {auditQuery.data?.map((event) => (
                   <li key={event.id} className="text-sm">
                     <span className="font-medium text-text">
-                      {usersById.get(event.actorId ?? '')?.name ?? 'System'}
+                      {event.actorId ? nameOrId(event.actorName, event.actorId) : 'System'}
                     </span>{' '}
                     <span className="text-text-muted">{describeAction(event.action)}</span>
                     <p className="text-xs text-text-muted">{formatDateTimeWAT(event.occurredAt)}</p>

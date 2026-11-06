@@ -18,6 +18,7 @@ interface AttachmentDTO {
   confirmed_at?: string
   internal?: boolean
   uploaded_by?: string
+  uploaded_by_name?: string
 }
 
 interface UploadTargetDTO {
@@ -58,6 +59,7 @@ function mapAttachment(dto: AttachmentDTO): Attachment {
     confirmedAt: dto.confirmed_at,
     internal: dto.internal,
     uploadedBy: dto.uploaded_by,
+    uploadedByName: dto.uploaded_by_name,
   }
 }
 

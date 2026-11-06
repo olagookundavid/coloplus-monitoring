@@ -3,6 +3,9 @@ export interface IssuedExport {
   kind: string
   filename: string
   params: Record<string, unknown>
+  /** Both present when `params` scopes the export to a single site. */
+  siteId?: string
+  siteName?: string
   rowCount: number
   sizeBytes: number
   sha256: string
@@ -10,6 +13,7 @@ export interface IssuedExport {
       kept, so the download link can never be reissued for this row. */
   stored: boolean
   issuedBy: string
+  issuedByName?: string
   createdAt: string
 }
 

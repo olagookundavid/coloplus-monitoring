@@ -4,7 +4,7 @@ import {
   type AuditCategory,
   type AuditEvent,
 } from '../../types'
-import { formatDateTimeWAT } from '../../utils'
+import { formatDateTimeWAT, nameOrId } from '../../utils'
 import { SidePanel, StatusBadge } from '../ui'
 
 export interface AuditEventDetailPanelProps {
@@ -24,6 +24,15 @@ const SUMMARY_FIELD_LABELS: Record<string, string> = {
   served_minutes: 'Served minutes',
   outage_minutes: 'Outage minutes',
   unknown_minutes: 'Unknown minutes',
+}
+
+// Known id-key -> name/label-key pairs audit metadata can carry (070):
+// the id stays for scope/linking, the name is shown in its place here.
+const METADATA_NAME_KEYS: Record<string, string> = {
+  site_id: 'site_name',
+  run_id: 'run_label',
+  supersedes_id: 'supersedes_label',
+  acceptance_id: 'acceptance_label',
 }
 
 function isCorrectionDiff(event: AuditEvent): event is AuditEvent & {
@@ -54,8 +63,9 @@ export function AuditEventDetailPanel({
 }: AuditEventDetailPanelProps) {
   if (!event) return null
 
+  const metadataNameValues = new Set(Object.values(METADATA_NAME_KEYS))
   const metadataEntries = Object.entries(event.metadata).filter(
-    ([key]) => key !== 'before' && key !== 'after'
+    ([key]) => key !== 'before' && key !== 'after' && !metadataNameValues.has(key)
   )
   const hasDiff = isCorrectionDiff(event)
 
@@ -63,7 +73,11 @@ export function AuditEventDetailPanel({
     <SidePanel
       open={open}
       onClose={onClose}
-      eyebrow={event.entityType ? `${event.entityType} · ${event.entityId}` : undefined}
+      eyebrow={
+        event.entityType
+          ? `${event.entityType} · ${nameOrId(event.entityName, event.entityId)}`
+          : undefined
+      }
       title={description}
       subtitle={
         <div className="flex flex-wrap items-center gap-3">
@@ -88,7 +102,16 @@ export function AuditEventDetailPanel({
             <div className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between">
               <dt className="text-sm text-text-muted">Entity</dt>
               <dd className="text-sm font-medium text-text sm:text-right">
-                {event.entityType || '—'} {event.entityId && `· ${event.entityId}`}
+                {event.entityType || '—'}
+                {event.entityId && (
+                  <>
+                    {' '}
+                    · {event.entityName ?? event.entityId}
+                    {event.entityName && (
+                      <span className="ml-1 text-xs text-text-muted">({event.entityId})</span>
+                    )}
+                  </>
+                )}
               </dd>
             </div>
           </dl>
@@ -122,17 +145,25 @@ export function AuditEventDetailPanel({
           <div className="rounded-lg border border-border bg-surface p-5 sm:p-6">
             <h3 className="text-base font-semibold text-text">Details</h3>
             <dl className="mt-4 divide-y divide-border">
-              {metadataEntries.map(([key, value]) => (
-                <div
-                  key={key}
-                  className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <dt className="text-sm text-text-muted">{key}</dt>
-                  <dd className="text-sm font-medium text-text sm:text-right">
-                    {formatMetadataValue(value)}
-                  </dd>
-                </div>
-              ))}
+              {metadataEntries.map(([key, value]) => {
+                const nameKey = METADATA_NAME_KEYS[key]
+                return (
+                  <div
+                    key={key}
+                    className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <dt className="text-sm text-text-muted">{key}</dt>
+                    <dd className="text-sm font-medium text-text sm:text-right">
+                      {nameKey
+                        ? nameOrId(
+                            event.metadata[nameKey] as string | undefined,
+                            formatMetadataValue(value)
+                          )
+                        : formatMetadataValue(value)}
+                    </dd>
+                  </div>
+                )
+              })}
             </dl>
           </div>
         )}

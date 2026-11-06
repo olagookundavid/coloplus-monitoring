@@ -15,6 +15,7 @@ interface UserDTO {
 
 interface UserDetailDTO extends UserDTO {
   site_ids: string[]
+  sites?: { id: string; name: string }[]
 }
 
 function mapManagedUserDetail(dto: UserDetailDTO): ManagedUser {
@@ -28,6 +29,7 @@ function mapManagedUserDetail(dto: UserDetailDTO): ManagedUser {
     mfaEnabled: dto.mfa_enabled,
     lastLoginAt: dto.last_login_at,
     siteIds: dto.site_ids,
+    sites: dto.sites,
   }
 }
 

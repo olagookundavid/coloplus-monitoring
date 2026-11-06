@@ -3,6 +3,7 @@ export interface PeriodClosure {
   /** "YYYY-MM" */
   month: string
   closedBy: string
+  closedByName?: string
   closedAt: string
   /** The calculation run frozen at close time. */
   runId: string
@@ -12,6 +13,7 @@ export interface PeriodClosure {
       displaying this. */
   locked: boolean
   reopenedBy?: string
+  reopenedByName?: string
   reopenedAt?: string
   reopenReason?: string
 }

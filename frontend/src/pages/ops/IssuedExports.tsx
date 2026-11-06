@@ -128,9 +128,11 @@ export function IssuedExports() {
     },
     {
       header: 'Params',
-      accessor: (row) => describeIssuedExportParams(row.params),
+      accessor: (row) => describeIssuedExportParams(row.params, row.siteName),
       cell: (row) => (
-        <span className="text-xs text-text-muted">{describeIssuedExportParams(row.params)}</span>
+        <span className="text-xs text-text-muted">
+          {describeIssuedExportParams(row.params, row.siteName)}
+        </span>
       ),
     },
     { header: 'Rows', accessor: (row) => row.rowCount, align: 'right' },
@@ -142,7 +144,7 @@ export function IssuedExports() {
     },
     {
       header: 'Issued by',
-      accessor: (row) => issuedByLabel(row.issuedBy, user?.id),
+      accessor: (row) => issuedByLabel(row.issuedBy, row.issuedByName, user?.id),
     },
     {
       header: 'Issued at',

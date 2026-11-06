@@ -39,6 +39,7 @@ interface CalculationRunDTO {
   formula_version: string
   site_count: number
   created_by: string
+  created_by_name?: string
   created_at: string
   rows?: CalculationRunRowDTO[]
 }
@@ -101,6 +102,7 @@ function mapCalculationRun(dto: CalculationRunDTO): CalculationRun {
     formulaVersion: dto.formula_version,
     siteCount: dto.site_count,
     createdBy: dto.created_by,
+    createdByName: dto.created_by_name,
     createdAt: dto.created_at,
     rows: dto.rows?.map(mapCalculationRunRow),
   }

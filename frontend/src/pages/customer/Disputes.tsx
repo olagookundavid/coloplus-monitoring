@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import { ScaleIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, RaiseDisputeModal, StatCard } from '../../components/dashboard'
-import { SkeletonDetailPane, SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
+import {
+  SkeletonDetailPane,
+  SkeletonListItems,
+  SkeletonStatCards,
+} from '../../components/skeletons'
 import {
   AttachmentList,
   Button,
@@ -15,7 +19,6 @@ import {
   type TabItem,
 } from '../../components/ui'
 import {
-  useAdminSites,
   useAttachments,
   useCommentDisputeMutation,
   useDisputeDetail,
@@ -24,11 +27,10 @@ import {
   usePermissions,
   useTransitionDisputeMutation,
 } from '../../hooks'
-import type { AdminSite, Dispute, DisputeStatus } from '../../types'
-import { disputeStatusLabel, formatDateTimeWAT, toast } from '../../utils'
+import type { Dispute, DisputeStatus } from '../../types'
+import { disputeStatusLabel, formatDateTimeWAT, nameOrId, toast } from '../../utils'
 
 const NO_DISPUTES: Dispute[] = []
-const NO_SITES: AdminSite[] = []
 
 type Bucket = 'open' | 'resolved' | 'closed'
 type TabValue = Bucket | 'all'
@@ -37,10 +39,6 @@ function bucketFor(status: DisputeStatus): Bucket {
   if (status === 'closed') return 'closed'
   if (status === 'resolved') return 'resolved'
   return 'open'
-}
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  return sitesById.get(siteId)?.airtelCode ?? siteId
 }
 
 function DisputeDetailPane({
@@ -121,7 +119,8 @@ function DisputeDetailPane({
                   {formatDateTimeWAT(event.createdAt)}
                 </span>
                 <span className="text-text">
-                  {event.body || `${event.party === 'airtel' ? 'Airtel' : 'Coloplus'} updated the status`}
+                  {event.body ||
+                    `${event.party === 'airtel' ? 'Airtel' : 'Coloplus'} updated the status`}
                 </span>
               </li>
             ))}
@@ -135,9 +134,7 @@ function DisputeDetailPane({
           loading={attachmentsQuery.isLoading}
           emptyMessage="No files attached yet."
         />
-        {canAttach && (
-          <FileDropZone ownerType="dispute" ownerId={dispute.id} isStaff={false} />
-        )}
+        {canAttach && <FileDropZone ownerType="dispute" ownerId={dispute.id} isStaff={false} />}
       </div>
 
       {canReview && dispute.status !== 'closed' && (
@@ -245,9 +242,6 @@ export function Disputes() {
   const disputesQuery = useDisputes()
   const disputes = disputesQuery.data ?? NO_DISPUTES
   const summaryQuery = useDisputeSummary()
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('open')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -294,8 +288,16 @@ export function Disputes() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={ScaleIcon} />
-          <StatCard label="With Coloplus" value={summaryQuery.data?.withColoplus ?? 0} icon={ScaleIcon} />
-          <StatCard label="With Airtel" value={summaryQuery.data?.withAirtel ?? 0} icon={ScaleIcon} />
+          <StatCard
+            label="With Coloplus"
+            value={summaryQuery.data?.withColoplus ?? 0}
+            icon={ScaleIcon}
+          />
+          <StatCard
+            label="With Airtel"
+            value={summaryQuery.data?.withAirtel ?? 0}
+            icon={ScaleIcon}
+          />
         </div>
       )}
 
@@ -330,7 +332,7 @@ export function Disputes() {
                         <StatusBadge label={label} tone={tone} />
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {dispute.title} · {siteLabelFor(sitesById, dispute.siteId)}
+                        {dispute.title} · {nameOrId(dispute.siteName, dispute.siteId)}
                       </p>
                     </button>
                   </li>
@@ -351,7 +353,7 @@ export function Disputes() {
             <DisputeDetailPane
               key={selectedDispute.id}
               dispute={selectedDispute}
-              siteLabel={siteLabelFor(sitesById, selectedDispute.siteId)}
+              siteLabel={nameOrId(selectedDispute.siteName, selectedDispute.siteId)}
               canReview={canReview}
             />
           )}

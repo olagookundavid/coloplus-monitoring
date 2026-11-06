@@ -18,7 +18,9 @@ interface DisputeDTO {
   id: string
   ref: string
   site_id: string
+  site_name?: string
   report_id?: string
+  report_label?: string
   interval_id?: string
   metric?: DisputeMetric
   period_from?: string
@@ -31,14 +33,18 @@ interface DisputeDTO {
   outcome?: DisputeOutcome
   resolution?: string
   resolution_report_id?: string
+  resolution_report_label?: string
   resolved_at?: string
   acknowledged_at?: string
   reopen_count: number
   created_at: string
   updated_at: string
   raised_by?: string
+  raised_by_name?: string
   owner_id?: string
+  owner_name?: string
   resolved_by?: string
+  resolved_by_name?: string
 }
 
 interface DisputeEventDTO {
@@ -50,6 +56,7 @@ interface DisputeEventDTO {
   body?: string
   internal?: boolean
   author_id?: string
+  author_name?: string
   created_at: string
 }
 
@@ -69,7 +76,9 @@ export function mapDispute(dto: DisputeDTO): Dispute {
     id: dto.id,
     ref: dto.ref,
     siteId: dto.site_id,
+    siteName: dto.site_name,
     reportId: dto.report_id,
+    reportLabel: dto.report_label,
     intervalId: dto.interval_id,
     metric: dto.metric,
     periodFrom: dto.period_from,
@@ -82,14 +91,18 @@ export function mapDispute(dto: DisputeDTO): Dispute {
     outcome: dto.outcome,
     resolution: dto.resolution,
     resolutionReportId: dto.resolution_report_id,
+    resolutionReportLabel: dto.resolution_report_label,
     resolvedAt: dto.resolved_at,
     acknowledgedAt: dto.acknowledged_at,
     reopenCount: dto.reopen_count,
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
     raisedBy: dto.raised_by,
+    raisedByName: dto.raised_by_name,
     ownerId: dto.owner_id,
+    ownerName: dto.owner_name,
     resolvedBy: dto.resolved_by,
+    resolvedByName: dto.resolved_by_name,
   }
 }
 
@@ -103,6 +116,7 @@ function mapEvent(dto: DisputeEventDTO): DisputeEvent {
     body: dto.body ?? '',
     internal: dto.internal,
     authorId: dto.author_id,
+    authorName: dto.author_name,
     createdAt: dto.created_at,
   }
 }

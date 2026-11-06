@@ -69,3 +69,4 @@ export {
   issuedByLabel,
   describeIssuedExportParams,
 } from './issuedExportDisplay'
+export { nameOrId } from './names'

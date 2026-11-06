@@ -35,6 +35,7 @@ export interface IncidentUpdateEntry {
   observedAt?: string
   createdAt: string
   authorId: string
+  authorName?: string
 }
 
 // One incident on the reporter's Incidents page -- mirrors dto.IncidentDTO's
@@ -47,6 +48,7 @@ export interface ReporterIncident {
   /** Server-formatted, e.g. "INC-000123". */
   ref: string
   siteId: string
+  siteName?: string
   category: IncidentCategory
   severity: IncidentSeverity
   impact: IncidentImpact
@@ -55,12 +57,16 @@ export interface ReporterIncident {
   status: IncidentWorkflowStatus
   startedAt: string
   detectedAt: string
+  reporterName?: string
   ownerId?: string
+  ownerName?: string
   nextAction?: string
   nextUpdateDue?: string
   overdue: boolean
   restoredAt?: string
+  restoredByName?: string
   verifiedAt?: string
+  verifiedByName?: string
   closedAt?: string
   rootCause?: string
   publishedAt?: string
@@ -94,6 +100,7 @@ export interface PublishedIncident {
   id: string
   ref: string
   siteId: string
+  siteName?: string
   category: IncidentCategory
   severity: IncidentSeverity
   impact: IncidentImpact

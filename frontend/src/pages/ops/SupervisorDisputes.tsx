@@ -2,7 +2,11 @@ import { useMemo, useState } from 'react'
 import { ScaleIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
-import { SkeletonDetailPane, SkeletonListItems, SkeletonStatCards } from '../../components/skeletons'
+import {
+  SkeletonDetailPane,
+  SkeletonListItems,
+  SkeletonStatCards,
+} from '../../components/skeletons'
 import {
   AttachmentList,
   Button,
@@ -18,7 +22,6 @@ import {
   type TabItem,
 } from '../../components/ui'
 import {
-  useAdminSites,
   useAttachments,
   useCommentDisputeMutation,
   useDisputeDetail,
@@ -27,11 +30,10 @@ import {
   usePermissions,
   useTransitionDisputeMutation,
 } from '../../hooks'
-import type { AdminSite, Dispute, DisputeEvent } from '../../types'
-import { disputeStatusLabel, formatDateTimeWAT, toast } from '../../utils'
+import type { Dispute, DisputeEvent } from '../../types'
+import { disputeStatusLabel, formatDateTimeWAT, nameOrId, toast } from '../../utils'
 
 const NO_DISPUTES: Dispute[] = []
-const NO_SITES: AdminSite[] = []
 
 // Framed around whose move it is, matching DisputeSummaryResponse's own
 // shape (open/withColoplus/withAirtel) rather than inventing a new bucket
@@ -42,10 +44,6 @@ type TabValue = Bucket | 'all'
 function bucketFor(dispute: Dispute): Bucket {
   if (dispute.status === 'closed') return 'closed'
   return dispute.waitingOn === 'airtel' ? 'withAirtel' : 'withColoplus'
-}
-
-function siteLabelFor(sitesById: Map<string, AdminSite>, siteId: string): string {
-  return sitesById.get(siteId)?.airtelCode ?? siteId
 }
 
 type PendingAction =
@@ -61,6 +59,15 @@ interface DetailPaneProps {
   siteLabel: string
   canManage: boolean
   onRequestAction: (action: PendingAction) => void
+}
+
+function FactRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+      <dt className="text-text-muted">{label}</dt>
+      <dd className="max-w-[60%] text-right font-medium text-text">{value}</dd>
+    </div>
+  )
 }
 
 function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: DetailPaneProps) {
@@ -113,6 +120,22 @@ function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: D
         <p className="mt-1 text-sm text-text-muted">{dispute.description}</p>
       </div>
 
+      <dl className="divide-y divide-border rounded-lg border border-border">
+        {dispute.raisedBy && (
+          <FactRow label="Raised by" value={nameOrId(dispute.raisedByName, dispute.raisedBy)} />
+        )}
+        <FactRow
+          label="Owner"
+          value={dispute.ownerId ? nameOrId(dispute.ownerName, dispute.ownerId) : 'Not yet claimed'}
+        />
+        {dispute.resolvedBy && (
+          <FactRow
+            label="Resolved by"
+            value={nameOrId(dispute.resolvedByName, dispute.resolvedBy)}
+          />
+        )}
+      </dl>
+
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Timeline</p>
         {detailQuery.isLoading ? (
@@ -126,7 +149,12 @@ function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: D
                 <span className="w-32 shrink-0 text-text-muted">
                   {formatDateTimeWAT(event.createdAt)}
                 </span>
-                <span className="text-text">{eventBody(event)}</span>
+                <span className="text-text">
+                  {eventBody(event)}
+                  {event.authorName && (
+                    <span className="text-text-muted"> · {event.authorName}</span>
+                  )}
+                </span>
                 {event.internal && <StatusBadge label="Internal" tone="neutral" />}
               </li>
             ))}
@@ -327,9 +355,6 @@ export function SupervisorDisputes() {
   const disputesQuery = useDisputes()
   const disputes = disputesQuery.data ?? NO_DISPUTES
   const summaryQuery = useDisputeSummary()
-  const sitesQuery = useAdminSites()
-  const sites = sitesQuery.data ?? NO_SITES
-  const sitesById = useMemo(() => new Map(sites.map((site) => [site.id, site])), [sites])
 
   const [tab, setTab] = useState<TabValue>('withColoplus')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -457,8 +482,16 @@ export function SupervisorDisputes() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <StatCard label="Open" value={summaryQuery.data?.open ?? 0} icon={ScaleIcon} />
-          <StatCard label="With you" value={summaryQuery.data?.withColoplus ?? 0} icon={ScaleIcon} />
-          <StatCard label="With Airtel" value={summaryQuery.data?.withAirtel ?? 0} icon={ScaleIcon} />
+          <StatCard
+            label="With you"
+            value={summaryQuery.data?.withColoplus ?? 0}
+            icon={ScaleIcon}
+          />
+          <StatCard
+            label="With Airtel"
+            value={summaryQuery.data?.withAirtel ?? 0}
+            icon={ScaleIcon}
+          />
         </div>
       )}
 
@@ -493,7 +526,7 @@ export function SupervisorDisputes() {
                         <StatusBadge label={label} tone={tone} />
                       </div>
                       <p className="mt-2 truncate font-medium text-text">
-                        {dispute.title} · {siteLabelFor(sitesById, dispute.siteId)}
+                        {dispute.title} · {nameOrId(dispute.siteName, dispute.siteId)}
                       </p>
                     </button>
                   </li>
@@ -514,7 +547,7 @@ export function SupervisorDisputes() {
             <DisputeDetailPane
               key={selectedDispute.id}
               dispute={selectedDispute}
-              siteLabel={siteLabelFor(sitesById, selectedDispute.siteId)}
+              siteLabel={nameOrId(selectedDispute.siteName, selectedDispute.siteId)}
               canManage={canManage}
               onRequestAction={setPendingAction}
             />
@@ -537,7 +570,7 @@ export function SupervisorDisputes() {
         body={
           pendingAction && (
             <ConfirmSummary
-              title={`${pendingAction.dispute.title} · ${siteLabelFor(sitesById, pendingAction.dispute.siteId)}`}
+              title={`${pendingAction.dispute.title} · ${nameOrId(pendingAction.dispute.siteName, pendingAction.dispute.siteId)}`}
               meta={pendingAction.dispute.ref}
             />
           )

@@ -7,11 +7,14 @@ interface IssuedExportDTO {
   kind: string
   filename: string
   params: Record<string, unknown>
+  site_id?: string
+  site_name?: string
   row_count: number
   size_bytes: number
   sha256: string
   stored: boolean
   issued_by: string
+  issued_by_name?: string
   created_at: string
 }
 
@@ -34,11 +37,14 @@ function mapIssuedExport(dto: IssuedExportDTO): IssuedExport {
     kind: dto.kind,
     filename: dto.filename,
     params: dto.params,
+    siteId: dto.site_id,
+    siteName: dto.site_name,
     rowCount: dto.row_count,
     sizeBytes: dto.size_bytes,
     sha256: dto.sha256,
     stored: dto.stored,
     issuedBy: dto.issued_by,
+    issuedByName: dto.issued_by_name,
     createdAt: dto.created_at,
   }
 }
