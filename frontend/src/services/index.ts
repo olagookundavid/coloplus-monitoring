@@ -11,7 +11,7 @@ export {
   mapAxiosError,
   AuthApiError,
 } from './auth'
-export { fetchPortfolioOverview, fetchPortfolioTrend } from './airtelOverview'
+export { fetchPortfolioOverview, fetchPortfolioTrend } from './customerOverview'
 export { fetchOutages, fetchIncidentOutages } from './outages'
 export {
   fetchTickets,

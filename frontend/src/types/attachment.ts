@@ -7,7 +7,7 @@
 export type AttachmentOwnerType = 'ticket' | 'incident' | 'dispute' | 'acceptance' | 'report'
 
 export type AttachmentStatus = 'pending' | 'ready' | 'rejected' | 'expired'
-export type AttachmentParty = 'airtel' | 'coloplus'
+export type AttachmentParty = 'customer' | 'coloplus'
 
 export interface Attachment {
   id: string
@@ -45,6 +45,6 @@ export interface RequestUploadInput {
   contentType: string
   sizeBytes: number
   sha256: string
-  /** Coloplus-only; a Coloplus upload defaults hidden from Airtel unless set. */
+  /** Coloplus-only; a Coloplus upload defaults hidden from the customer unless set. */
   shared?: boolean
 }

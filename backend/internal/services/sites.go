@@ -55,7 +55,7 @@ func (s *SiteService) Create(ctx context.Context, actor domain.Actor, site domai
 		}
 		return s.audit.RecordInTx(ctx, domain.AuditEvent{
 			ActorID: actor.UserID, Action: "site.created", EntityType: "site", EntityID: created.ID,
-			Metadata: map[string]any{"airtel_code": created.AirtelCode},
+			Metadata: map[string]any{"customer_site_code": created.CustomerSiteCode},
 		})
 	})
 	return created, err
@@ -92,7 +92,7 @@ func (s *SiteService) List(ctx context.Context, actor domain.Actor, in ListSites
 	if in.AcceptanceStage != "" && !domain.ValidAcceptanceStage(in.AcceptanceStage) {
 		return nil, 0, invalid("%q is not a known acceptance stage", in.AcceptanceStage)
 	}
-	// Who is assigned to which site is Coloplus's own information; Airtel
+	// Who is assigned to which site is Coloplus's own information; the customer
 	// cannot use it to look people up.
 	if in.AssignedTo != "" && actor.Can(domain.PermPublishedRead) {
 		return nil, 0, apperrors.ErrForbidden

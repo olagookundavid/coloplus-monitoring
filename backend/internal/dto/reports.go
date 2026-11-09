@@ -91,7 +91,7 @@ type ReportDTO struct {
 	OutageReason string `json:"outage_reason,omitempty"`
 }
 
-// PublishedReportDTO is what Airtel sees: approved facts only. Internal notes,
+// PublishedReportDTO is what the customer sees: approved facts only. Internal notes,
 // author and reviewer details and review commentary are left out.
 type PublishedReportDTO struct {
 	ID             string        `json:"id"`
@@ -156,7 +156,7 @@ type CalculationDTO struct {
 	Warnings    []string  `json:"warnings"`
 }
 
-// ReportDetailResponse holds either Report (internal) or Published (Airtel).
+// ReportDetailResponse holds either Report (internal) or Published (customer).
 type ReportDetailResponse struct {
 	Report      *ReportDTO          `json:"report,omitempty"`
 	Published   *PublishedReportDTO `json:"published,omitempty"`
@@ -213,13 +213,13 @@ type OverviewResponse struct {
 }
 
 type SiteRowDTO struct {
-	SiteID       string `json:"site_id"`
-	AirtelCode   string `json:"airtel_code"`
-	ColoplusCode string `json:"coloplus_code"`
-	Name         string `json:"name"`
-	SiteType     string `json:"site_type"`
-	State        string `json:"state"`
-	Status       string `json:"status"`
+	SiteID           string `json:"site_id"`
+	CustomerSiteCode string `json:"customer_site_code"`
+	ColoplusCode     string `json:"coloplus_code"`
+	Name             string `json:"name"`
+	SiteType         string `json:"site_type"`
+	State            string `json:"state"`
+	Status           string `json:"status"`
 	// Condition is available, outage_reported or awaiting_update.
 	Condition string     `json:"condition" example:"available"`
 	AsOf      *time.Time `json:"as_of,omitempty"`
@@ -298,7 +298,7 @@ type DayBarDTO struct {
 // MySiteRowDTO is one card on the reporter's "my sites" grid.
 type MySiteRowDTO struct {
 	SiteID             string `json:"site_id"`
-	AirtelCode         string `json:"airtel_code"`
+	CustomerSiteCode   string `json:"customer_site_code"`
 	ColoplusCode       string `json:"coloplus_code"`
 	Name               string `json:"name"`
 	SiteType           string `json:"site_type"`

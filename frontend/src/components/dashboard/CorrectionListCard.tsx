@@ -41,7 +41,7 @@ function cardCopy(
 export function CorrectionListCard({ item, site, selected, onSelect }: CorrectionListCardProps) {
   const siteName =
     item.kind === 'incidentCorrection' ? item.correction.siteName : item.report.siteName
-  const siteLabel = nameOrId(siteName ?? site?.airtelCode, item.siteId)
+  const siteLabel = nameOrId(siteName ?? site?.customerSiteCode, item.siteId)
   const { badge, ref, title, sublineText } = cardCopy(item, siteLabel)
   const { label: tabLabel, tone } = correctionTabInfo(item.tab)
   const badgeTone = item.kind === 'returnedReport' ? 'warning' : 'info'

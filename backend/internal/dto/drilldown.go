@@ -4,14 +4,14 @@ import "time"
 
 // OutageItemDTO is one stretch of reported outage behind a dashboard figure.
 type OutageItemDTO struct {
-	SiteID       string    `json:"site_id"`
-	AirtelCode   string    `json:"airtel_code"`
-	ColoplusCode string    `json:"coloplus_code"`
-	SiteName     string    `json:"site_name"`
-	Region       string    `json:"region"`
-	Start        time.Time `json:"start"`
-	End          time.Time `json:"end"`
-	Minutes      int       `json:"minutes"`
+	SiteID           string    `json:"site_id"`
+	CustomerSiteCode string    `json:"customer_site_code"`
+	ColoplusCode     string    `json:"coloplus_code"`
+	SiteName         string    `json:"site_name"`
+	Region           string    `json:"region"`
+	Start            time.Time `json:"start"`
+	End              time.Time `json:"end"`
+	Minutes          int       `json:"minutes"`
 	// The approved report it came from, so the figure can be traced.
 	ReportID       string `json:"report_id"`
 	ReportDate     string `json:"report_date"`

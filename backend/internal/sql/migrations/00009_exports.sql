@@ -7,5 +7,5 @@ INSERT INTO permissions (id, description) VALUES
 INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('admin',           'exports.create'),
     ('supervisor',      'exports.create'),
-    ('airtel_viewer',   'exports.create'),
-    ('airtel_reviewer', 'exports.create');
+    ('viewer',   'exports.create'),
+    ('reviewer', 'exports.create');

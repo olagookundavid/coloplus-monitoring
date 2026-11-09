@@ -39,7 +39,7 @@ export type UnreportedTimePolicy = 'available' | 'unknown'
 
 export interface SiteProfile {
   id: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   address: string

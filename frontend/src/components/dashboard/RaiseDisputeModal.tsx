@@ -137,7 +137,7 @@ export function RaiseDisputeModal({ open, onClose, initialSiteId }: RaiseDispute
               <option value="">Select a site</option>
               {(sitesQuery.data ?? []).map((site) => (
                 <option key={site.id} value={site.id}>
-                  {site.name} ({site.airtelCode})
+                  {site.name} ({site.customerSiteCode})
                 </option>
               ))}
             </Select>

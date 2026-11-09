@@ -2,19 +2,19 @@
 INSERT INTO permissions (id, description) VALUES
     ('acceptance.read',   'Read commissioning and acceptance records within scope'),
     ('acceptance.manage', 'Request, build, submit a dossier for, hold and resume a site acceptance (Coloplus)'),
-    ('acceptance.review', 'Record inspection, acceptance or rejection of a site (Airtel)');
+    ('acceptance.review', 'Record inspection, acceptance or rejection of a site (customer)');
 
 INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('admin',           'acceptance.read'),
     ('reporter',        'acceptance.read'),
     ('supervisor',      'acceptance.read'),
     ('supervisor',      'acceptance.manage'),
-    ('airtel_viewer',   'acceptance.read'),
-    ('airtel_reviewer', 'acceptance.read'),
-    ('airtel_reviewer', 'acceptance.review');
+    ('viewer',   'acceptance.read'),
+    ('reviewer', 'acceptance.read'),
+    ('reviewer', 'acceptance.review');
 
 -- One acceptance process per site. Its stage is kept apart from the site's
--- operational record: nothing Coloplus does counts as Airtel's acceptance.
+-- operational record: nothing Coloplus does counts as the customer's acceptance.
 CREATE TABLE acceptances (
     id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     site_id      UUID        NOT NULL UNIQUE REFERENCES sites (id),
@@ -23,7 +23,7 @@ CREATE TABLE acceptances (
     -- The stage a hold will return to.
     held_from    TEXT        NOT NULL DEFAULT '',
     -- Whose move it is.
-    responsible  TEXT        NOT NULL DEFAULT 'coloplus' CHECK (responsible IN ('coloplus', 'airtel')),
+    responsible  TEXT        NOT NULL DEFAULT 'coloplus' CHECK (responsible IN ('coloplus', 'customer')),
     next_action  TEXT        NOT NULL DEFAULT '',
     due_at       TIMESTAMPTZ,
     -- Coloplus's submission when it declares the site ready for inspection.
@@ -53,7 +53,7 @@ CREATE TABLE acceptance_events (
     seq           BIGINT GENERATED ALWAYS AS IDENTITY,
     acceptance_id UUID        NOT NULL REFERENCES acceptances (id),
     author_id     UUID        NOT NULL REFERENCES users (id),
-    party         TEXT        NOT NULL CHECK (party IN ('airtel', 'coloplus')),
+    party         TEXT        NOT NULL CHECK (party IN ('customer', 'coloplus')),
     from_stage    TEXT        NOT NULL DEFAULT '',
     to_stage      TEXT        NOT NULL,
     body          TEXT        NOT NULL DEFAULT '',

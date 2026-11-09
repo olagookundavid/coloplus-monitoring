@@ -13,7 +13,7 @@ import (
 
 func toRunRowDTO(r domain.RunRow) dto.RunRowDTO {
 	return dto.RunRowDTO{
-		SiteID: r.SiteID, AirtelCode: r.AirtelCode, SiteName: r.SiteName,
+		SiteID: r.SiteID, CustomerSiteCode: r.CustomerSiteCode, SiteName: r.SiteName,
 		EligibleMinutes: r.EligibleMinutes, ServedMinutes: r.ServedMinutes, OutageMinutes: r.OutageMinutes,
 		UnknownMinutes: r.UnknownMinutes, AssumedMinutes: r.AssumedMinutes, DaysInPeriod: r.DaysInPeriod, DaysReported: r.DaysReported,
 		ReportedAvailability: r.ReportedAvailability, ConfirmedServedShare: r.ConfirmedServedShare, Coverage: r.Coverage,
@@ -131,7 +131,7 @@ func (a *api) compareRun(c *gin.Context) {
 		CurrentVersion: cmp.CurrentVersion, Unchanged: cmp.Unchanged, Changes: make([]dto.RunChangeDTO, len(cmp.Changes)),
 	}
 	for i, ch := range cmp.Changes {
-		row := dto.RunChangeDTO{SiteID: ch.SiteID, AirtelCode: ch.AirtelCode, SiteName: ch.SiteName, ReportsChanged: ch.ReportsChanged}
+		row := dto.RunChangeDTO{SiteID: ch.SiteID, CustomerSiteCode: ch.CustomerSiteCode, SiteName: ch.SiteName, ReportsChanged: ch.ReportsChanged}
 		if ch.Then != nil {
 			t := toRunRowDTO(*ch.Then)
 			row.Then = &t

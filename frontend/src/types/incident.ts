@@ -87,9 +87,9 @@ export interface IncidentSummary {
   overdue: number
 }
 
-// What Airtel sees -- mirrors dto.PublishedIncidentDTO. No description,
-// owner, notes, root cause or author; neither airtel_viewer nor
-// airtel_reviewer holds incidents.read, so GET /incidents always returns
+// What the customer sees -- mirrors dto.PublishedIncidentDTO. No description,
+// owner, notes, root cause or author; neither viewer nor
+// reviewer holds incidents.read, so GET /incidents always returns
 // this shape for them, never the internal ReporterIncident above.
 export interface PublishedIncidentUpdate {
   at: string

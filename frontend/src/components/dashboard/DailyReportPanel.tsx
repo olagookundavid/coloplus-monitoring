@@ -77,7 +77,7 @@ export function DailyReportPanel({
       open={open}
       onClose={onClose}
       eyebrow={`Daily report · ${formatReportDateLabel(reportDate)}`}
-      title={`${site.airtelCode} · ${site.name}`}
+      title={`${site.customerSiteCode} · ${site.name}`}
       footer={
         readOnly ? (
           <Button variant="secondary" onClick={onClose}>
@@ -150,7 +150,7 @@ export function DailyReportPanel({
           <Field
             label="Generator runtime (hours)"
             htmlFor="generator-hours"
-            hint="Fuel use is estimated from this and shown to Airtel as an estimate."
+            hint="Fuel use is estimated from this and shown to the customer as an estimate."
           >
             <Input
               id="generator-hours"

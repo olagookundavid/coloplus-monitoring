@@ -51,7 +51,7 @@ func (a *api) createSite(c *gin.Context) {
 //	@Summary	List sites in your scope
 //	@Tags		sites
 //	@Produce	json
-//	@Param		q		query		string	false	"Search Airtel code, Coloplus code or name"
+//	@Param		q		query		string	false	"Search customer site code, Coloplus code or name"
 //	@Param		state	query		string	false	"State"
 //	@Param		region	query		string	false	"Region"
 //	@Param		status	query		string	false	"pending_acceptance, active or suspended"
@@ -132,7 +132,7 @@ func (a *api) updateSite(c *gin.Context) {
 // siteOverview godoc
 //
 //	@Summary		The whole site screen in one call
-//	@Description	Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; Airtel gets published incidents only.
+//	@Description	Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; the customer gets published incidents only.
 //	@Tags			sites
 //	@Produce		json
 //	@Param			id		path		string	true	"Site id"
@@ -188,7 +188,7 @@ func (a *api) siteOverview(c *gin.Context) {
 // importSites godoc
 //
 //	@Summary		Import sites from CSV
-//	@Description	Creates new sites and updates existing ones, matched on the Airtel code. Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: airtel_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.
+//	@Description	Creates new sites and updates existing ones, matched on the customer site code (column customer_site_code). Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: customer_site_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.
 //	@Tags			sites
 //	@Accept			json
 //	@Produce		json
@@ -213,7 +213,7 @@ func (a *api) importSites(c *gin.Context) {
 		Unchanged: res.Unchanged, Rejected: res.Rejected, Rows: make([]dto.SiteImportRowDTO, len(res.Rows)),
 	}
 	for i, r := range res.Rows {
-		out.Rows[i] = dto.SiteImportRowDTO{Line: r.Line, AirtelCode: r.AirtelCode, Action: string(r.Action), Problems: r.Problems}
+		out.Rows[i] = dto.SiteImportRowDTO{Line: r.Line, CustomerSiteCode: r.CustomerSiteCode, Action: string(r.Action), Problems: r.Problems}
 	}
 	a.respondNamed(c, http.StatusOK, out)
 }

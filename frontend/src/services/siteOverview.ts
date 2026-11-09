@@ -14,7 +14,7 @@ import type {
 
 // The whole site screen in one call (GET /sites/:id/overview). Sections the
 // caller may not see are left out server-side -- which incident/dispute/
-// acceptance shape comes back (and whether it's the staff or Airtel view)
+// acceptance shape comes back (and whether it's the staff or the customer view)
 // depends entirely on the caller's permissions, not on anything this file
 // decides, so both the ops and the customer portal call the same
 // fetchSiteOverview and just read the field that applies to them (incidents
@@ -22,7 +22,7 @@ import type {
 
 export interface SiteProfile {
   id: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   address: string
@@ -43,7 +43,7 @@ export interface SiteOverview {
   openIncidents: number
   /** Present for a caller with incidents.read (staff). */
   incidents: ReporterIncident[]
-  /** Present for a caller without incidents.read (Airtel). */
+  /** Present for a caller without incidents.read (customer). */
   publishedIncidents: PublishedIncident[]
   openDisputes: number
   disputes: Dispute[]
@@ -52,7 +52,7 @@ export interface SiteOverview {
 
 interface SiteDTO {
   id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   name: string
   address: string
@@ -81,7 +81,7 @@ interface SiteOverviewResponseDTO {
 function mapSiteProfile(dto: SiteDTO): SiteProfile {
   return {
     id: dto.id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     coloplusCode: dto.coloplus_code,
     name: dto.name,
     address: dto.address,

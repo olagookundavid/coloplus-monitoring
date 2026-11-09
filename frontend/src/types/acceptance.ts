@@ -6,7 +6,7 @@
 export type AcceptanceStage =
   'requested' | 'built' | 'ready_for_inspection' | 'inspected' | 'accepted' | 'rejected' | 'on_hold'
 
-export type AcceptanceParty = 'airtel' | 'coloplus'
+export type AcceptanceParty = 'customer' | 'coloplus'
 
 export interface AcceptanceEvent {
   id: string
@@ -39,7 +39,7 @@ export interface Acceptance {
   builtAt?: string
   readyAt?: string
   inspectedAt?: string
-  /** When Airtel accepted. Nothing else counts as acceptance. */
+  /** When the customer accepted. Nothing else counts as acceptance. */
   decidedAt?: string
   updatedAt: string
 }

@@ -36,14 +36,14 @@ import { disputeStatusLabel, formatDateTimeWAT, nameOrId, toast } from '../../ut
 const NO_DISPUTES: Dispute[] = []
 
 // Framed around whose move it is, matching DisputeSummaryResponse's own
-// shape (open/withColoplus/withAirtel) rather than inventing a new bucket
+// shape (open/withColoplus/withCustomer) rather than inventing a new bucket
 // scheme -- a closed dispute has nobody waiting on it.
-type Bucket = 'withColoplus' | 'withAirtel' | 'closed'
+type Bucket = 'withColoplus' | 'withCustomer' | 'closed'
 type TabValue = Bucket | 'all'
 
 function bucketFor(dispute: Dispute): Bucket {
   if (dispute.status === 'closed') return 'closed'
-  return dispute.waitingOn === 'airtel' ? 'withAirtel' : 'withColoplus'
+  return dispute.waitingOn === 'customer' ? 'withCustomer' : 'withColoplus'
 }
 
 type PendingAction =
@@ -87,7 +87,7 @@ function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: D
   const { label: statusLabelText, tone: statusTone } = disputeStatusLabel(dispute.status)
 
   function eventBody(event: DisputeEvent): string {
-    return event.body || `${event.party === 'airtel' ? 'Airtel' : 'Coloplus'} updated the status`
+    return event.body || `${event.party === 'customer' ? 'the customer' : 'Coloplus'} updated the status`
   }
 
   async function handleComment() {
@@ -109,7 +109,7 @@ function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: D
         <span className="text-sm text-text-muted">{dispute.ref}</span>
         <StatusBadge label={statusLabelText} tone={statusTone} />
         {dispute.resolvedAt && !dispute.acknowledgedAt && dispute.status === 'resolved' && (
-          <StatusBadge label="Awaiting Airtel's acknowledgement" tone="info" />
+          <StatusBadge label="Awaiting the customer's acknowledgement" tone="info" />
         )}
       </div>
 
@@ -199,7 +199,7 @@ function DisputeDetailPane({ dispute, siteLabel, canManage, onRequestAction }: D
             </Button>
           </div>
           <Checkbox
-            label="Internal — Airtel won't see this"
+            label="Internal — the customer won't see this"
             checked={commentInternal}
             onChange={(event) => setCommentInternal(event.target.checked)}
           />
@@ -363,7 +363,7 @@ export function SupervisorDisputes() {
   const transitionMutation = useTransitionDisputeMutation()
 
   const counts = useMemo(() => {
-    const result = { withColoplus: 0, withAirtel: 0, closed: 0 }
+    const result = { withColoplus: 0, withCustomer: 0, closed: 0 }
     for (const dispute of disputes) result[bucketFor(dispute)]++
     return result
   }, [disputes])
@@ -378,7 +378,7 @@ export function SupervisorDisputes() {
 
   const tabItems: TabItem<TabValue>[] = [
     { value: 'withColoplus', label: `With you ${counts.withColoplus}` },
-    { value: 'withAirtel', label: `With Airtel ${counts.withAirtel}` },
+    { value: 'withCustomer', label: `With the customer ${counts.withCustomer}` },
     { value: 'closed', label: `Closed ${counts.closed}` },
     { value: 'all', label: `All ${disputes.length}` },
   ]
@@ -448,8 +448,8 @@ export function SupervisorDisputes() {
       description: 'Claims it as yours and moves it out of the open queue.',
     },
     requestEvidence: {
-      title: 'Request evidence from Airtel?',
-      description: 'Moves the dispute to "with Airtel" until they reply.',
+      title: 'Request evidence from the customer?',
+      description: 'Moves the dispute to "with the customer" until they reply.',
     },
     agreeCorrection: {
       title: 'Agree this correction?',
@@ -457,7 +457,7 @@ export function SupervisorDisputes() {
     },
     resolveNotUpheld: {
       title: 'Resolve as not upheld?',
-      description: 'Tells Airtel the figure stands as published.',
+      description: 'Tells the customer the figure stands as published.',
     },
     backToReview: {
       title: 'Move this dispute back to review?',
@@ -488,8 +488,8 @@ export function SupervisorDisputes() {
             icon={ScaleIcon}
           />
           <StatCard
-            label="With Airtel"
-            value={summaryQuery.data?.withAirtel ?? 0}
+            label="With the customer"
+            value={summaryQuery.data?.withCustomer ?? 0}
             icon={ScaleIcon}
           />
         </div>

@@ -12,7 +12,7 @@ import { Spinner } from './Spinner'
 export interface FileDropZoneProps {
   ownerType: AttachmentOwnerType
   ownerId: string
-  /** Shows the "Visible to Airtel" toggle -- meaningless for an Airtel
+  /** Shows the "Visible to customer" toggle -- meaningless for a customer
       uploader, whose own files are always visible to Coloplus regardless. */
   isStaff: boolean
   label?: string
@@ -90,7 +90,7 @@ export function FileDropZone({
     <div className={`flex flex-col gap-2 ${className}`}>
       {isStaff && (
         <Checkbox
-          label="Visible to Airtel"
+          label="Visible to customer"
           hint="Off keeps this file internal to Coloplus."
           checked={shared}
           onChange={(event) => setShared(event.target.checked)}

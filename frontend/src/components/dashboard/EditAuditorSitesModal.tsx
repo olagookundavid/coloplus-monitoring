@@ -84,7 +84,7 @@ export function EditAuditorSitesModal({ user, sites, open, onClose }: EditAudito
             <Checkbox
               key={site.id}
               label={site.name}
-              hint={`${site.airtelCode} · ${site.state}`}
+              hint={`${site.customerSiteCode} · ${site.state}`}
               checked={selected.includes(site.id)}
               onChange={(event) => toggleSite(site.id, event.target.checked)}
             />

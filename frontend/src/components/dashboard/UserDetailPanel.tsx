@@ -22,7 +22,7 @@ export interface UserDetailPanelProps {
 }
 
 function organisationFor(role: StaffRole): string {
-  return role === 'airtel_viewer' || role === 'airtel_reviewer' ? 'Airtel' : 'Coloplus'
+  return role === 'viewer' || role === 'reviewer' ? 'Customer' : 'Coloplus'
 }
 
 function describeSiteScope(user: ManagedUser, sites: AdminSite[]): string {

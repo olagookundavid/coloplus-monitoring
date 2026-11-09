@@ -113,7 +113,7 @@ export function buildOpsNavGroups(correctionsBadge = 0): NavGroup[] {
         // Gated on users.manage, not exports.create: the backend's real
         // check for /calculation-runs is exports.create AND Actor.AllSites
         // AND NOT published.read, and only admin currently holds AllSites.
-        // exports.create is also held by supervisor and both Airtel roles,
+        // exports.create is also held by supervisor and both customer roles,
         // who would get a 403 if this nav item used that permission name.
         {
           label: 'Calculation runs',

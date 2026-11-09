@@ -23,7 +23,7 @@ func TestCalculationRun_FrozenCorrectionShowsInComparisonAndOnlyStaffSeeRuns(t *
 
 	// The customer, field staff and a supervisor scoped to one site are refused.
 	body := map[string]any{"month": month, "region": region}
-	for _, tok := range []string{w.airtel, w.reporter, w.supervisor} {
+	for _, tok := range []string{w.customer, w.reporter, w.supervisor} {
 		w.expect(w.call("POST", "/api/v1/calculation-runs", body, tok), 403)
 	}
 

@@ -156,7 +156,7 @@ export function RequestCorrectionModal({
         field: reportField,
         correctedValue: correctValue,
         reason: reason.trim(),
-        siteLabel: `${site.airtelCode} · ${site.name}`,
+        siteLabel: `${site.customerSiteCode} · ${site.name}`,
         fieldLabel: REPORT_FIELD_LABELS[reportField],
       })
       handleClose()
@@ -183,7 +183,7 @@ export function RequestCorrectionModal({
       field: incidentField,
       correctedValue: correctedIso,
       reason: reason.trim(),
-      siteLabel: `${site.airtelCode} · ${site.name}`,
+      siteLabel: `${site.customerSiteCode} · ${site.name}`,
       fieldLabel: correctionFieldLabel(incidentField),
     })
     handleClose()
@@ -242,7 +242,7 @@ export function RequestCorrectionModal({
             <option value="">Select a site</option>
             {sites.map((site) => (
               <option key={site.siteId} value={site.siteId}>
-                {site.airtelCode} · {site.name}
+                {site.customerSiteCode} · {site.name}
               </option>
             ))}
           </Select>

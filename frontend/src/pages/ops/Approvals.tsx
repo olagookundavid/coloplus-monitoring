@@ -116,7 +116,7 @@ export function Approvals() {
     const onSettled = {
       onSuccess: () => {
         toast.success(
-          kind === 'approve' ? 'Approved — now visible to Airtel.' : 'Returned to the reporter.'
+          kind === 'approve' ? 'Approved — now visible to the customer.' : 'Returned to the reporter.'
         )
         setPendingAction(null)
         setSelectedReportId(null)
@@ -144,7 +144,7 @@ export function Approvals() {
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
         title="Approvals"
-        subtitle="Review publication and correction requests before they reach Airtel."
+        subtitle="Review publication and correction requests before they reach the customer."
       />
 
       <Tabs<ReportStatus>
@@ -247,7 +247,7 @@ export function Approvals() {
           pendingAction?.kind === 'approve'
             ? isCorrection(pendingAction.report)
               ? 'This approves the correction and supersedes the original record.'
-              : 'This publishes the record to Airtel.'
+              : 'This publishes the record to the customer.'
             : 'This sends the record back to the reporter with your comment.'
         }
         body={

@@ -13,7 +13,7 @@ import (
 )
 
 // reportBody picks the view a person is entitled to: Coloplus staff see the
-// internal report, Airtel sees only the published facts.
+// internal report, the customer sees only the published facts.
 func (a *api) reportBody(actor domain.Actor, r domain.DailyReport) (*dto.ReportDTO, *dto.PublishedReportDTO) {
 	if actor.Can(domain.PermReportsRead) {
 		d := toReportDTO(r, a.loc)
@@ -205,7 +205,7 @@ func (a *api) startCorrection(c *gin.Context) {
 // getReport godoc
 //
 //	@Summary		One report with its calculated summary
-//	@Description	Airtel users receive the published view of approved reports only.
+//	@Description	Customer users receive the published view of approved reports only.
 //	@Tags			daily-reports
 //	@Produce		json
 //	@Param			id	path		string	true	"Report id"

@@ -367,7 +367,7 @@ func (s *stack) newSite(adminToken string, sources ...string) string {
 		sources = []string{"grid", "generator"}
 	}
 	r := s.expect(s.call("POST", "/api/v1/sites", map[string]any{
-		"airtel_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "Test site", "state": "Lagos",
+		"customer_site_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "Test site", "state": "Lagos",
 		"power_sources": sources, "status": "active",
 	}, adminToken), 201)
 	return r.str("id")

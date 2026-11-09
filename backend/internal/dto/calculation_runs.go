@@ -14,7 +14,7 @@ type CalculationRunRequest struct {
 // because nobody reported it.
 type RunRowDTO struct {
 	SiteID               string   `json:"site_id"`
-	AirtelCode           string   `json:"airtel_code"`
+	CustomerSiteCode     string   `json:"customer_site_code"`
 	SiteName             string   `json:"site_name"`
 	EligibleMinutes      int      `json:"eligible_minutes"`
 	ServedMinutes        int      `json:"served_minutes"`
@@ -57,11 +57,11 @@ type CalculationRunListResponse struct {
 
 // RunChangeDTO is a site whose figures differ between the run and now.
 type RunChangeDTO struct {
-	SiteID     string     `json:"site_id"`
-	AirtelCode string     `json:"airtel_code"`
-	SiteName   string     `json:"site_name"`
-	Then       *RunRowDTO `json:"then,omitempty"`
-	Now        *RunRowDTO `json:"now,omitempty"`
+	SiteID           string     `json:"site_id"`
+	CustomerSiteCode string     `json:"customer_site_code"`
+	SiteName         string     `json:"site_name"`
+	Then             *RunRowDTO `json:"then,omitempty"`
+	Now              *RunRowDTO `json:"now,omitempty"`
 	// ReportsChanged: the approved reports behind the figures are not the same
 	// ones any more (a correction, or a report approved after the run).
 	ReportsChanged bool `json:"reports_changed"`

@@ -120,7 +120,7 @@ function DisputeDetailPane({
                 </span>
                 <span className="text-text">
                   {event.body ||
-                    `${event.party === 'airtel' ? 'Airtel' : 'Coloplus'} updated the status`}
+                    `${event.party === 'customer' ? 'the customer' : 'Coloplus'} updated the status`}
                 </span>
               </li>
             ))}
@@ -294,8 +294,8 @@ export function Disputes() {
             icon={ScaleIcon}
           />
           <StatCard
-            label="With Airtel"
-            value={summaryQuery.data?.withAirtel ?? 0}
+            label="With the customer"
+            value={summaryQuery.data?.withCustomer ?? 0}
             icon={ScaleIcon}
           />
         </div>

@@ -98,7 +98,7 @@ func (a *api) ticketSummary(c *gin.Context) {
 // getTicket godoc
 //
 //	@Summary		One ticket with its history
-//	@Description	Both sides' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel, and so is a linked incident until it is published to them.
+//	@Description	Both sides' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for the customer, and so is a linked incident until it is published to them.
 //	@Tags			tickets
 //	@Produce		json
 //	@Param			id	path		string	true	"Ticket id"
@@ -123,7 +123,7 @@ func (a *api) getTicket(c *gin.Context) {
 // commentTicket godoc
 //
 //	@Summary		Comment on a ticket
-//	@Description	Both sides can comment, also after it is resolved. Coloplus can mark a comment internal so Airtel never sees it.
+//	@Description	Both sides can comment, also after it is resolved. Coloplus can mark a comment internal so the customer never sees it.
 //	@Tags			tickets
 //	@Accept			json
 //	@Produce		json
@@ -149,7 +149,7 @@ func (a *api) commentTicket(c *gin.Context) {
 // transitionTicket godoc
 //
 //	@Summary		Move a ticket to its next status
-//	@Description	Coloplus: open to in_progress or resolved, in_progress to resolved, and resolved back to in_progress. Resolving needs a note. Airtel: status open reopens a resolved ticket, with a note. Repeating a step that already happened changes nothing.
+//	@Description	Coloplus: open to in_progress or resolved, in_progress to resolved, and resolved back to in_progress. Resolving needs a note. Customer: status open reopens a resolved ticket, with a note. Repeating a step that already happened changes nothing.
 //	@Tags			tickets
 //	@Accept			json
 //	@Produce		json
@@ -179,7 +179,7 @@ func (a *api) transitionTicket(c *gin.Context) {
 // linkTicketIncident godoc
 //
 //	@Summary		Link a ticket to the incident opened for it (Coloplus)
-//	@Description	The incident must be at the same site. The link is noted internally; Airtel sees it on the ticket only once the incident has been published to them.
+//	@Description	The incident must be at the same site. The link is noted internally; the customer sees it on the ticket only once the incident has been published to them.
 //	@Tags			tickets
 //	@Accept			json
 //	@Produce		json

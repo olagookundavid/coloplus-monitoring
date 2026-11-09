@@ -289,7 +289,7 @@ export function CorrectionDetailPane({
 }: CorrectionDetailPaneProps) {
   const siteName =
     item.kind === 'incidentCorrection' ? item.correction.siteName : item.report.siteName
-  const siteLabel = nameOrId(siteName ?? site?.airtelCode, item.siteId)
+  const siteLabel = nameOrId(siteName ?? site?.customerSiteCode, item.siteId)
 
   return (
     <div className="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5 sm:p-6">

@@ -431,7 +431,7 @@ function IncidentDetailPane({
           icon={MegaphoneIcon}
           onClick={() => onRequestAction({ kind: 'publish', incident })}
         >
-          Publish to Airtel
+          Publish to the customer
         </Button>
       )}
 
@@ -440,7 +440,7 @@ function IncidentDetailPane({
           <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">Close</p>
           {!incident.publishedAt && (
             <p className="mt-1 text-xs text-warning-700">
-              Publish to Airtel first if this should be visible to them — a closed incident can't be
+              Publish to the customer first if this should be visible to them — a closed incident can't be
               published afterward.
             </p>
           )}
@@ -572,7 +572,7 @@ export function SupervisorIncidents() {
           break
         case 'publish':
           await publishMutation.mutateAsync(pendingAction.incident.id)
-          toast.success('Published to Airtel.')
+          toast.success('Published to the customer.')
           break
         case 'approveCorrection':
           await approveCorrectionMutation.mutateAsync(pendingAction.correction.id)
@@ -618,7 +618,7 @@ export function SupervisorIncidents() {
       description: 'Records the root cause and ends the workflow.',
     },
     publish: {
-      title: 'Publish to Airtel?',
+      title: 'Publish to the customer?',
       description: 'Makes this incident visible to the customer. This cannot be undone.',
     },
     approveCorrection: {

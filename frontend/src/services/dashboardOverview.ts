@@ -20,7 +20,7 @@ interface FuelBriefDTO {
 
 interface SiteRowDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   name: string
   site_type: string
@@ -75,7 +75,7 @@ export async function fetchDashboardOverview(date?: string): Promise<DashboardOv
       outagesThisWeek: data.outages_this_week,
       sites: data.sites.map((site) => ({
         siteId: site.site_id,
-        airtelCode: site.airtel_code,
+        customerSiteCode: site.customer_site_code,
         coloplusCode: site.coloplus_code,
         name: site.name,
         siteType: site.site_type,

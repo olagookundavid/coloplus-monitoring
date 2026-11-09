@@ -63,9 +63,9 @@ func incidentRef(n int64) string { return fmt.Sprintf("INC-%06d", n) }
 
 func siteLabel(s domain.Site) string {
 	if s.Name == "" {
-		return s.AirtelCode
+		return s.CustomerSiteCode
 	}
-	return fmt.Sprintf("%s (%s)", s.Name, s.AirtelCode)
+	return fmt.Sprintf("%s (%s)", s.Name, s.CustomerSiteCode)
 }
 
 func orDash(s string) string {
@@ -112,7 +112,7 @@ func reportOverdueEmail(site domain.Site, asOf *time.Time, loc *time.Location, l
 	}
 	return "Daily report overdue: " + siteLabel(site),
 		fmt.Sprintf("The daily report for %s is overdue. %s\n\n"+
-			"The site now shows as \"Awaiting update\" to Airtel. That means the data is stale or missing; "+
+			"The site now shows as \"Awaiting update\" to the customer. That means the data is stale or missing; "+
 			"it does not mean the power is out.\n\nOpen the site: %s\n", siteLabel(site), last, link)
 }
 

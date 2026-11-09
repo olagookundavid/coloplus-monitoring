@@ -39,7 +39,7 @@ type TransitionIncidentRequest struct {
 
 type IncidentUpdateRequest struct {
 	Body string `json:"body"`
-	// CustomerVisible shares this update with Airtel; the incident must be published.
+	// CustomerVisible shares this update with the customer; the incident must be published.
 	CustomerVisible bool `json:"customer_visible,omitempty"`
 	// The plan fields are supervisor-only. A restoration target is a plan,
 	// not a restoration.
@@ -96,7 +96,7 @@ type IncidentUpdateDTO struct {
 	CreatedAt       time.Time  `json:"created_at"`
 }
 
-// PublishedIncidentDTO is what Airtel sees: no internal description, owner,
+// PublishedIncidentDTO is what the customer sees: no internal description, owner,
 // notes, root cause or author, only the updates written for the customer.
 type PublishedIncidentDTO struct {
 	ID                string               `json:"id"`
@@ -124,7 +124,7 @@ type PublishedUpdateDTO struct {
 type IncidentDetailResponse struct {
 	Incident  *IncidentDTO          `json:"incident,omitempty"`
 	Published *PublishedIncidentDTO `json:"published,omitempty"`
-	// Updates is the full history for staff; Airtel's updates are inside Published.
+	// Updates is the full history for staff; the customer's updates are inside Published.
 	Updates []IncidentUpdateDTO `json:"updates,omitempty"`
 }
 

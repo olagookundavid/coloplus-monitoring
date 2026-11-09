@@ -55,7 +55,7 @@ interface FuelBriefDTO {
 
 interface SiteRowDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   name: string
   site_type: string
@@ -149,7 +149,7 @@ function mapFuel(dto: FuelBriefDTO): FuelBrief {
 function mapSite(dto: SiteRowDTO): PortfolioSite {
   return {
     id: dto.site_id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     coloplusCode: dto.coloplus_code,
     name: dto.name,
     siteType: dto.site_type,

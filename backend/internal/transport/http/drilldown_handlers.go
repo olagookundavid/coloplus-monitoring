@@ -41,7 +41,7 @@ func (a *api) listOutages(c *gin.Context) {
 	}
 	for _, it := range l.Items {
 		resp.Outages = append(resp.Outages, dto.OutageItemDTO{
-			SiteID: it.Site.ID, AirtelCode: it.Site.AirtelCode, ColoplusCode: it.Site.ColoplusCode, SiteName: it.Site.Name,
+			SiteID: it.Site.ID, CustomerSiteCode: it.Site.CustomerSiteCode, ColoplusCode: it.Site.ColoplusCode, SiteName: it.Site.Name,
 			Region: it.Site.Region, Start: it.Start.In(a.loc), End: it.End.In(a.loc), Minutes: it.Minutes,
 			ReportID: it.ReportID, ReportDate: it.ReportDate.Format("2006-01-02"), ReportRevision: it.Revision, Reason: it.Reason,
 		})
@@ -52,7 +52,7 @@ func (a *api) listOutages(c *gin.Context) {
 // incidentOutages godoc
 //
 //	@Summary		The reported outage during an incident
-//	@Description	Links the incident to the outage the approved daily reports show between its start and its restoration (or now, while it is open), each minute counted once. Nothing is added to the daily figures. An "Airtel" user sees this only for a published incident.
+//	@Description	Links the incident to the outage the approved daily reports show between its start and its restoration (or now, while it is open), each minute counted once. Nothing is added to the daily figures. An "The customer" user sees this only for a published incident.
 //	@Tags			incidents
 //	@Produce		json
 //	@Param			id	path		string	true	"Incident id"

@@ -11,7 +11,7 @@ import { mapAxiosError } from './auth'
 
 interface CalculationRunRowDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   site_name: string
   eligible_minutes: number
   served_minutes: number
@@ -53,7 +53,7 @@ interface CalculationRunListResponseDTO {
 
 interface RunChangeDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   site_name: string
   then?: CalculationRunRowDTO
   now?: CalculationRunRowDTO
@@ -72,7 +72,7 @@ interface RunComparisonDTO {
 function mapCalculationRunRow(dto: CalculationRunRowDTO): CalculationRunRow {
   return {
     siteId: dto.site_id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     siteName: dto.site_name,
     eligibleMinutes: dto.eligible_minutes,
     servedMinutes: dto.served_minutes,
@@ -111,7 +111,7 @@ function mapCalculationRun(dto: CalculationRunDTO): CalculationRun {
 function mapRunChange(dto: RunChangeDTO): RunChange {
   return {
     siteId: dto.site_id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     siteName: dto.site_name,
     then: dto.then ? mapCalculationRunRow(dto.then) : undefined,
     now: dto.now ? mapCalculationRunRow(dto.now) : undefined,

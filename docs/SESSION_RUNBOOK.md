@@ -7,8 +7,8 @@ For the session on 4 November 2026. The test plan page is what the testers follo
 1. Server `.env` has `WEEKLY_DIGEST_ENABLED=true`, `SLA_TARGET_PERCENT=99.5`, `RETENTION_ENABLED=true`, a live `RESEND_API_KEY` and a verified `MAIL_FROM`; then `docker compose up -d` in `~/apps/coloplus`.
 2. `curl -s https://api.remotems.com/healthcheck` answers `{"status":"ok"}`; the front end loads at https://www.remotems.com and you can sign in.
 3. Load the ten `TEST-` sites (the CSV is on the plan's Test data tab): the site import screen, or `POST /sites/import` with `{"csv": "...", "dry_run": true}` first.
-4. Invite the users (Users screen): two supervisors, two reporters, the Airtel reviewer, an optional Airtel viewer, a spare account for the lockout test, and **one more supervisor for yourself** (see below).
-5. Site assignments: reporters and supervisors as on the Test data tab. User detail, site scope: the Airtel reviewer gets the eight sites that are not Kano or Port Harcourt.
+4. Invite the users (Users screen): two supervisors, two reporters, the customer reviewer (role `reviewer`), an optional `viewer`, a spare account for the lockout test, and **one more supervisor for yourself** (see below).
+5. Site assignments: reporters and supervisors as on the Test data tab. User detail, site scope: the reviewer gets the eight sites that are not Kano or Port Harcourt.
 6. Send one test invitation to yourself first and confirm the link opens the set-password page on www.remotems.com.
 
 ## Why you need a supervisor login of your own
@@ -39,7 +39,7 @@ call "$API/disputes" | jq .                       # find the dispute id
 D=<dispute id>
 call -X POST "$API/disputes/$D/transition" -d '{"status":"under_review","note":"We are checking the report against the site log."}' | jq .
 call -X POST "$API/disputes/$D/transition" -d '{"status":"awaiting_evidence","note":"Please send your NOC log extract."}' | jq .
-# The Airtel reviewer comments in the portal. Then:
+# The reviewer comments in the portal. Then:
 call -X POST "$API/disputes/$D/comments" -d '{"body":"Thanks, we have your log.","internal":false}' | jq .
 call -X POST "$API/disputes/$D/transition" -d '{"status":"under_review","note":"Evidence received."}' | jq .
 call -X POST "$API/disputes/$D/transition" -d '{"status":"resolved","outcome":"not_upheld","note":"The report matches the site log."}' | jq .
@@ -54,20 +54,20 @@ call "$API/tickets" | jq .
 T=<ticket id>
 call -X POST "$API/tickets/$T/transition" -d '{"status":"in_progress","note":"Checking with the site team."}' | jq .
 call -X POST "$API/tickets/$T/comments" -d '{"body":"The key holder is the Lekki site manager.","internal":false}' | jq .
-call -X POST "$API/tickets/$T/comments" -d '{"body":"Internal: confirm with Ops.","internal":true}' | jq .   # Airtel must never see this one
+call -X POST "$API/tickets/$T/comments" -d '{"body":"Internal: confirm with Ops.","internal":true}' | jq .   # the customer must never see this one
 call -X POST "$API/tickets/$T/transition" -d '{"status":"resolved","note":"Answered."}' | jq .
 ```
 
 ### C10: acceptance of TEST-ENU-001
 
 ```bash
-S=$(call "$API/sites" | jq -r '.. | objects | select(.airtel_code? == "TEST-ENU-001") | .id' | head -1); echo "$S"
+S=$(call "$API/sites" | jq -r '.. | objects | select(.customer_site_code? == "TEST-ENU-001") | .id' | head -1); echo "$S"
 call -X POST "$API/sites/$S/acceptance" -d '{"next_action":"Finish the build","due_at":"2026-11-18T00:00:00Z"}' | jq .
 call -X POST "$API/sites/$S/acceptance/transition" -d '{"stage":"built","note":"Build complete."}' | jq .
 call -X POST "$API/sites/$S/acceptance/transition" -d '{"stage":"ready_for_inspection","note":"Dossier submitted."}' | jq .
 ```
 
-Then the Airtel reviewer marks it inspected, then accepted, in the portal. A site that reaches accepted becomes active.
+Then the reviewer marks it inspected, then accepted, in the portal. A site that reaches accepted becomes active.
 
 ## Known gaps to say out loud
 

@@ -29,7 +29,7 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 - [x] Append-only audit log (database trigger), batched for low-risk events, written in the same transaction for approvals, corrections, publications, disputes
 - [x] Rate limiting (tighter on sign-in and recovery), CORS allow-list, security headers, JSON-only writes (CSRF guard)
 - [x] Swagger generated at build (`make swag`); `make openapi` writes the committed contract `docs/api/swagger.json` for the front end (Swagger 2.0)
-- [x] Site has a responsible team (a team name, shown to Airtel; never a person)
+- [x] Site has a responsible team (a team name, shown to the customer; never a person)
 - [x] Dockerfile and a CI workflow; CI is green on GitHub (lint, unit, integration against Postgres, build, deploy)
 - [x] Production Docker Compose, Caddy and Cloudflare are live at `api.remotems.com` (front end `www.remotems.com`)
 - [x] Deploy pipeline: a push to main tests, builds to ghcr.io and deploys over a forced-command SSH key, running migrations first; a docs-only or front-end-only push does not deploy
@@ -39,19 +39,19 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 ## 2. People and access (PRD 4)
 
 - [x] Email and password sign-in, lockout after 5 failures, session in an HttpOnly cookie, deactivation takes effect on the next request
-- [x] Roles map to permissions in the database: administrator, field reporter, supervisor, Airtel viewer, **Airtel reviewer** (new)
+- [x] Roles map to permissions in the database: administrator, field reporter, supervisor, viewer, **reviewer** (the two customer roles, DECISIONS 071)
 - [x] Site scope on every endpoint; out-of-scope ids answer 404 so ids cannot be probed
 - [x] User administration and site assignments
 - [x] Invitation and password-reset links by email (single use, expiring, a password change ends older sessions)
 - [x] Authenticator-app (TOTP) setup and use, secrets encrypted at rest
-- [x] **Enforced** two-step sign-in for administrators, supervisors and all Airtel users: until enrolled they hold no permissions (DECISIONS 038). Confirm the role list with Airtel
+- [x] **Enforced** two-step sign-in for administrators, supervisors and all customer users (viewer, reviewer): until enrolled they hold no permissions (DECISIONS 038). Confirm the role list with the customer
 - [x] Recovery codes for a lost phone (one-time, hashed, emailed on use), regenerate, administrator or console reset of a lost second step
 - [ ] Model administrator role (drafts formulas; separate approver). Arrives with the formula engine
 - [x] Management / auditor role (`auditor`: sites, reports and audit log within assigned sites, nothing editable, two-step sign-in required; DECISIONS 045)
 
 ## 3. Sites (PRD 6)
 
-- [x] Site master record: immutable id, Airtel and Coloplus codes (duplicates refused), name, address, region and state, type, installed power sources, service window, freshness threshold, status (pending acceptance, active, suspended), commissioning date, coordinates
+- [x] Site master record: immutable id, the customer and Coloplus codes (duplicates refused), name, address, region and state, type, installed power sources, service window, freshness threshold, status (pending acceptance, active, suspended), commissioning date, coordinates
 - [x] Site directory with search by either code and name, filters on state, region, status
 - [ ] Asset capacities, reporting cadence, load profile, formula profile, effective dates on the site record. **partial**
 - [x] Directory filters on power source, acceptance stage and assigned person (staff only)
@@ -60,20 +60,20 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 ## 4. Daily reporting and approval (PRD 6, 9)
 
 - [x] Draft, submit, approve or return; the approver is never the author (service rule and database check)
-- [x] Approved reports are immutable (triggers); a correction is a linked revision with a reason, and the original stays visible to Airtel until the correction is approved
+- [x] Approved reports are immutable (triggers); a correction is a linked revision with a reason, and the original stays visible to the customer until the correction is approved
 - [x] Edits quote a version; a concurrent edit is a visible conflict
 - [x] Interval validation: whole minutes, inside the reporting day (Africa/Lagos), no future, no served/outage overlap, a source for served time
 - [x] Observed versus declared intervals; only observed counts
-- [x] Airtel sees a published view of approved reports only (no notes, authors, review comments)
+- [x] the customer sees a published view of approved reports only (no notes, authors, review comments)
 - [x] Explanation required for late submissions (a correction already requires its reason) (DECISIONS 049)
 - [~] Events that cross midnight: an outage still going at the end of a day is assumed to continue into the next until it reports otherwise, shown as assumed outage (DECISIONS 062; switch `MIDNIGHT_CARRY_OVER`). Automatic splitting of one entry into two days' reports is not built, since it writes into another day's report; the reporter still splits by hand
-- [x] CSV site import: dry run, row-by-row errors, duplicate detection on the Airtel code, all-or-nothing commit, safe to repeat (`POST /sites/import`, DECISIONS 059). XLSX and importing reports or users not built; XLSX **needs a new dependency**
+- [x] CSV site import: dry run, row-by-row errors, duplicate detection on the customer site code, all-or-nothing commit, safe to repeat (`POST /sites/import`, DECISIONS 059). XLSX and importing reports or users not built; XLSX **needs a new dependency**
 - [x] Source hours on the daily summary (`source_minutes`, in the API and the CSV export)
 - [x] Planned maintenance on the daily summary (`excluded_maintenance_minutes`); open issues are on the incident register
 - [x] Fuel the manual way: per-site agreed litres per hour and tank size, engineers record deliveries and tank readings, the level is estimated from reported generator hours and labelled an estimate (DECISIONS 050)
 - [ ] Load and generator-asset inputs beyond runtime hours (section 6 tables)
 - [x] Closing and reopening a month: administrators only, after a grace period, reopening needs a reason, closing stores the month's run (`/periods`, DECISIONS 064). The rule is the recommended one and awaits confirmation
-- [ ] Provisional view of unapproved entries (only if Airtel and Coloplus jointly enable it). **needs input**
+- [ ] Provisional view of unapproved entries (only if the customer and Coloplus jointly enable it). **needs input**
 
 ## 5. Calculations (PRD 7, 8)
 
@@ -104,23 +104,23 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 - [x] Restoration needs an observed time; a target never counts. Verification needs a new observation from a different person than the one who recorded restoration. Closing needs a root cause. Closed is frozen
 - [x] Faults with no outage kept apart from interruptions
 - [x] Every incident has an owner (to work it), next action and a next-update time
-- [x] Publication to Airtel does not wait for the daily report; Airtel sees published facts and customer updates only **FR**
-- [x] Critical notice emailed to Airtel users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
+- [x] Publication to the customer does not wait for the daily report; the customer sees published facts and customer updates only **FR**
+- [x] Critical notice emailed to the customer users on the site at publication; overdue-update email to the owner and supervisors, once per missed promise
 - [x] Link an incident to the outage intervals of daily reports without duplicating downtime: `GET /incidents/:id/outages` (DECISIONS 055)
 - [~] Midnight: carry-over built (DECISIONS 062); automatic split into the neighbouring day not built
 - [x] Evidence attachments on incidents (DECISIONS 047)
-- [x] Support tickets: Airtel raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
+- [x] Support tickets: The customer raises a request about a site, Coloplus works it (open, in progress, resolved), comments with internal notes, reopen, retry-safe creation, link to the incident opened for it (DECISIONS 046)
 - [x] Ticket attachments (DECISIONS 047)
 - [x] Planned maintenance is a record with its request, approver and note (`/maintenance`, DECISIONS 062)
 - [x] Reporter can request a correction to when a fault started or was restored, with the original kept and a second person deciding it (decision 042). Request/list/get built and permission-gated; approve/reject built but no supervisor UI yet
 
 ## 8. Disputes (PRD 9)
 
-- [x] Airtel reviewer raises a dispute about a site, a period, a published report or one interval, with a category and metric
+- [x] A reviewer raises a dispute about a site, a period, a published report or one interval, with a category and metric
 - [x] Open, under review, awaiting evidence, agreed correction, resolved, closed
-- [x] Coloplus's resolution and Airtel's acknowledgement are separate acts; withdrawal is not an agreement
+- [x] Coloplus's resolution and the customer's acknowledgement are separate acts; withdrawal is not an agreement
 - [x] An upheld dispute needs a real, later approved revision of that day (AT09)
-- [x] Both parties' comments kept; internal Coloplus notes and staff ids never reach Airtel or their emails
+- [x] Both parties' comments kept; internal Coloplus notes and staff ids never reach the customer or their emails
 - [x] Reports show `open_disputes`, so a disputed figure says so
 - [x] Evidence attachments on disputes (DECISIONS 047)
 - [x] Dispute state carried into exports (open and total disputes per site-day, corrections do not hide them)
@@ -129,12 +129,12 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 ## 9. Commissioning and acceptance (PRD 9)
 
 - [x] Stages: requested, built, ready for inspection, inspected, accepted, rejected, on hold (with a reason, resuming to where it was)
-- [x] Coloplus submits the dossier; Airtel records its own review; nothing else counts as acceptance, and inspection comes before acceptance (AT10)
+- [x] Coloplus submits the dossier; the customer records its own review; nothing else counts as acceptance, and inspection comes before acceptance (AT10)
 - [x] Reasons, responsible party (whose move), next action, due date; each side emailed when the other acts
 - [x] Age since ready for inspection, reported apart from operational performance
 - [x] Commissioning backlog (`GET /acceptances`), longest-waiting first
 - [x] Acceptance-overdue alert, once per missed due time; a hold stops the clock
-- [ ] KPI inclusion rule. **needs input**: built as a proposed default (Airtel's acceptance activates a pending site; pending sites stay out of the KPIs). Confirm with Airtel
+- [ ] KPI inclusion rule. **needs input**: built as a proposed default (The customer's acceptance activates a pending site; pending sites stay out of the KPIs). Confirm with the customer
 - [x] Documents attached to the acceptance dossier (DECISIONS 047)
 - [~] Every acceptance step has a deadline (a default per stage when none is set) and an acceptance overdue for 7 days also goes to the administrators once (DECISIONS 067). The days are proposals
 
@@ -152,7 +152,7 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 
 ## 11. Evidence and files (PRD 6)
 
-- [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from Airtel, every download audited; `api check-storage` proves the bucket works. Tested against the live bucket on 2 November: upload with the signed link, checksum enforced, signed download and delete all passed
+- [x] Private R2 bucket, presigned upload, permission-checked short-lived download (2 minutes), SHA-256 checksum, scoped to the site, internal files hidden from the customer, every download audited; `api check-storage` proves the bucket works. Tested against the live bucket on 2 November: upload with the signed link, checksum enforced, signed download and delete all passed
 - [x] Abandoned-upload cleanup, off by default (`ATTACHMENT_GC_ENABLED`), reports what it would delete
 - [x] No virus scanner, by decision: only an allow-list of file types is accepted (photos, PDF, text, CSV, Word, Excel), the name's extension must match the type, and files are always downloaded, never displayed (DECISIONS 047)
 - [x] Evidence on daily reports (`owner_type=report`): Coloplus-only whatever is asked, never visible to the customer, closed once the report is approved (DECISIONS 066)
@@ -162,7 +162,7 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 - [x] Daily site summaries, incident register, weekly exception report, monthly performance pack and commissioning backlog (CSV; DECISIONS 056)
 - [x] Maintenance log: every window with who asked, who decided and why (`GET /maintenance`)
 - [x] CSV export of daily summaries; gaps stay blank rows
-- [x] CSV export of the incident register (`/exports/incidents.csv`); Airtel gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
+- [x] CSV export of the incident register (`/exports/incidents.csv`); the customer gets published incidents only, duration stays blank until restoration is recorded (DECISIONS 044)
 - [ ] XLSX export; printable or PDF. Deferred by decision: CSV is enough until a customer asks. **new dependency** (XLSX, PDF)
 - [x] Every export carries site ids, period, time zone, units, basis, coverage, review state, formula and report versions, generation time, assumptions, and dispute state (CSV daily summaries, DECISIONS 037)
 - [x] Issued reports are never overwritten: every export is entered in an immutable register with its SHA-256, and the exact file is kept when storage is on (`GET /exports/issued`; DECISIONS 058). Approved daily reports were already immutable, with linked revisions
@@ -186,7 +186,7 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 
 | ID | What it proves | Status |
 |---|---|---|
-| AT01 | Airtel cannot reach another customer's site, attachment, report or API response | Sites, reports, incidents, disputes, tickets, attachments, exports: tested |
+| AT01 | The customer cannot reach another customer's site, attachment, report or API response | Sites, reports, incidents, disputes, tickets, attachments, exports: tested |
 | AT02 | A known input gives the expected energy estimate with its inputs and formula version | Not started (no energy model) |
 | AT03 | An overdue or missing entry shows stale ("Awaiting update"); unreported time is assumed, never confirmed (owner's default-available rule, DECISIONS 051) | Done, tested. Changed from the PRD wording; the customer should agree to it |
 | AT04 | Overlapping, duplicate, cross-midnight intervals give correct unions and allocations | Unions, overlap rejection and coverage: done. Cross-midnight splitting: not built |
@@ -194,8 +194,8 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 | AT06 | Reporter cannot self-approve; a correction keeps the original and makes a new revision | Done, tested |
 | AT07 | Formula activation needs approval; old results reproduce exactly | Not started |
 | AT08 | Fuel movements reconcile; missing values block a false variance | Not started |
-| AT09 | Airtel can raise and track a dispute; exports keep provenance and dispute state | Disputes: done, tested. Exports: CSV done with provenance and dispute state, tested; XLSX and PDF open |
-| AT10 | Acceptance states stay separate from operational status | Done, tested. KPI rule is a default awaiting Airtel's confirmation |
+| AT09 | The customer can raise and track a dispute; exports keep provenance and dispute state | Disputes: done, tested. Exports: CSV done with provenance and dispute state, tested; XLSX and PDF open |
+| AT10 | Acceptance states stay separate from operational status | Done, tested. KPI rule is a default awaiting the customer's confirmation |
 | AT11 | Load, access control, notification failure and backup restore meet the pilot targets | Not started |
 
 ## 16. Waiting on people, not code (PRD 13)
@@ -204,12 +204,12 @@ Not in the first release by decision: formula versions, estimated energy, XLSX/P
 - [ ] Reporting cadence and stale thresholds per site or record type
 - [ ] Contractual availability: windows, acceptance inclusion, maintenance exclusions, unknown time, aggregation
 - [ ] Initial formulas and parameters (load profiles, fuel curves) validated by the Coloplus technical owner
-- [ ] Evidence required per entry type; whether incidents are visible to Airtel before approval; approval turnaround
+- [ ] Evidence required per entry type; whether incidents are visible to the customer before approval; approval turnaround
 - [ ] Hosting, identity provider, alert channels, retention, support and recovery targets
-- [ ] Airtel nominates its operational reviewer
+- [ ] the customer nominates its operational reviewer
 - [ ] A reference dataset with hand-calculated expected results (PRD 12, before build)
 - [ ] The Resend sending domain verified; the front-end base URL
-- [ ] Whether root cause is shared with Airtel (DECISIONS 032)
+- [ ] Whether root cause is shared with the customer (DECISIONS 032)
 
 ## 17. Front end (separate engineer)
 

@@ -122,6 +122,23 @@ func (a *api) updateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, one[0])
 }
 
+// logoutEveryone godoc
+//
+//	@Summary		Sign everybody out
+//	@Description	Ends every session at once, the caller's included: all of them sign in again. Needs user management; recorded in the audit log.
+//	@Tags			users
+//	@Success		200	{object}	dto.LogoutAllResponse
+//	@Failure		403	{object}	dto.ErrorResponse
+//	@Router			/api/v1/auth/logout-all [post]
+func (a *api) logoutEveryone(c *gin.Context) {
+	n, err := a.users.LogoutEveryone(c.Request.Context(), actorFrom(c))
+	if err != nil {
+		a.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, dto.LogoutAllResponse{Accounts: n})
+}
+
 // resetUserMFA godoc
 //
 //	@Summary		Reset a person's two-step verification

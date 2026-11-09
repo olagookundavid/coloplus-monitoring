@@ -101,6 +101,16 @@ func (r *UserRepository) SetTOTP(ctx context.Context, id, sealedSecret string, e
 	return err
 }
 
+// RevokeAllSessions uses the same cut-off a password change does: a session
+// issued before password_changed_at is refused (AuthService.Authenticate).
+func (r *UserRepository) RevokeAllSessions(ctx context.Context, at time.Time) (int64, error) {
+	tag, err := r.db.q(ctx).Exec(ctx, `UPDATE users SET password_changed_at = $1`, at)
+	if err != nil {
+		return 0, mapErr(err, "")
+	}
+	return tag.RowsAffected(), nil
+}
+
 func (r *UserRepository) ResetTOTP(ctx context.Context, id string, at time.Time) error {
 	tag, err := r.db.q(ctx).Exec(ctx,
 		`UPDATE users SET totp_secret = '', totp_enabled = FALSE, password_changed_at = $2, updated_at = $2

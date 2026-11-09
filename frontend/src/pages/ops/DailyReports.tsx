@@ -94,7 +94,7 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
         <div className="min-w-0">
           <p className="text-sm text-text-muted">{formatReportDateLabel(reportDate)}</p>
           <h2 className="mt-1 truncate text-xl font-bold text-text">
-            {site.airtelCode} · {site.name}
+            {site.customerSiteCode} · {site.name}
           </h2>
           {subtitle && <p className="mt-1 text-sm text-text-muted">{subtitle}</p>}
         </div>
@@ -154,7 +154,7 @@ function DailyReportDetailPane({ site, reportDate }: DailyReportDetailPaneProps)
           <Field
             label={`${generatorStep}. Generator runtime (hours)`}
             htmlFor="daily-generator-hours"
-            hint="Fuel use is estimated from this and shown to Airtel as an estimate."
+            hint="Fuel use is estimated from this and shown to the customer as an estimate."
           >
             <Input
               id="daily-generator-hours"
@@ -278,7 +278,7 @@ export function DailyReports() {
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
         title="Daily reports"
-        subtitle="Report what happened at each site today. Values from formulas are shown to Airtel as estimates."
+        subtitle="Report what happened at each site today. Values from formulas are shown to the customer as estimates."
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -310,7 +310,7 @@ export function DailyReports() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-text">{site.airtelCode}</p>
+                          <p className="truncate font-medium text-text">{site.customerSiteCode}</p>
                           <p className="truncate text-xs text-text-muted">{site.name}</p>
                         </div>
                         <StatusBadge label={label} tone={tone} className="shrink-0" />

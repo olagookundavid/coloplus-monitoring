@@ -17,9 +17,9 @@ CREATE TABLE attachments (
     -- A random key, never the file name: nothing a person typed is in a path.
     storage_key  TEXT        NOT NULL UNIQUE,
     status       TEXT        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'ready', 'rejected', 'expired')),
-    -- Coloplus-only evidence. Airtel's own uploads are never internal.
+    -- Coloplus-only evidence. The customer's own uploads are never internal.
     internal     BOOLEAN     NOT NULL DEFAULT FALSE,
-    party        TEXT        NOT NULL CHECK (party IN ('airtel', 'coloplus')),
+    party        TEXT        NOT NULL CHECK (party IN ('customer', 'coloplus')),
     uploaded_by  UUID        NOT NULL REFERENCES users (id),
     -- Reserved for the virus scan (DECISIONS 016); nothing sets it yet.
     scan_status  TEXT        NOT NULL DEFAULT 'not_scanned' CHECK (scan_status IN ('not_scanned', 'clean', 'infected')),

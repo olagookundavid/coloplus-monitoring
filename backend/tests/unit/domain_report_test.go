@@ -32,7 +32,7 @@ func outage(from, to time.Time) domain.PowerInterval {
 func testSite() domain.Site {
 	return domain.Site{
 		UnreportedTime: domain.UnreportedUnknown,
-		ID:             "site-1", AirtelCode: "LOS-001", ColoplusCode: "CP-001", Name: "Ikeja", State: "Lagos",
+		ID:             "site-1", CustomerSiteCode: "LOS-001", ColoplusCode: "CP-001", Name: "Ikeja", State: "Lagos",
 		PowerSources:       []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
 		ServiceStartMinute: 0, ServiceEndMinute: 1440, FreshnessHours: 30, Status: domain.SiteActive,
 	}

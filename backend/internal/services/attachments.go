@@ -24,7 +24,7 @@ type AttachmentConfig struct {
 // site acceptance. The bytes never pass through this server: a person asks for
 // a short-lived upload link, sends the file straight to private storage, and
 // confirms. Who may attach or see a file follows who may act on, or see, the
-// thing it is attached to, and a file marked internal is never shown to Airtel.
+// thing it is attached to, and a file marked internal is never shown to the customer.
 type AttachmentService struct {
 	attachments ports.AttachmentRepository
 	store       ports.ObjectStore // nil when storage is not configured
@@ -58,7 +58,7 @@ func (s *AttachmentService) WithReports(r ports.ReportRepository) *AttachmentSer
 }
 
 // IsStaff says whether the caller sees Coloplus's side: internal files and who
-// sent what. Airtel users never do.
+// sent what. Customer users never do.
 func (s *AttachmentService) IsStaff(actor domain.Actor) bool {
 	return !actor.Can(domain.PermPublishedRead)
 }
@@ -77,7 +77,7 @@ type AttachmentInput struct {
 	ContentType string
 	SizeBytes   int64
 	SHA256      string
-	// Shared lets Airtel see a file Coloplus sends. Airtel's own files are
+	// Shared lets the customer see a file Coloplus sends. The customer's own files are
 	// always shared with Coloplus.
 	Shared bool
 }
@@ -197,7 +197,7 @@ func (s *AttachmentService) Request(ctx context.Context, actor domain.Actor, in 
 	if s.store == nil {
 		return AttachmentUpload{}, s.unavailable()
 	}
-	party := domain.PartyAirtel
+	party := domain.PartyCustomer
 	if s.IsStaff(actor) {
 		party = domain.PartyColoplus
 	}

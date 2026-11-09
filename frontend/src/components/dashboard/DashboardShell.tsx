@@ -7,7 +7,7 @@ import { Topbar } from './Topbar'
 
 export interface DashboardShellProps {
   nav: NavGroup[]
-  /** Which portal this is — e.g. "Airtel viewer portal," "Admin portal." */
+  /** Which portal this is — e.g. "Viewer portal," "Admin portal." */
   portalLabel: string
   orgBadge?: SidebarOrgBadge
   supportCard?: SidebarSupportCard

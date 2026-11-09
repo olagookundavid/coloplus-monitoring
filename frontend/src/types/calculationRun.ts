@@ -1,6 +1,6 @@
 export interface CalculationRunRow {
   siteId: string
-  airtelCode: string
+  customerSiteCode: string
   siteName: string
   eligibleMinutes: number
   servedMinutes: number
@@ -45,7 +45,7 @@ export interface CalculationRunListResult {
 
 export interface RunChange {
   siteId: string
-  airtelCode: string
+  customerSiteCode: string
   siteName: string
   /** Absent when the site didn't exist/wasn't in the run back then. */
   then?: CalculationRunRow

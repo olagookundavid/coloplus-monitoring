@@ -35,7 +35,7 @@ const CONDITION: Record<string, { label: string; tone: StatusTone }> = {
 }
 
 // The Coloplus side of the acceptance stage machine -- requested/built/
-// ready_for_inspection/rejected-rework/hold/resume. Airtel's side
+// ready_for_inspection/rejected-rework/hold/resume. The customer's side
 // (inspected/accepted/rejected) is already built in pages/customer/
 // Acceptance.tsx and SiteDetailPanel.tsx; this is the missing other half.
 type PendingAcceptanceAction =
@@ -59,7 +59,7 @@ const ACCEPTANCE_CONFIRM_COPY: Record<
   },
   submitForInspection: {
     title: 'Submit for inspection?',
-    description: 'Sends the dossier to Airtel for review.',
+    description: 'Sends the dossier to the customer for review.',
   },
   hold: {
     title: 'Put acceptance on hold?',
@@ -155,8 +155,8 @@ function SiteDetailBody({ site, onFuel }: { site: AdminSite; onFuel?: () => void
 
       <dl className="divide-y divide-border rounded-lg border border-border">
         <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-          <dt className="text-text-muted">Airtel code</dt>
-          <dd className="font-medium text-text">{site.airtelCode}</dd>
+          <dt className="text-text-muted">Customer site code</dt>
+          <dd className="font-medium text-text">{site.customerSiteCode}</dd>
         </div>
         <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
           <dt className="text-text-muted">Coloplus code</dt>
@@ -190,7 +190,7 @@ function SiteDetailBody({ site, onFuel }: { site: AdminSite; onFuel?: () => void
               {acceptance.overdue && <StatusBadge label="Overdue" tone="danger" />}
             </div>
             <p className="text-sm text-text-muted">
-              Waiting on {acceptance.waitingOn === 'airtel' ? 'Airtel' : 'Coloplus'}
+              Waiting on {acceptance.waitingOn === 'customer' ? 'Customer' : 'Coloplus'}
             </p>
             {acceptance.dueAt && (
               <p className={`text-sm ${acceptance.overdue ? 'text-danger' : 'text-text-muted'}`}>
@@ -307,7 +307,7 @@ function SiteDetailBody({ site, onFuel }: { site: AdminSite; onFuel?: () => void
 
             {canManageAcceptance &&
               (acceptance.stage === 'ready_for_inspection' || acceptance.stage === 'inspected') && (
-                <p className="text-xs text-text-muted">Waiting on Airtel to act next.</p>
+                <p className="text-xs text-text-muted">Waiting on the customer to act next.</p>
               )}
 
             <div className="border-t border-border pt-3">
@@ -405,7 +405,7 @@ function SiteDetailBody({ site, onFuel }: { site: AdminSite; onFuel?: () => void
         icon={ClipboardDocumentCheckIcon}
         confirmLabel="Confirm"
         pending={acceptanceMutationPending}
-        body={<ConfirmSummary title={site.name} meta={site.airtelCode} />}
+        body={<ConfirmSummary title={site.name} meta={site.customerSiteCode} />}
         onConfirm={() => void handleConfirmAcceptance()}
         onCancel={() => setPendingAcceptanceAction(null)}
       />
@@ -423,7 +423,7 @@ export function SupervisorSites() {
   const [fuelSite, setFuelSite] = useState<AdminSite | null>(null)
 
   const columns: Column<AdminSite>[] = [
-    { header: 'Site', accessor: (site) => site.airtelCode },
+    { header: 'Site', accessor: (site) => site.customerSiteCode },
     {
       header: 'Name and type',
       accessor: (site) => site.name,
@@ -458,7 +458,7 @@ export function SupervisorSites() {
       <SidePanel
         open={Boolean(selectedSite)}
         onClose={() => setSelectedSiteId(null)}
-        eyebrow={selectedSite?.airtelCode}
+        eyebrow={selectedSite?.customerSiteCode}
         title={selectedSite?.name ?? ''}
         subtitle={
           selectedSite && (

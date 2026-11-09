@@ -116,7 +116,7 @@ type IncidentOutages struct {
 
 // IncidentOutages links an incident to the outage the daily reports show
 // during it, without counting any downtime twice. A caller sees an incident
-// only as they could anywhere else: staff in their sites, "Airtel" users only
+// only as they could anywhere else: staff in their sites, customer users only
 // once it is published.
 func (s *DashboardService) IncidentOutages(ctx context.Context, actor domain.Actor, incidentID string) (IncidentOutages, error) {
 	staff := actor.Can(domain.PermIncidentsRead)

@@ -12,12 +12,14 @@ import (
 type Role string
 
 const (
-	RoleAdmin        Role = "admin"
-	RoleReporter     Role = "reporter"
-	RoleSupervisor   Role = "supervisor"
-	RoleAirtelViewer Role = "airtel_viewer"
-	// RoleAirtelReviewer is a viewer who may also raise and acknowledge disputes.
-	RoleAirtelReviewer Role = "airtel_reviewer"
+	RoleAdmin      Role = "admin"
+	RoleReporter   Role = "reporter"
+	RoleSupervisor Role = "supervisor"
+	// RoleViewer reads what has been approved or published for the customer.
+	RoleViewer Role = "viewer"
+	// RoleReviewer is a viewer who may also raise and acknowledge disputes and
+	// tickets and decide site acceptance.
+	RoleReviewer Role = "reviewer"
 	// RoleAuditor is Coloplus management: reads reports and the audit log in
 	// its assigned scope and can change nothing.
 	RoleAuditor Role = "auditor"
@@ -26,7 +28,7 @@ const (
 // ValidRole reports whether r is a role the system knows.
 func ValidRole(r Role) bool {
 	switch r {
-	case RoleAdmin, RoleReporter, RoleSupervisor, RoleAirtelViewer, RoleAirtelReviewer, RoleAuditor:
+	case RoleAdmin, RoleReporter, RoleSupervisor, RoleViewer, RoleReviewer, RoleAuditor:
 		return true
 	}
 	return false

@@ -17,7 +17,7 @@ const SECTIONS: Array<{ value: SettingsSection; label: string; facts: SettingsFa
       {
         label: 'Two-step verification',
         description:
-          "Required for Coloplus administrators, operations supervisors and Airtel accounts. An account that hasn't enrolled yet holds no other permissions until it does.",
+          "Required for Coloplus administrators, operations supervisors and customer accounts. An account that hasn't enrolled yet holds no other permissions until it does.",
       },
       {
         label: 'Session timeout',
@@ -40,7 +40,7 @@ const SECTIONS: Array<{ value: SettingsSection; label: string; facts: SettingsFa
           'Whoever submits a publication, correction or formula change can never approve it. Enforced by the database — this cannot be turned off.',
       },
       {
-        label: 'Estimates labelled for Airtel',
+        label: 'Estimates labelled for the customer',
         description:
           'Formula-based and estimated values are always shown as estimates, never as a meter reading. This cannot be turned off.',
       },

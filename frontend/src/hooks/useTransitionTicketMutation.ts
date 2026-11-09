@@ -9,7 +9,7 @@ import { TICKETS_QUERY_KEY } from './useTickets'
 
 // Coloplus's general transition (start work, resolve, take a resolved
 // ticket back into work) -- distinct from useReopenTicketMutation, which is
-// Airtel's own reopen and always sends status "open".
+// the customer's own reopen and always sends status "open".
 export function useTransitionTicketMutation() {
   const queryClient = useQueryClient()
   return useMutation({

@@ -14,12 +14,12 @@ import (
 // stay inside the caller's sites.
 func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 	w := newWorkflow(t)
-	elseEmail, _ := w.seedUser(domain.RoleAirtelViewer, w.newSite(w.admin))
+	elseEmail, _ := w.seedUser(domain.RoleViewer, w.newSite(w.admin))
 	elsewhere := w.login(elseEmail)
 	fuelURL := "/api/v1/sites/" + w.site + "/fuel"
 
 	// No agreed rate: unavailable, with the reason, and never a number.
-	st := w.expect(w.call("GET", fuelURL, nil, w.airtel), 200)
+	st := w.expect(w.call("GET", fuelURL, nil, w.customer), 200)
 	est := st.Body["estimate"].(map[string]any)
 	if est["available"] != false || est["litres"] != nil || est["reason"] == "" {
 		t.Fatalf("with no agreed rate there must be no number: %s", st.Raw)
@@ -33,7 +33,7 @@ func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 		t.Helper()
 		return w.expect(w.call("POST", fuelURL, body, tok), want)
 	}
-	post(map[string]any{"kind": "delivery", "litres": 1000, "occurred_at": at4(9, 0)}, w.airtel, 403)         // customers do not record
+	post(map[string]any{"kind": "delivery", "litres": 1000, "occurred_at": at4(9, 0)}, w.customer, 403)       // customers do not record
 	post(map[string]any{"kind": "delivery", "litres": 5000, "occurred_at": at4(9, 0)}, w.reporter, 400)       // more than the tank holds
 	post(map[string]any{"kind": "delivery", "litres": 1000, "occurred_at": ago(-time.Hour)}, w.reporter, 400) // the future
 	first := post(map[string]any{
@@ -61,7 +61,7 @@ func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 	level := func(tok string) map[string]any {
 		return w.expect(w.call("GET", fuelURL, nil, tok), 200).Body["estimate"].(map[string]any)
 	}
-	if e := level(w.airtel); e["available"] != true || e["litres"] != 980.0 || e["basis"] != "estimate" ||
+	if e := level(w.customer); e["available"] != true || e["litres"] != 980.0 || e["basis"] != "estimate" ||
 		e["provisional"] != false || e["assumed_empty_start"] != true {
 		t.Fatalf("1,000 L less 20 hours at 1 L/h should be an estimated 980: %v", e)
 	}
@@ -73,7 +73,7 @@ func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 	}
 
 	// Coloplus sees notes and who recorded; the customer sees neither.
-	if raw := w.expect(w.call("GET", fuelURL, nil, w.airtel), 200).Raw; strings.Contains(raw, "driver Ade") || strings.Contains(raw, "recorded_by") {
+	if raw := w.expect(w.call("GET", fuelURL, nil, w.customer), 200).Raw; strings.Contains(raw, "driver Ade") || strings.Contains(raw, "recorded_by") {
 		t.Fatalf("the customer sees Coloplus-only detail: %s", raw)
 	}
 	if raw := w.expect(w.call("GET", fuelURL, nil, w.supervisor), 200).Raw; !strings.Contains(raw, "driver Ade") {
@@ -86,10 +86,10 @@ func TestFuel_EstimateFollowsTheRateAndNothingInternalLeaks(t *testing.T) {
 	w.expect(w.call("POST", "/api/v1/fuel/"+id+"/void", map[string]any{"reason": "typo"}, w.reporter), 403)
 	w.expect(w.call("POST", "/api/v1/fuel/"+id+"/void", map[string]any{"reason": "x"}, w.supervisor), 400)
 	w.expect(w.call("POST", "/api/v1/fuel/"+id+"/void", map[string]any{"reason": "Entered against the wrong site"}, w.supervisor), 200)
-	if e := level(w.airtel); e["available"] != false {
+	if e := level(w.customer); e["available"] != false {
 		t.Fatalf("with its only entry voided there is nothing to estimate from: %v", e)
 	}
-	if n := len(w.expect(w.call("GET", fuelURL, nil, w.airtel), 200).list("entries")); n != 0 {
+	if n := len(w.expect(w.call("GET", fuelURL, nil, w.customer), 200).list("entries")); n != 0 {
 		t.Fatalf("a voided entry reached the customer")
 	}
 	if n := len(w.expect(w.call("GET", fuelURL, nil, w.supervisor), 200).list("entries")); n != 1 {

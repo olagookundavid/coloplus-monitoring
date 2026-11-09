@@ -10,9 +10,9 @@ import (
 	"coloplus-backend/internal/ports"
 )
 
-// TicketService runs support tickets: a request Airtel raises about a site and
+// TicketService runs support tickets: a request the customer raises about a site and
 // Coloplus works. A ticket is not a fault record. It can be linked to the
-// incident Coloplus opens for it, and Airtel only learns of that incident once
+// incident Coloplus opens for it, and the customer only learns of that incident once
 // it has been published to them.
 type TicketService struct {
 	tickets   ports.TicketRepository
@@ -69,7 +69,7 @@ type ListTicketsInput struct {
 }
 
 // IsStaff says whether the caller sees Coloplus's side of a ticket: who raised
-// and works it and the internal notes. Airtel users never do.
+// and works it and the internal notes. Customer users never do.
 func (s *TicketService) IsStaff(actor domain.Actor) bool {
 	return !actor.Can(domain.PermPublishedRead)
 }
@@ -150,7 +150,7 @@ func (s *TicketService) Raise(ctx context.Context, actor domain.Actor, in Ticket
 			return err
 		}
 		e, err := s.tickets.AddEvent(ctx, domain.TicketEvent{
-			TicketID: created.ID, AuthorID: actor.UserID, Party: domain.PartyAirtel, Kind: domain.TicketEventStatus,
+			TicketID: created.ID, AuthorID: actor.UserID, Party: domain.PartyCustomer, Kind: domain.TicketEventStatus,
 			ToStatus: domain.TicketOpen, Body: created.Description, CreatedAt: t.CreatedAt,
 		})
 		if err != nil {
@@ -171,7 +171,7 @@ func (s *TicketService) Raise(ctx context.Context, actor domain.Actor, in Ticket
 	return created, err
 }
 
-// Get returns a ticket with its history. Airtel does not see Coloplus's
+// Get returns a ticket with its history. The customer does not see Coloplus's
 // internal notes.
 func (s *TicketService) Get(ctx context.Context, actor domain.Actor, id string) (TicketView, error) {
 	t, err := s.load(ctx, actor, id, false)
@@ -207,7 +207,7 @@ func (s *TicketService) Summary(ctx context.Context, actor domain.Actor) (ports.
 }
 
 // Comment adds to the conversation. Coloplus may mark a comment internal, so
-// Airtel never sees it. A resolved ticket can still be commented on.
+// The customer never sees it. A resolved ticket can still be commented on.
 func (s *TicketService) Comment(ctx context.Context, actor domain.Actor, id, body string, internal bool) (domain.TicketEvent, error) {
 	party, ok := domain.TicketPartyOf(actor)
 	if !ok {
@@ -246,7 +246,7 @@ func (s *TicketService) Comment(ctx context.Context, actor domain.Actor, id, bod
 // already happened changes nothing, so a retry is safe.
 //
 //	Coloplus: open -> in progress -> resolved (a resolved ticket can be worked again)
-//	Airtel:   reopen a resolved ticket (back to open)
+//	Customer:   reopen a resolved ticket (back to open)
 func (s *TicketService) Transition(ctx context.Context, actor domain.Actor, id string, step domain.TicketStep) (domain.Ticket, error) {
 	party, ok := domain.TicketPartyOf(actor)
 	if !ok {
@@ -299,7 +299,7 @@ func (s *TicketService) Transition(ctx context.Context, actor domain.Actor, id s
 }
 
 // LinkIncident ties the ticket to the incident Coloplus opened for it. The
-// incident must be at the same site. The link is noted internally; Airtel sees
+// incident must be at the same site. The link is noted internally; the customer sees
 // it on the ticket only once the incident has been published to them.
 func (s *TicketService) LinkIncident(ctx context.Context, actor domain.Actor, id, incidentID string) (domain.Ticket, error) {
 	if !actor.Can(domain.PermTicketsManage) {
@@ -354,7 +354,7 @@ func (s *TicketService) LinkIncident(ctx context.Context, actor domain.Actor, id
 }
 
 // notifyOtherSide emails the people on the other side of the conversation.
-// Coloplus staff on the site hear about Airtel's moves; the person who raised
+// Coloplus staff on the site hear about the customer's moves; the person who raised
 // the ticket hears about Coloplus's. Internal notes never come here, and the
 // contact address typed into the ticket is never emailed.
 func (s *TicketService) notifyOtherSide(ctx context.Context, t domain.Ticket, e domain.TicketEvent) error {

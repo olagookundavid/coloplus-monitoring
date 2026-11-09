@@ -2,7 +2,7 @@ export type SiteImportRowAction = 'create' | 'update' | 'unchanged' | 'error'
 
 export interface SiteImportRow {
   line: number
-  airtelCode: string
+  customerSiteCode: string
   action: SiteImportRowAction
   problems?: string[]
 }

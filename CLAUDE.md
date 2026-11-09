@@ -1,6 +1,6 @@
 # Coloplus: engineering guide (Fusewall standard)
 
-Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: Airtel). It is a Fusewall product and follows the Fusewall stack and hosting model by default. These are standing rules; follow them without being asked. Detail: `backend/CLAUDE.md`, `frontend/CLAUDE.md`. Reasoning and deviations: `docs/DECISIONS.md` (read it before changing anything architectural). The product spec is `docs/Coloplus_Remote_Monitoring_PRD.docx`; the standard is `docs/architecture-kit/fusewall-architecture.md`.
+Coloplus is the Remote Monitoring Portal for Coloplus power services (first customer: a telecom operator). It is a Fusewall product and follows the Fusewall stack and hosting model by default. These are standing rules; follow them without being asked. Detail: `backend/CLAUDE.md`, `frontend/CLAUDE.md`. Reasoning and deviations: `docs/DECISIONS.md` (read it before changing anything architectural). The product spec is `docs/Coloplus_Remote_Monitoring_PRD.docx`; the standard is `docs/architecture-kit/fusewall-architecture.md`.
 
 ## Repo layout
 - `backend/`: Go API (hexagonal). The current focus.
@@ -28,6 +28,7 @@ Coloplus is the Remote Monitoring Portal for Coloplus power services (customer: 
 9. **Tests are kept minimal (owner's priority is building features).** Write a test only for what is critical or risky: money-like and trust rules (approval, scope, immutability, the PRD metrics), security (auth, lockout, access control), concurrency and shutdown behaviour, and anything that has already broken once. Do not write tests for getters, mappers, simple validation, config defaults, happy-path CRUD or library behaviour; testers will catch the obvious. Prefer one integration test through the HTTP stack over many small ones. A bug that slipped through gets one regression test. Do not add tests "for coverage".
 10. **PRD trust rules:** a site is available by default and made unavailable only with a reason (owner direction, DECISIONS 051, which amends the PRD), but time nobody reported is always shown as **assumed, never confirmed**, with the days without a report counted beside it, and a site can be set to the stricter "unknown" reading; every derived figure carries provenance; approval needs a second person; the audit log is append-only.
 11. **Docs stay true:** a new standing rule goes into the right CLAUDE.md in the same change; a questionable choice gets a `docs/DECISIONS.md` entry.
+12. **No customer is named in the product.** Roles, permissions, API fields, screens, emails and error text say "customer", never a company's name (DECISIONS 071). The customer roles are `viewer` and `reviewer`. A person at a customer appears only under their own account, name and email.
 
 ## Commands
 `make db/up` (local Postgres) · `make run` · `make test` (unit) · `make test/integration` · `make test/all` · `make lint` · `make migrate` · `make help`.

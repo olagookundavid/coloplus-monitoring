@@ -10,7 +10,7 @@ func ago(d time.Duration) string { return time.Now().Add(-d).UTC().Format(time.R
 
 // The trust rules of the fault register: restoration is an observed time, it
 // is verified by a second person with a new observation, a closed incident is
-// frozen, and Airtel sees only what was published for them.
+// frozen, and the customer sees only what was published for them.
 func TestIncident_RestorationNeedsAnObservationAndASecondPerson(t *testing.T) {
 	w := newWorkflow(t)
 	api := "/api/v1/incidents/"
@@ -22,9 +22,9 @@ func TestIncident_RestorationNeedsAnObservationAndASecondPerson(t *testing.T) {
 	}, w.reporter), 201)
 	id := r.str("id")
 
-	// Out of scope, and invisible to Airtel until published.
+	// Out of scope, and invisible to the customer until published.
 	w.expect(w.call("GET", api+id, nil, w.ot), 404)
-	w.expect(w.call("GET", api+id, nil, w.airtel), 404)
+	w.expect(w.call("GET", api+id, nil, w.customer), 404)
 	w.expect(w.call("POST", api+id+"/updates", map[string]any{"body": "hello", "customer_visible": true}, w.supervisor), 409)
 
 	// A field officer cannot run the workflow beyond recording restoration.
@@ -57,7 +57,7 @@ func TestIncident_RestorationNeedsAnObservationAndASecondPerson(t *testing.T) {
 		t.Fatalf("closed audit rows = %d, want 1", n)
 	}
 
-	// Sharing with Airtel: only the published facts and customer updates.
+	// Sharing with the customer: only the published facts and customer updates.
 	w.expect(w.call("POST", api+id+"/publish", nil, w.reporter), 403)
 }
 
@@ -86,7 +86,7 @@ func TestIncident_AVerifierMustNotBeTheRestorer(t *testing.T) {
 	}
 }
 
-func TestIncident_AirtelSeesOnlyWhatIsPublishedForThem(t *testing.T) {
+func TestIncident_CustomerSeesOnlyWhatIsPublishedForThem(t *testing.T) {
 	w := newWorkflow(t)
 	api := "/api/v1/incidents/"
 	id := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
@@ -100,16 +100,16 @@ func TestIncident_AirtelSeesOnlyWhatIsPublishedForThem(t *testing.T) {
 	// A reporter cannot speak to the customer.
 	w.expect(w.call("POST", api+id+"/updates", map[string]any{"body": "x", "customer_visible": true}, w.reporter), 403)
 
-	got := w.expect(w.call("GET", api+id, nil, w.airtel), 200)
+	got := w.expect(w.call("GET", api+id, nil, w.customer), 200)
 	if got.Raw == "" || strings.Contains(got.Raw, "transformer") || strings.Contains(got.Raw, "internal chatter") || strings.Contains(got.Raw, "description") {
-		t.Fatalf("Airtel saw internal detail: %s", got.Raw)
+		t.Fatalf("The customer saw internal detail: %s", got.Raw)
 	}
 	if !strings.Contains(got.Raw, "Engineer on site") {
-		t.Fatalf("Airtel should see the customer update: %s", got.Raw)
+		t.Fatalf("The customer should see the customer update: %s", got.Raw)
 	}
-	list := w.expect(w.call("GET", "/api/v1/incidents", nil, w.airtel), 200)
+	list := w.expect(w.call("GET", "/api/v1/incidents", nil, w.customer), 200)
 	if len(list.list("published")) != 1 || len(list.list("incidents")) != 0 {
-		t.Fatalf("Airtel list = %s", list.Raw)
+		t.Fatalf("The customer list = %s", list.Raw)
 	}
-	w.expect(w.call("POST", api+id+"/assign", map[string]any{"owner_id": w.reporterID}, w.airtel), 403)
+	w.expect(w.call("POST", api+id+"/assign", map[string]any{"owner_id": w.reporterID}, w.customer), 403)
 }

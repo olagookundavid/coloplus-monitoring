@@ -14,7 +14,7 @@ import (
 )
 
 var dailySummaryHeader = []string{
-	"site_id", "airtel_code", "coloplus_code", "site_name", "site_status",
+	"site_id", "customer_site_code", "coloplus_code", "site_name", "site_status",
 	"date", "time_zone", "service_window",
 	"report_status", "report_id", "report_revision", "approved_at_utc", "is_correction",
 	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes",
@@ -79,7 +79,7 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 			availability = percent(sum.ReportedAvailability)
 		}
 		_ = w.Write([]string{
-			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), string(r.Site.Status),
+			r.Site.ID, safeCell(r.Site.CustomerSiteCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), string(r.Site.Status),
 			r.Date.Format("2006-01-02"), exp.Timezone,
 			fmt.Sprintf("%02d:%02d-%02d:%02d", r.Site.ServiceStartMinute/60, r.Site.ServiceStartMinute%60, r.Site.ServiceEndMinute/60, r.Site.ServiceEndMinute%60),
 			status, reportID, revision, approvedAt, correction,
@@ -96,7 +96,7 @@ func (a *api) exportDailySummaries(c *gin.Context) {
 }
 
 var incidentHeader = []string{
-	"incident_ref", "incident_id", "site_id", "airtel_code", "coloplus_code", "site_name", "region", "responsible_team",
+	"incident_ref", "incident_id", "site_id", "customer_site_code", "coloplus_code", "site_name", "region", "responsible_team",
 	"category", "severity", "impact", "title", "status", "customer_published",
 	"started_at_utc", "restoration_target_utc", "restored_at_utc", "restored_verified", "closed_at_utc",
 	"duration_minutes", "time_zone", "generated_at_utc", "assumptions",
@@ -105,7 +105,7 @@ var incidentHeader = []string{
 // exportIncidents godoc
 //
 //	@Summary		Export the incident register as CSV
-//	@Description	One row per reported fault that started in the period, with its site, severity, impact, status and observed times. Airtel gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.
+//	@Description	One row per reported fault that started in the period, with its site, severity, impact, status and observed times. The customer gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.
 //	@Tags			exports
 //	@Produce		text/csv
 //	@Param			from	query		string	true	"First day, 2026-12-01"
@@ -152,7 +152,7 @@ func (a *api) exportIncidents(c *gin.Context) {
 			duration = strconv.Itoa(int(i.RestoredAt.Sub(i.StartedAt).Minutes()))
 		}
 		_ = w.Write([]string{
-			incidentRef(i.Number), i.ID, r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name),
+			incidentRef(i.Number), i.ID, r.Site.ID, safeCell(r.Site.CustomerSiteCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name),
 			safeCell(r.Site.Region), safeCell(r.Site.ResponsibleTeam),
 			string(i.Category), string(i.Severity), string(i.Impact), safeCell(i.Title), string(i.Status), yesNo(i.PublishedAt != nil),
 			utc(&i.StartedAt), utc(i.RestorationTarget), utc(i.RestoredAt), yesNo(i.VerifiedAt != nil), utc(i.ClosedAt),

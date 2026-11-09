@@ -43,7 +43,7 @@ export function MySiteCard({ site, onReport, onDetails, onFuel }: MySiteCardProp
   return (
     <div className="flex min-w-0 flex-col gap-4 rounded-lg border border-border bg-surface p-5">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-text">{site.airtelCode}</h3>
+        <h3 className="text-base font-semibold text-text">{site.customerSiteCode}</h3>
         <StatusBadge label={label} tone={tone} />
       </div>
       <p className="-mt-2 truncate text-sm text-text-muted">

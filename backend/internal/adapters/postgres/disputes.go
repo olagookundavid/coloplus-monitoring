@@ -175,7 +175,7 @@ func (r *DisputeRepository) Counts(ctx context.Context, f ports.DisputeFilter) (
 		`SELECT count(*) FILTER (WHERE status <> 'closed'),
 		        count(*) FILTER (WHERE status IN ('open', 'under_review', 'agreed_correction')),
 		        count(*) FILTER (WHERE status IN ('awaiting_evidence', 'resolved'))
-		 FROM disputes`+clause, args...).Scan(&c.Open, &c.WithColoplus, &c.WithAirtel)
+		 FROM disputes`+clause, args...).Scan(&c.Open, &c.WithColoplus, &c.WithCustomer)
 	return c, mapErr(err, "")
 }
 

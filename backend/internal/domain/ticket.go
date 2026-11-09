@@ -62,13 +62,13 @@ func ValidTicketPriority(p TicketPriority) bool {
 }
 
 // TicketPartyOf says which side the actor speaks for: Coloplus works tickets,
-// Airtel raises them. The party values are shared with disputes.
+// The customer raises them. The party values are shared with disputes.
 func TicketPartyOf(a Actor) (DisputeParty, bool) {
 	switch {
 	case a.Can(PermTicketsManage):
 		return PartyColoplus, true
 	case a.Can(PermTicketsRaise):
-		return PartyAirtel, true
+		return PartyCustomer, true
 	}
 	return "", false
 }
@@ -101,7 +101,7 @@ type Ticket struct {
 	ClientKey string
 
 	// IncidentID is the incident this ticket became or belongs to. The other
-	// two fields are read with it so that Airtel is only told about an incident
+	// two fields are read with it so that the customer is only told about an incident
 	// that has been published to them.
 	IncidentID        string
 	IncidentNumber    int64
@@ -151,7 +151,7 @@ type TicketStep struct {
 
 // CanMove says whether the party may take the ticket to the step's status.
 // Coloplus starts and resolves, and can take a resolved ticket back into work;
-// Airtel can only reopen a resolved one.
+// The customer can only reopen a resolved one.
 func (t Ticket) CanMove(party DisputeParty, to TicketStatus) bool {
 	switch party {
 	case PartyColoplus:
@@ -163,7 +163,7 @@ func (t Ticket) CanMove(party DisputeParty, to TicketStatus) bool {
 		case TicketResolved:
 			return to == TicketInProgress
 		}
-	case PartyAirtel:
+	case PartyCustomer:
 		return t.Status == TicketResolved && to == TicketOpen
 	}
 	return false
@@ -179,7 +179,7 @@ func (t Ticket) CheckStep(party DisputeParty, s TicketStep) []string {
 	switch {
 	case party == PartyColoplus && s.To == TicketResolved && note == "":
 		return []string{"say how it was resolved"}
-	case party == PartyAirtel && s.To == TicketOpen && note == "":
+	case party == PartyCustomer && s.To == TicketOpen && note == "":
 		return []string{"say why it is not resolved"}
 	case party == PartyColoplus && t.Status == TicketResolved && s.To == TicketInProgress && note == "":
 		return []string{"say why the ticket is being worked again"}
@@ -204,7 +204,7 @@ func (t *Ticket) Apply(party DisputeParty, actorID string, s TicketStep, now tim
 		if t.AssigneeID == "" {
 			t.AssigneeID = actorID
 		}
-	case party == PartyAirtel && s.To == TicketOpen:
+	case party == PartyCustomer && s.To == TicketOpen:
 		t.Resolution, t.ResolvedAt, t.ResolvedBy = "", nil, ""
 		t.ReopenCount++
 	}
@@ -228,7 +228,7 @@ type TicketEvent struct {
 	FromStatus TicketStatus
 	ToStatus   TicketStatus
 	Body       string
-	// Internal entries are Coloplus's own notes and never reach Airtel.
+	// Internal entries are Coloplus's own notes and never reach the customer.
 	Internal  bool
 	CreatedAt time.Time
 }

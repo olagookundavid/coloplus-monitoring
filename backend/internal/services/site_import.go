@@ -24,10 +24,10 @@ const (
 )
 
 // SiteImportColumns are the columns a site import file may carry. Only
-// airtel_code must be present; a new site also needs the columns Validate
+// customer_site_code must be present; a new site also needs the columns Validate
 // requires. On an existing site a blank cell leaves the value unchanged.
 var SiteImportColumns = []string{
-	"airtel_code", "coloplus_code", "name", "state", "power_sources", "region", "address", "site_type",
+	"customer_site_code", "coloplus_code", "name", "state", "power_sources", "region", "address", "site_type",
 	"responsible_team", "service_start", "service_end", "freshness_hours", "status", "commissioning_date",
 	"latitude", "longitude", "consumption_lph", "tank_capacity_litres", "unreported_time",
 	"generator_capacity", "access_contact_name", "access_contact_phone", "supervisor_name",
@@ -45,10 +45,10 @@ const (
 // SiteImportRow is the outcome for one data row. Line is the line in the file
 // (the header is line 1).
 type SiteImportRow struct {
-	Line       int
-	AirtelCode string
-	Action     SiteImportAction
-	Problems   []string
+	Line             int
+	CustomerSiteCode string
+	Action           SiteImportAction
+	Problems         []string
 }
 
 // SiteImportResult is all-or-nothing: Applied is true only when every row was
@@ -61,7 +61,7 @@ type SiteImportResult struct {
 }
 
 // ImportCSV loads sites from a CSV file, creating new ones and updating
-// existing ones matched on the Airtel code. With dryRun it only reports what
+// existing ones matched on the customer site code. With dryRun it only reports what
 // would happen. Any bad row means nothing is written.
 func (s *SiteService) ImportCSV(ctx context.Context, actor domain.Actor, data []byte, dryRun bool) (SiteImportResult, error) {
 	if !actor.Can(domain.PermSitesManage) {
@@ -79,14 +79,14 @@ func (s *SiteService) ImportCSV(ctx context.Context, actor domain.Actor, data []
 	if err != nil {
 		return SiteImportResult{}, err
 	}
-	byAirtel, byColoplus := map[string]string{}, map[string]string{}
+	byCustomerCode, byColoplus := map[string]string{}, map[string]string{}
 	for _, c := range existing {
-		byAirtel[strings.ToLower(c.AirtelCode)] = c.ID
+		byCustomerCode[strings.ToLower(c.CustomerSiteCode)] = c.ID
 		byColoplus[strings.ToLower(c.ColoplusCode)] = c.ID
 	}
 	ids := make([]string, 0, len(records))
 	for _, rec := range records {
-		if id, ok := byAirtel[strings.ToLower(strings.TrimSpace(rec.cell(header, "airtel_code")))]; ok {
+		if id, ok := byCustomerCode[strings.ToLower(strings.TrimSpace(rec.cell(header, "customer_site_code")))]; ok {
 			ids = append(ids, id)
 		}
 	}
@@ -107,11 +107,11 @@ func (s *SiteService) ImportCSV(ctx context.Context, actor domain.Actor, data []
 		action SiteImportAction
 	}
 	var plans []plan
-	seenAirtel, seenColoplus := map[string]int{}, map[string]int{}
+	seenCustomerCode, seenColoplus := map[string]int{}, map[string]int{}
 
 	for _, rec := range records {
-		row := SiteImportRow{Line: rec.line, AirtelCode: strings.TrimSpace(rec.cell(header, "airtel_code"))}
-		site, action, problems := buildImportSite(rec, header, byAirtel, current)
+		row := SiteImportRow{Line: rec.line, CustomerSiteCode: strings.TrimSpace(rec.cell(header, "customer_site_code"))}
+		site, action, problems := buildImportSite(rec, header, byCustomerCode, current)
 		// A Coloplus code must not already belong to another site, in the
 		// register or earlier in this file.
 		if site.ColoplusCode != "" {
@@ -124,11 +124,11 @@ func (s *SiteService) ImportCSV(ctx context.Context, actor domain.Actor, data []
 			}
 			seenColoplus[key] = rec.line
 		}
-		if key := strings.ToLower(row.AirtelCode); key != "" {
-			if first, ok := seenAirtel[key]; ok {
-				problems = append(problems, fmt.Sprintf("the Airtel code %q is repeated (also on line %d)", row.AirtelCode, first))
+		if key := strings.ToLower(row.CustomerSiteCode); key != "" {
+			if first, ok := seenCustomerCode[key]; ok {
+				problems = append(problems, fmt.Sprintf("the customer site code %q is repeated (also on line %d)", row.CustomerSiteCode, first))
 			}
-			seenAirtel[key] = rec.line
+			seenCustomerCode[key] = rec.line
 		}
 		if len(problems) > 0 {
 			row.Action, row.Problems = ImportError, problems
@@ -161,7 +161,7 @@ func (s *SiteService) ImportCSV(ctx context.Context, actor domain.Actor, data []
 				}
 				if err := s.audit.RecordInTx(ctx, domain.AuditEvent{
 					ActorID: actor.UserID, Action: "site.created", EntityType: "site", EntityID: created.ID,
-					Metadata: map[string]any{"airtel_code": created.AirtelCode, "via": "import"},
+					Metadata: map[string]any{"customer_site_code": created.CustomerSiteCode, "via": "import"},
 				}); err != nil {
 					return err
 				}
@@ -233,8 +233,8 @@ func readSiteCSV(data []byte) (map[string]int, []importRecord, error) {
 		}
 		header[name] = i
 	}
-	if _, ok := header["airtel_code"]; !ok {
-		return nil, nil, invalid("the airtel_code column is required")
+	if _, ok := header["customer_site_code"]; !ok {
+		return nil, nil, invalid("the customer_site_code column is required")
 	}
 
 	var records []importRecord
@@ -268,16 +268,16 @@ func readSiteCSV(data []byte) (map[string]int, []importRecord, error) {
 
 // buildImportSite overlays the row onto the existing site (or a new one) and
 // validates the result.
-func buildImportSite(rec importRecord, header map[string]int, byAirtel map[string]string, current map[string]domain.Site) (domain.Site, SiteImportAction, []string) {
+func buildImportSite(rec importRecord, header map[string]int, byCustomerCode map[string]string, current map[string]domain.Site) (domain.Site, SiteImportAction, []string) {
 	var problems []string
 	var site domain.Site
 	action := ImportCreate
-	code := rec.cell(header, "airtel_code")
+	code := rec.cell(header, "customer_site_code")
 	if code == "" {
-		return site, ImportError, []string{"the Airtel site code is required"}
+		return site, ImportError, []string{"the customer site code is required"}
 	}
 	var before domain.Site
-	if id, ok := byAirtel[strings.ToLower(code)]; ok {
+	if id, ok := byCustomerCode[strings.ToLower(code)]; ok {
 		before = current[id]
 		site = before
 		action = ImportUpdate
@@ -290,8 +290,8 @@ func buildImportSite(rec importRecord, header map[string]int, byAirtel map[strin
 			continue
 		}
 		switch col {
-		case "airtel_code":
-			site.AirtelCode = v
+		case "customer_site_code":
+			site.CustomerSiteCode = v
 		case "coloplus_code":
 			site.ColoplusCode = v
 		case "name":

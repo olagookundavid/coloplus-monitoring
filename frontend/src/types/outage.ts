@@ -3,7 +3,7 @@
 // so no minute is counted twice, with the report it came from.
 export interface Outage {
   siteId: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   siteName: string
   region: string
@@ -13,7 +13,7 @@ export interface Outage {
   reportId: string
   reportDate: string
   reportRevision: number
-  /** Coloplus-only; absent for an Airtel caller. */
+  /** Coloplus-only; absent for a customer caller. */
   reason?: string
 }
 

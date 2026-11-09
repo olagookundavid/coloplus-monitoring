@@ -106,7 +106,7 @@ export function ReporterOverview() {
 
   const columns = useMemo<Column<SiteReportRow>[]>(
     () => [
-      { header: 'Site', accessor: (row) => row.airtelCode },
+      { header: 'Site', accessor: (row) => row.customerSiteCode },
       {
         header: 'Name',
         accessor: (row) => row.name,
@@ -227,7 +227,7 @@ export function ReporterOverview() {
           key={site.siteId}
           tone="warning"
           title="Returned for correction"
-          description={`${site.airtelCode} · ${site.todayStatus?.reviewComment || 'A reason was not given.'}`}
+          description={`${site.customerSiteCode} · ${site.todayStatus?.reviewComment || 'A reason was not given.'}`}
           action={{ label: 'Fix now', onClick: () => openPanel(site, 'edit') }}
         />
       ))}

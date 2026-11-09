@@ -19,7 +19,7 @@ INSERT INTO roles (id, name) VALUES
     ('admin',         'Coloplus administrator'),
     ('reporter',      'Field officer or site reporter'),
     ('supervisor',    'Operations supervisor'),
-    ('airtel_viewer', 'Airtel viewer');
+    ('viewer', 'Viewer');
 
 INSERT INTO permissions (id, description) VALUES
     ('users.manage',    'Create users, change roles and site assignments'),
@@ -47,8 +47,8 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('supervisor',    'sites.read'),
     ('supervisor',    'reports.read'),
     ('supervisor',    'reports.review'),
-    ('airtel_viewer', 'sites.read'),
-    ('airtel_viewer', 'published.read');
+    ('viewer', 'sites.read'),
+    ('viewer', 'published.read');
 
 CREATE TABLE users (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),

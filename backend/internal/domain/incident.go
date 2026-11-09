@@ -88,7 +88,7 @@ type Incident struct {
 	Severity Severity
 	Impact   Impact
 	Title    string
-	// Description is internal; Airtel sees only the customer updates.
+	// Description is internal; the customer sees only the customer updates.
 	Description string
 	Status      IncidentStatus
 

@@ -39,7 +39,7 @@ interface TicketDTO {
 
 interface TicketEventDTO {
   id: string
-  party: 'airtel' | 'coloplus'
+  party: 'customer' | 'coloplus'
   kind: TicketEventKind
   from_status?: TicketStatus
   to_status?: TicketStatus
@@ -191,7 +191,7 @@ export async function commentTicket(
 }
 
 // Coloplus's general transition (start work, resolve, take a resolved
-// ticket back into work). Airtel's reopen keeps its own reopenTicket()
+// ticket back into work). The customer's reopen keeps its own reopenTicket()
 // below, which always sends status "open" -- this one never does.
 export interface TransitionTicketInput {
   status: 'in_progress' | 'resolved'

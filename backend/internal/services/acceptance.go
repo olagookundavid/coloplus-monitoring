@@ -12,8 +12,8 @@ import (
 )
 
 // AcceptanceService runs a site's commissioning and acceptance: Coloplus
-// builds and submits a dossier, Airtel inspects and accepts or rejects. The
-// two sides are kept apart, and only Airtel's own decision counts as
+// builds and submits a dossier, the customer inspects and accepts or rejects. The
+// two sides are kept apart, and only the customer's own decision counts as
 // acceptance. It is reported separately from operational performance.
 type AcceptanceService struct {
 	acceptances ports.AcceptanceRepository
@@ -159,10 +159,10 @@ func (s *AcceptanceService) List(ctx context.Context, actor domain.Actor, in Lis
 // changes nothing.
 //
 //	Coloplus: requested -> built -> ready for inspection (with the dossier); rejected -> built
-//	Airtel:   ready for inspection -> inspected | rejected; inspected -> accepted | rejected
+//	Customer:   ready for inspection -> inspected | rejected; inspected -> accepted | rejected
 //	Either:   hold, and resume to where it was
 //
-// When Airtel accepts, a site still pending acceptance becomes active, which
+// When the customer accepts, a site still pending acceptance becomes active, which
 // is what brings it into the service KPIs.
 func (s *AcceptanceService) Transition(ctx context.Context, actor domain.Actor, siteID string, step domain.AcceptanceStep) (domain.Acceptance, error) {
 	party, ok := domain.AcceptanceParty(actor)
@@ -296,12 +296,12 @@ func (s *AcceptanceService) AlertOverdue(ctx context.Context) (int, error) {
 		if err != nil {
 			return queued, err
 		}
-		if a.Responsible == domain.PartyAirtel {
-			airtel, err := s.users.UsersWithPermission(ctx, domain.PermAcceptanceReview, a.SiteID)
+		if a.Responsible == domain.PartyCustomer {
+			reviewers, err := s.users.UsersWithPermission(ctx, domain.PermAcceptanceReview, a.SiteID)
 			if err != nil {
 				return queued, err
 			}
-			for _, u := range airtel {
+			for _, u := range reviewers {
 				recipients = appendUnique(recipients, u)
 			}
 		}

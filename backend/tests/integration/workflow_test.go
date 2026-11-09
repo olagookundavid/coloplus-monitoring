@@ -12,13 +12,13 @@ import (
 )
 
 // workflow is the cast of a typical day: an admin, a site, a field reporter
-// on that site, a supervisor, an Airtel viewer, and an outsider.
+// on that site, a supervisor, an Viewer, and an outsider.
 type workflow struct {
 	*stack
-	site                                     string
-	admin, reporter, supervisor, airtel, ot  string // tokens
-	reporterID                               string
-	repEmail, supEmail, airEmail, adminEmail string
+	site                                      string
+	admin, reporter, supervisor, customer, ot string // tokens
+	reporterID                                string
+	repEmail, supEmail, airEmail, adminEmail  string
 }
 
 func newWorkflow(t *testing.T) *workflow {
@@ -29,12 +29,12 @@ func newWorkflow(t *testing.T) *workflow {
 
 	repEmail, repID := s.seedUser(domain.RoleReporter, site)
 	supEmail, _ := s.seedUser(domain.RoleSupervisor, site)
-	airEmail, _ := s.seedUser(domain.RoleAirtelViewer, site)
+	airEmail, _ := s.seedUser(domain.RoleViewer, site)
 	outEmail, _ := s.seedUser(domain.RoleReporter) // assigned to nothing
 
 	return &workflow{
 		stack: s, site: site, admin: admin, reporterID: repID,
-		reporter: s.login(repEmail), supervisor: s.login(supEmail), airtel: s.login(airEmail), ot: s.login(outEmail),
+		reporter: s.login(repEmail), supervisor: s.login(supEmail), customer: s.login(airEmail), ot: s.login(outEmail),
 		repEmail: repEmail, supEmail: supEmail, airEmail: airEmail, adminEmail: adminEmail,
 	}
 }
@@ -63,8 +63,8 @@ func TestDailyReport_FullApprovalFlow(t *testing.T) {
 	w := newWorkflow(t)
 	id := w.draft(1)
 
-	// Airtel cannot see an unapproved report, and neither can an outsider.
-	w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, w.airtel), 404)
+	// The customer cannot see an unapproved report, and neither can an outsider.
+	w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, w.customer), 404)
 	w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, w.ot), 404)
 
 	// Submitting twice is safe (a retry after a dropped connection).
@@ -84,10 +84,10 @@ func TestDailyReport_FullApprovalFlow(t *testing.T) {
 	// Approved reports can no longer be edited or resubmitted.
 	w.expect(w.call("PUT", "/api/v1/daily-reports/"+id, map[string]any{"row_version": 99, "intervals": []any{}}, w.reporter), 409)
 
-	// Airtel now sees the published view: facts, not internal commentary.
-	pub := w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, w.airtel), 200)
+	// The customer now sees the published view: facts, not internal commentary.
+	pub := w.expect(w.call("GET", "/api/v1/daily-reports/"+id, nil, w.customer), 200)
 	if pub.Body["published"] == nil || pub.Body["report"] != nil {
-		t.Fatalf("an Airtel user must receive the published view only: %s", pub.Raw)
+		t.Fatalf("a customer user must receive the published view only: %s", pub.Raw)
 	}
 	for _, leak := range []string{"internal: generator serviced", "author_id", "reviewer_id", "review_comment", "notes"} {
 		if strings.Contains(pub.Raw, leak) {
@@ -111,10 +111,10 @@ func TestDailyReport_FullApprovalFlow(t *testing.T) {
 		t.Fatalf("calculation provenance missing: %v", calc)
 	}
 
-	// Airtel's list holds approved reports only.
-	list := w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.airtel), 200)
+	// The customer's list holds approved reports only.
+	list := w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.customer), 200)
 	if len(list.list("published")) != 1 || list.Body["reports"] != nil {
-		t.Fatalf("airtel list = %s", list.Raw)
+		t.Fatalf("customer list = %s", list.Raw)
 	}
 
 	if n := w.countAudit("report.approved", id); n != 1 {
@@ -161,9 +161,9 @@ func TestDailyReport_ValidationAndScope(t *testing.T) {
 
 	// A reporter not assigned to the site cannot see or write to it.
 	w.expect(create(w.ot, []any{iv(at(1, 0), at(2, 0), "served", "grid")}), 404)
-	// A supervisor does not create reports; an Airtel user never does.
+	// A supervisor does not create reports; a customer user never does.
 	w.expect(create(w.supervisor, nil), 403)
-	w.expect(create(w.airtel, nil), 403)
+	w.expect(create(w.customer, nil), 403)
 
 	// A future date is refused.
 	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/daily-reports",
@@ -299,10 +299,10 @@ func TestDailyReport_CorrectionKeepsTheOriginalUntilApproved(t *testing.T) {
 	}, w.reporter), 200)
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+corrID+"/submit", nil, w.reporter), 200)
 
-	// Until the correction is approved, Airtel still sees the original.
-	seen := w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.airtel), 200)
+	// Until the correction is approved, the customer still sees the original.
+	seen := w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.customer), 200)
 	if pubs := seen.list("published"); len(pubs) != 1 || pubs[0].(map[string]any)["id"] != orig {
-		t.Fatalf("airtel should still see only the original: %s", seen.Raw)
+		t.Fatalf("customer should still see only the original: %s", seen.Raw)
 	}
 
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+corrID+"/approve", nil, w.supervisor), 200)
@@ -312,11 +312,11 @@ func TestDailyReport_CorrectionKeepsTheOriginalUntilApproved(t *testing.T) {
 	if old.str("report", "status") != "superseded" {
 		t.Fatalf("original status = %s, want superseded", old.str("report", "status"))
 	}
-	seen = w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.airtel), 200)
+	seen = w.expect(w.call("GET", "/api/v1/daily-reports?site_id="+w.site, nil, w.customer), 200)
 	if pubs := seen.list("published"); len(pubs) != 1 || pubs[0].(map[string]any)["id"] != corrID {
-		t.Fatalf("airtel should now see the correction: %s", seen.Raw)
+		t.Fatalf("customer should now see the correction: %s", seen.Raw)
 	}
-	live := w.expect(w.call("GET", "/api/v1/daily-reports/"+corrID, nil, w.airtel), 200)
+	live := w.expect(w.call("GET", "/api/v1/daily-reports/"+corrID, nil, w.customer), 200)
 	if live.Body["summary"].(map[string]any)["outage_minutes"] != float64(45) {
 		t.Fatalf("corrected outage = %v", live.Body["summary"])
 	}
@@ -444,10 +444,10 @@ func TestDashboard_UnreportedTimeIsAssumedAvailableAndSaysSo(t *testing.T) {
 		t.Fatalf("the unknown site must not count as available: %v", sp)
 	}
 
-	// An Airtel viewer assigned to the first site only sees that site.
-	air := w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+date, nil, w.airtel), 200)
+	// An Viewer assigned to the first site only sees that site.
+	air := w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+date, nil, w.customer), 200)
 	if len(air.list("sites")) != 1 {
-		t.Fatalf("airtel viewer should see only their assigned site: %s", air.Raw)
+		t.Fatalf("customer viewer should see only their assigned site: %s", air.Raw)
 	}
 }
 
@@ -553,16 +553,16 @@ func TestSites_ScopeSearchAndDuplicates(t *testing.T) {
 		t.Fatalf("the reporter's one site should match, got %d", len(got))
 	}
 	w.expect(w.call("GET", "/api/v1/sites?source=wind", nil, w.admin), 400)
-	w.expect(w.call("GET", "/api/v1/sites?assigned_to="+w.reporterID, nil, w.airtel), 403)
+	w.expect(w.call("GET", "/api/v1/sites?assigned_to="+w.reporterID, nil, w.customer), 403)
 
 	// Only administrators write to the register.
-	w.expect(w.call("POST", "/api/v1/sites", map[string]any{"airtel_code": "X"}, w.reporter), 403)
-	w.expect(w.call("PUT", "/api/v1/sites/"+w.site, map[string]any{"airtel_code": "X"}, w.supervisor), 403)
+	w.expect(w.call("POST", "/api/v1/sites", map[string]any{"customer_site_code": "X"}, w.reporter), 403)
+	w.expect(w.call("PUT", "/api/v1/sites/"+w.site, map[string]any{"customer_site_code": "X"}, w.supervisor), 403)
 
-	// Duplicate Airtel site codes are rejected.
+	// Duplicate customer site codes are rejected.
 	site := w.expect(w.call("GET", "/api/v1/sites/"+w.site, nil, w.admin), 200)
 	dup := w.expect(w.call("POST", "/api/v1/sites", map[string]any{
-		"airtel_code": strings.ToLower(site.str("airtel_code")), "coloplus_code": uniq("CP"), "name": "Dup", "state": "Lagos",
+		"customer_site_code": strings.ToLower(site.str("customer_site_code")), "coloplus_code": uniq("CP"), "name": "Dup", "state": "Lagos",
 		"power_sources": []string{"grid"},
 	}, w.admin), 409)
 	if !strings.Contains(dup.str("error"), "already exists") {
@@ -570,8 +570,8 @@ func TestSites_ScopeSearchAndDuplicates(t *testing.T) {
 	}
 
 	// Validation is worded, and lists everything wrong at once.
-	bad := w.expect(w.call("POST", "/api/v1/sites", map[string]any{"airtel_code": "", "power_sources": []string{"wind"}}, w.admin), 400)
-	for _, want := range []string{"Airtel site code", "state is required", "power source"} {
+	bad := w.expect(w.call("POST", "/api/v1/sites", map[string]any{"customer_site_code": "", "power_sources": []string{"wind"}}, w.admin), 400)
+	for _, want := range []string{"customer site code", "state is required", "power source"} {
 		if !strings.Contains(bad.str("error"), want) {
 			t.Errorf("error %q should mention %q", bad.str("error"), want)
 		}
@@ -659,13 +659,32 @@ func TestAuth_AccountLocksAfterRepeatedFailures(t *testing.T) {
 	}
 }
 
+// Signing everybody out ends every session at once, including the caller's,
+// and only someone who manages users may do it; a fresh sign-in works at once.
+func TestAuth_LogoutEveryoneEndsAllSessions(t *testing.T) {
+	w := newWorkflow(t)
+	email, _ := w.seedUser(domain.RoleReporter)
+
+	w.expect(w.call("GET", "/api/v1/auth/me", nil, w.reporter), 200)
+	w.expect(w.call("POST", "/api/v1/auth/logout-all", nil, w.reporter), 403)
+	w.expect(w.call("GET", "/api/v1/auth/me", nil, w.reporter), 200)
+
+	if n := w.expect(w.call("POST", "/api/v1/auth/logout-all", nil, w.admin), 200).Body["accounts"]; n == nil || n.(float64) < 2 {
+		t.Fatalf("accounts covered = %v", n)
+	}
+	w.expect(w.call("GET", "/api/v1/auth/me", nil, w.reporter), 401)
+	w.expect(w.call("GET", "/api/v1/auth/me", nil, w.admin), 401)
+
+	w.expect(w.call("GET", "/api/v1/auth/me", nil, w.login(email)), 200)
+}
+
 // A kept dashboard answer must never reach someone whose sites differ: the
 // cache is keyed by the exact set of sites a person may see.
 func TestDashboard_KeptAnswersNeverCrossSiteScopes(t *testing.T) {
 	t.Setenv("DASHBOARD_CACHE_TTL", "1m")
 	w := newWorkflow(t)
 	otherSite := w.newSite(w.admin)
-	email, _ := w.seedUser(domain.RoleAirtelViewer, otherSite)
+	email, _ := w.seedUser(domain.RoleViewer, otherSite)
 	other := w.login(email)
 	date, _ := w.reportDay(1)
 	url := "/api/v1/dashboard/overview?date=" + date
@@ -679,11 +698,11 @@ func TestDashboard_KeptAnswersNeverCrossSiteScopes(t *testing.T) {
 	}
 	// Ask in both orders and twice, so each answer is served from the cache.
 	for i := 0; i < 2; i++ {
-		if got := siteIDs(w.airtel); got != w.site {
-			t.Fatalf("round %d: the first Airtel user should see only %s, got %s", i, w.site, got)
+		if got := siteIDs(w.customer); got != w.site {
+			t.Fatalf("round %d: the first customer user should see only %s, got %s", i, w.site, got)
 		}
 		if got := siteIDs(other); got != otherSite {
-			t.Fatalf("round %d: the second Airtel user should see only %s, got %s", i, otherSite, got)
+			t.Fatalf("round %d: the second customer user should see only %s, got %s", i, otherSite, got)
 		}
 	}
 }

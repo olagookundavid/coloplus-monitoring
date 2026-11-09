@@ -12,7 +12,7 @@ import (
 
 // raiseDispute godoc
 //
-//	@Summary		Raise a dispute (Airtel reviewer)
+//	@Summary		Raise a dispute (reviewer)
 //	@Description	Disputes a site, a period, a published report, or one interval of it. Only an approved report can be disputed. The same thing cannot be disputed twice while the first dispute is open; that answers 409.
 //	@Tags			disputes
 //	@Accept			json
@@ -100,13 +100,13 @@ func (a *api) disputeSummary(c *gin.Context) {
 		a.fail(c, err)
 		return
 	}
-	a.respondNamed(c, http.StatusOK, dto.DisputeSummaryResponse{Open: n.Open, WithColoplus: n.WithColoplus, WithAirtel: n.WithAirtel})
+	a.respondNamed(c, http.StatusOK, dto.DisputeSummaryResponse{Open: n.Open, WithColoplus: n.WithColoplus, WithCustomer: n.WithCustomer})
 }
 
 // getDispute godoc
 //
 //	@Summary		One dispute with its history
-//	@Description	Both parties' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel.
+//	@Description	Both parties' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for the customer.
 //	@Tags			disputes
 //	@Produce		json
 //	@Param			id	path		string	true	"Dispute id"
@@ -131,7 +131,7 @@ func (a *api) getDispute(c *gin.Context) {
 // commentDispute godoc
 //
 //	@Summary		Comment on a dispute
-//	@Description	Both parties can comment. Coloplus can mark a comment internal so Airtel never sees it. An Airtel comment on a dispute waiting for their evidence hands it back to Coloplus.
+//	@Description	Both parties can comment. Coloplus can mark a comment internal so the customer never sees it. A customer comment on a dispute waiting for their evidence hands it back to Coloplus.
 //	@Tags			disputes
 //	@Accept			json
 //	@Produce		json
@@ -157,7 +157,7 @@ func (a *api) commentDispute(c *gin.Context) {
 // transitionDispute godoc
 //
 //	@Summary		Move a dispute to its next status
-//	@Description	Coloplus: open to under_review, then awaiting_evidence, agreed_correction or resolved. Resolving needs an outcome; upheld needs the correction agreed first and, for a report, the corrected approved revision. Airtel: closed withdraws it, or acknowledges a resolution; under_review gives evidence or reopens a resolution. Repeating a step that already happened changes nothing. Coloplus's approval and Airtel's agreement are recorded separately.
+//	@Description	Coloplus: open to under_review, then awaiting_evidence, agreed_correction or resolved. Resolving needs an outcome; upheld needs the correction agreed first and, for a report, the corrected approved revision. Customer: closed withdraws it, or acknowledges a resolution; under_review gives evidence or reopens a resolution. Repeating a step that already happened changes nothing. Coloplus's approval and the customer's agreement are recorded separately.
 //	@Tags			disputes
 //	@Accept			json
 //	@Produce		json

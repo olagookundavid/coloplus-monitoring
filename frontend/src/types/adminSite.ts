@@ -10,7 +10,7 @@ export interface SiteRef {
 // (status/powerSource as display strings, no real DTO behind it yet).
 export interface AdminSite {
   id: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   siteType: string

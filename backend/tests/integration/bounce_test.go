@@ -23,7 +23,7 @@ func TestBounceWebhook_MarksTheEmailAndRefusesForgeries(t *testing.T) {
 	w := newWorkflow(t)
 	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/tickets", map[string]any{
 		"category": "other", "priority": "low", "subject": "Bounce test", "description": "x",
-	}, w.airtel), 201)
+	}, w.customer), 201)
 	w.dispatch()
 
 	var notifID, providerID string

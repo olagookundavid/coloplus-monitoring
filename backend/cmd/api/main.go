@@ -75,6 +75,10 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "reset-mfa" {
 		return resetMFA(ctx, cfg, log, args[1:])
 	}
+	// `api logout-all` signs everybody out at once; they sign in again.
+	if len(args) > 0 && args[0] == "logout-all" {
+		return logoutAll(ctx, cfg, log)
+	}
 	// `api check-storage` proves the file-storage keys and bucket work by
 	// sending, reading back and deleting one tiny test file.
 	if len(args) > 0 && args[0] == "check-storage" {
@@ -86,7 +90,7 @@ func run(args []string) error {
 		return seed(ctx, cfg, log)
 	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, seed, check-storage)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, logout-all, seed, check-storage)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }
@@ -480,6 +484,21 @@ func resetMFA(ctx context.Context, cfg config.Config, log *slog.Logger, args []s
 		return err
 	}
 	log.Info("two-step verification reset; they set it up again at their next sign-in", "email", user.Email, "id", user.ID)
+	return nil
+}
+
+func logoutAll(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	users, closeDB, err := consoleUserService(ctx, cfg, log)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	n, err := users.LogoutEveryoneFromConsole(ctx)
+	if err != nil {
+		return err
+	}
+	log.Info("everybody is signed out; they sign in again", "accounts", n)
 	return nil
 }
 

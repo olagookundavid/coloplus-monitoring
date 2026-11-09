@@ -11,7 +11,7 @@ import (
 )
 
 // incidentBody picks the view a person is entitled to: Coloplus staff see
-// the internal record, Airtel sees only what has been published for them.
+// the internal record, the customer sees only what has been published for them.
 func (a *api) incidentBody(actor domain.Actor, i domain.Incident, updates []domain.IncidentUpdate) (*dto.IncidentDTO, *dto.PublishedIncidentDTO) {
 	if actor.Can(domain.PermIncidentsRead) {
 		d := toIncidentDTO(i, a.clock.Now())
@@ -63,7 +63,7 @@ func (a *api) reportIncident(c *gin.Context) {
 // listIncidents godoc
 //
 //	@Summary		List incidents in your scope
-//	@Description	Airtel users see only incidents that have been published to them.
+//	@Description	Customer users see only incidents that have been published to them.
 //	@Tags			incidents
 //	@Produce		json
 //	@Param			site_id		query		string	false	"Only this site"
@@ -107,7 +107,7 @@ func (a *api) listIncidents(c *gin.Context) {
 // getIncident godoc
 //
 //	@Summary		One incident with its history
-//	@Description	Staff get the full record and every update. Airtel gets the published view and the updates written for them.
+//	@Description	Staff get the full record and every update. The customer gets the published view and the updates written for them.
 //	@Tags			incidents
 //	@Produce		json
 //	@Param			id	path		string	true	"Incident id"
@@ -190,7 +190,7 @@ func (a *api) transitionIncident(c *gin.Context) {
 // addIncidentUpdate godoc
 //
 //	@Summary		Add an update to an incident
-//	@Description	Anyone who can work on the incident may add a note. Supervisors can also set the plan (next action, next update time, restoration target) and mark an update for Airtel, which needs the incident to be published first.
+//	@Description	Anyone who can work on the incident may add a note. Supervisors can also set the plan (next action, next update time, restoration target) and mark an update for the customer, which needs the incident to be published first.
 //	@Tags			incidents
 //	@Accept			json
 //	@Produce		json
@@ -217,7 +217,7 @@ func (a *api) addIncidentUpdate(c *gin.Context) {
 
 // publishIncident godoc
 //
-//	@Summary		Share an incident with Airtel
+//	@Summary		Share an incident with the customer
 //	@Description	Does not wait for the daily report to be approved, so a critical incident can be notified at once. Safe to repeat.
 //	@Tags			incidents
 //	@Produce		json

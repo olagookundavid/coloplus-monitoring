@@ -12,7 +12,7 @@ import type { NavGroup } from './navTypes'
 
 // Permission strings are the real backend constants (from `permissions[]` on
 // GET /auth/me) -- usePermissions().can() checks against that real array.
-// airtel_viewer and airtel_reviewer share every permission gating these
+// viewer and reviewer share every permission gating these
 // items (sites.read, published.read, disputes.read, acceptance.read), so
 // there's no viewer/reviewer difference at the nav level -- only inside
 // Disputes/Acceptance, where reviewer-only actions (raise, comment,

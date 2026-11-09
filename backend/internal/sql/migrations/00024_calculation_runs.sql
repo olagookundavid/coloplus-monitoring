@@ -26,7 +26,7 @@ CREATE TABLE calculation_run_rows (
     run_id                UUID             NOT NULL REFERENCES calculation_runs (id),
     site_id               UUID             NOT NULL REFERENCES sites (id),
     -- The site as it was named then, so the run reads the same later.
-    airtel_code           TEXT             NOT NULL,
+    customer_site_code           TEXT             NOT NULL,
     site_name             TEXT             NOT NULL,
     eligible_minutes      INT              NOT NULL,
     served_minutes        INT              NOT NULL,

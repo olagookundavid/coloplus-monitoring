@@ -21,7 +21,7 @@ type CalculationRun struct {
 // RunRow is one site's frozen figures. Percentages are nil where they did not
 // apply, never zero.
 type RunRow struct {
-	SiteID, AirtelCode, SiteName string
+	SiteID, CustomerSiteCode, SiteName string
 
 	EligibleMinutes, ServedMinutes, OutageMinutes, UnknownMinutes, AssumedMinutes int
 	DaysInPeriod, DaysReported                                                    int

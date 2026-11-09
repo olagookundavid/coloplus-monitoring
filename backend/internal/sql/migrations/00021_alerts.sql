@@ -25,4 +25,4 @@ INSERT INTO permissions (id, description) VALUES
 
 INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('admin', 'alerts.read'), ('reporter', 'alerts.read'), ('supervisor', 'alerts.read'),
-    ('airtel_viewer', 'alerts.read'), ('airtel_reviewer', 'alerts.read'), ('auditor', 'alerts.read');
+    ('viewer', 'alerts.read'), ('reviewer', 'alerts.read'), ('auditor', 'alerts.read');

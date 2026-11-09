@@ -12,7 +12,7 @@ export const ROUTES = {
   CUSTOMER_TICKETS: '/support-tickets',
   CUSTOMER_REPORTS: '/reports',
   // "/incidents" is already OPS_INCIDENTS (the reporter's own page) below --
-  // this one is Airtel's published-incident register, a different portal.
+  // this one is the customer's published-incident register, a different portal.
   CUSTOMER_INCIDENTS: '/incident-register',
   CUSTOMER_DISPUTES: '/disputes',
   CUSTOMER_ACCEPTANCE: '/acceptance',

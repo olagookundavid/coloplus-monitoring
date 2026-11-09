@@ -73,7 +73,7 @@ type Attachment struct {
 	SHA256     string
 	StorageKey string
 	Status     AttachmentStatus
-	// Internal files are Coloplus's own and are never shown to Airtel.
+	// Internal files are Coloplus's own and are never shown to the customer.
 	Internal    bool
 	Party       DisputeParty
 	UploadedBy  string

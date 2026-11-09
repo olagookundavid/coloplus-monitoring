@@ -171,7 +171,7 @@ function RunRowsTable({ rows }: { rows: CalculationRunRow[] }) {
         cell: (row) => (
           <div>
             <p className="font-medium text-text">{row.siteName}</p>
-            <p className="text-xs text-text-muted">{row.airtelCode}</p>
+            <p className="text-xs text-text-muted">{row.customerSiteCode}</p>
           </div>
         ),
       },
@@ -257,7 +257,7 @@ function RunCompare({ id }: { id: string }) {
       cell: (change) => (
         <div>
           <p className="font-medium text-text">{change.siteName}</p>
-          <p className="text-xs text-text-muted">{change.airtelCode}</p>
+          <p className="text-xs text-text-muted">{change.customerSiteCode}</p>
         </div>
       ),
     },

@@ -15,7 +15,7 @@ func TestAlertCentre_OwnAlertsOnlyAndAcknowledgement(t *testing.T) {
 
 	w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/tickets", map[string]any{
 		"category": "low_fuel", "priority": "high", "subject": "Diesel refill", "description": "Tank is low",
-	}, w.airtel), 201)
+	}, w.customer), 201)
 
 	// The supervisor and the reporter on the site... only those with a say in tickets are told.
 	sup := w.expect(w.call("GET", "/api/v1/alerts?unread=true", nil, w.supervisor), 200)
@@ -24,12 +24,12 @@ func TestAlertCentre_OwnAlertsOnlyAndAcknowledgement(t *testing.T) {
 		t.Fatalf("the supervisor should have one open alert about the ticket: %s", sup.Raw)
 	}
 	id := alerts[0].(map[string]any)["id"].(string)
-	if got := w.expect(w.call("GET", "/api/v1/alerts", nil, w.airtel), 200).Body["unread"]; got != 0.0 {
+	if got := w.expect(w.call("GET", "/api/v1/alerts", nil, w.customer), 200).Body["unread"]; got != 0.0 {
 		t.Fatalf("the person who raised the ticket is not alerted to their own request: %v", got)
 	}
 
 	// Nobody else can see or clear it.
-	w.expect(w.call("POST", "/api/v1/alerts/"+id+"/acknowledge", nil, w.airtel), 404)
+	w.expect(w.call("POST", "/api/v1/alerts/"+id+"/acknowledge", nil, w.customer), 404)
 	w.expect(w.call("POST", "/api/v1/alerts/"+id+"/acknowledge", nil, w.reporter), 404)
 	if got := w.expect(w.call("GET", "/api/v1/alerts", nil, w.supervisor), 200).Body["unread"]; got != 1.0 {
 		t.Fatalf("another person's attempt must change nothing: %v", got)
@@ -50,6 +50,6 @@ func TestAlertCentre_OwnAlertsOnlyAndAcknowledgement(t *testing.T) {
 	}
 
 	// Account emails are not alerts, and an unfinished two-step setup holds no access.
-	email, _ := w.seedUserWithoutMFA(domain.RoleAirtelViewer, w.site)
+	email, _ := w.seedUserWithoutMFA(domain.RoleViewer, w.site)
 	w.expect(w.call("GET", "/api/v1/alerts", nil, w.login(email)), 403)
 }

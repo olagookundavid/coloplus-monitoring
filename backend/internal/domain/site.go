@@ -60,16 +60,16 @@ func ValidUnreportedPolicy(p UnreportedPolicy) bool {
 
 // Site is the master record. Its ID is immutable and internal.
 type Site struct {
-	ID           string
-	AirtelCode   string
-	ColoplusCode string
-	Name         string
-	Address      string
-	Region       string
-	State        string
-	SiteType     string
-	PowerSources []PowerSource
-	// ResponsibleTeam is the team accountable for the site, shown to Airtel.
+	ID               string
+	CustomerSiteCode string
+	ColoplusCode     string
+	Name             string
+	Address          string
+	Region           string
+	State            string
+	SiteType         string
+	PowerSources     []PowerSource
+	// ResponsibleTeam is the team accountable for the site, shown to the customer.
 	// A team, not a person.
 	ResponsibleTeam string
 	// ConsumptionLPH is the generator's agreed fuel use in litres per running
@@ -111,8 +111,8 @@ func (s Site) Validate() error {
 	var problems []string
 	add := func(msg string) { problems = append(problems, msg) }
 
-	if strings.TrimSpace(s.AirtelCode) == "" {
-		add("the Airtel site code is required")
+	if strings.TrimSpace(s.CustomerSiteCode) == "" {
+		add("the customer site code is required")
 	}
 	if strings.TrimSpace(s.ColoplusCode) == "" {
 		add("the Coloplus site code is required")

@@ -1,4 +1,4 @@
-// The Airtel-facing site shape -- mirrors dto.SiteRowDTO from GET
+// The customer-facing site shape -- mirrors dto.SiteRowDTO from GET
 // /dashboard/overview (backend/internal/dto/reports.go), the one call that
 // already bundles profile, live condition, data quality and fuel per site.
 // Real-backend-shaped, unlike the old mock Site this replaced (no more
@@ -66,7 +66,7 @@ export interface FuelBrief {
 
 export interface PortfolioSite {
   id: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   siteType: string

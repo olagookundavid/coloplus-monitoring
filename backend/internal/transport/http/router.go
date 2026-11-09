@@ -162,6 +162,7 @@ func NewRouter(d Deps) *gin.Engine {
 	authed.PATCH("/users/:id", h.updateUser)
 	authed.POST("/users/:id/invite", h.resendInvite)
 	authed.POST("/users/:id/reset-mfa", h.resetUserMFA)
+	authed.POST("/auth/logout-all", h.logoutEveryone)
 
 	authed.GET("/notifications", h.listNotifications)
 	authed.POST("/notifications/:id/retry", h.retryNotification)

@@ -41,7 +41,7 @@ func TestFuel_LowAlertsVarianceAndDashboardRows(t *testing.T) {
 	report(1, map[string]any{"power_status": "served"})
 
 	// The estimate is low (about 20 hours left, at or under 24), and the flag says so.
-	est := w.expect(w.call("GET", fuelURL, nil, w.airtel), 200).Body["estimate"].(map[string]any)
+	est := w.expect(w.call("GET", fuelURL, nil, w.customer), 200).Body["estimate"].(map[string]any)
 	if est["litres"] != 20.0 || est["low"] != true || est["hours_remaining"] != 20.0 {
 		t.Fatalf("40 L less 20 hours should be a low 20 L estimate: %v", est)
 	}
@@ -83,8 +83,8 @@ func TestFuel_LowAlertsVarianceAndDashboardRows(t *testing.T) {
 		t.Fatal("site missing from the dashboard")
 		return nil
 	}
-	if f, _ := row(w.airtel)["fuel"].(map[string]any); f == nil || f["litres"] != 20.0 || f["low"] != true || f["basis"] != "estimate" {
-		t.Fatalf("the dashboard row should carry the low estimate: %v", row(w.airtel)["fuel"])
+	if f, _ := row(w.customer)["fuel"].(map[string]any); f == nil || f["litres"] != 20.0 || f["low"] != true || f["basis"] != "estimate" {
+		t.Fatalf("the dashboard row should carry the low estimate: %v", row(w.customer)["fuel"])
 	}
 	if row(auditor)["fuel"] != nil {
 		t.Fatalf("the auditor has no fuel access and must not get it from the dashboard: %v", row(auditor)["fuel"])
@@ -103,7 +103,7 @@ func TestFuel_LowAlertsVarianceAndDashboardRows(t *testing.T) {
 	if v, _ := far.Body["variance"].(map[string]any); v == nil || v["review_warning"] != true {
 		t.Fatalf("500 L found against about 18 expected must be flagged for review: %s", far.Raw)
 	}
-	if e := w.expect(w.call("GET", fuelURL, nil, w.airtel), 200).Body["estimate"].(map[string]any); e["litres"] != 500.0 || e["low"] != false {
+	if e := w.expect(w.call("GET", fuelURL, nil, w.customer), 200).Body["estimate"].(map[string]any); e["litres"] != 500.0 || e["low"] != false {
 		t.Fatalf("the reading wins and the estimate restarts from it: %v", e)
 	}
 	alert()
@@ -113,7 +113,7 @@ func TestFuel_LowAlertsVarianceAndDashboardRows(t *testing.T) {
 
 	// Data quality: four of the last six days were reported.
 	from, _ := w.reportDay(6)
-	q := w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to="+date, nil, w.airtel), 200)
+	q := w.expect(w.call("GET", "/api/v1/dashboard/overview?from="+from+"&to="+date, nil, w.customer), 200)
 	dq, _ := q.Body["data_quality"].(map[string]any)
 	if dq["reported_days"] != 4.0 || dq["days"] != 6.0 || dq["completeness_pct"] != 66.7 || dq["level"] != "poor" || dq["late_reports"] != 3.0 {
 		t.Fatalf("4 of 6 days reported, 3 of them late, is poor quality: %v", dq)

@@ -32,7 +32,7 @@ func TestPeriods_ClosedMonthRefusesReportsUntilReopened(t *testing.T) {
 	current := now.Format("2006-01")
 	w.expect(w.call("POST", "/api/v1/periods/"+current+"/close", nil, w.admin), 400)
 	w.expect(w.call("POST", "/api/v1/periods/"+month+"/close", nil, w.supervisor), 403)
-	w.expect(w.call("POST", "/api/v1/periods/"+month+"/close", nil, w.airtel), 403)
+	w.expect(w.call("POST", "/api/v1/periods/"+month+"/close", nil, w.customer), 403)
 
 	w.expect(w.call("POST", "/api/v1/periods/"+month+"/close", nil, w.admin), 201)
 	w.expect(w.call("POST", "/api/v1/periods/"+month+"/close", nil, w.admin), 409)

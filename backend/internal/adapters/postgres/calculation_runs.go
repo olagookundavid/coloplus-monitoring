@@ -41,7 +41,7 @@ func (r *CalculationRunRepository) Create(ctx context.Context, run domain.Calcul
 	}
 	rows := make([][]any, len(run.Rows))
 	for i, x := range run.Rows {
-		rows[i] = []any{created.ID, x.SiteID, x.AirtelCode, x.SiteName, x.EligibleMinutes, x.ServedMinutes, x.OutageMinutes,
+		rows[i] = []any{created.ID, x.SiteID, x.CustomerSiteCode, x.SiteName, x.EligibleMinutes, x.ServedMinutes, x.OutageMinutes,
 			x.UnknownMinutes, x.AssumedMinutes, x.DaysInPeriod, x.DaysReported, x.ReportedAvailability, x.ConfirmedServedShare,
 			x.Coverage, x.GeneratorHours, x.IncidentsStarted, x.Fingerprint}
 	}
@@ -52,7 +52,7 @@ func (r *CalculationRunRepository) Create(ctx context.Context, run domain.Calcul
 	return created, nil
 }
 
-var runRowColumns = []string{"run_id", "site_id", "airtel_code", "site_name", "eligible_minutes", "served_minutes", "outage_minutes",
+var runRowColumns = []string{"run_id", "site_id", "customer_site_code", "site_name", "eligible_minutes", "served_minutes", "outage_minutes",
 	"unknown_minutes", "assumed_minutes", "days_in_period", "days_reported", "reported_availability", "confirmed_served_share",
 	"coverage", "generator_hours", "incidents_started", "fingerprint"}
 
@@ -63,17 +63,17 @@ func (r *CalculationRunRepository) Get(ctx context.Context, id string) (domain.C
 		return domain.CalculationRun{}, mapErr(err, "")
 	}
 	rows, err := q.Query(ctx,
-		`SELECT site_id::text, airtel_code, site_name, eligible_minutes, served_minutes, outage_minutes, unknown_minutes,
+		`SELECT site_id::text, customer_site_code, site_name, eligible_minutes, served_minutes, outage_minutes, unknown_minutes,
 		        assumed_minutes, days_in_period, days_reported, reported_availability, confirmed_served_share, coverage,
 		        generator_hours, incidents_started, fingerprint
-		 FROM calculation_run_rows WHERE run_id = $1 ORDER BY airtel_code`, id)
+		 FROM calculation_run_rows WHERE run_id = $1 ORDER BY customer_site_code`, id)
 	if err != nil {
 		return domain.CalculationRun{}, mapErr(err, "")
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var x domain.RunRow
-		if err := rows.Scan(&x.SiteID, &x.AirtelCode, &x.SiteName, &x.EligibleMinutes, &x.ServedMinutes, &x.OutageMinutes,
+		if err := rows.Scan(&x.SiteID, &x.CustomerSiteCode, &x.SiteName, &x.EligibleMinutes, &x.ServedMinutes, &x.OutageMinutes,
 			&x.UnknownMinutes, &x.AssumedMinutes, &x.DaysInPeriod, &x.DaysReported, &x.ReportedAvailability,
 			&x.ConfirmedServedShare, &x.Coverage, &x.GeneratorHours, &x.IncidentsStarted, &x.Fingerprint); err != nil {
 			return domain.CalculationRun{}, fmt.Errorf("scanning run row: %w", err)

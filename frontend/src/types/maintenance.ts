@@ -15,7 +15,7 @@ export interface MaintenanceWindow {
   minutes: number
   reason: string
   status: MaintenanceStatus
-  /** Omitted for an Airtel viewer/reviewer -- who asked and who decided is
+  /** Omitted for an viewer/reviewer -- who asked and who decided is
       Coloplus-internal. Always present for every ops-portal role. */
   requestedBy?: string
   requestedByName?: string

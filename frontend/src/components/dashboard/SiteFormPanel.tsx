@@ -39,7 +39,7 @@ function timeToMinutes(value: string): number {
 
 function blankValues(): SiteProfileFormValues {
   return {
-    airtelCode: '',
+    customerSiteCode: '',
     coloplusCode: '',
     name: '',
     address: '',
@@ -69,7 +69,7 @@ function blankValues(): SiteProfileFormValues {
 function valuesFromSite(site: SiteProfile): SiteProfileFormValues {
   const allDay = site.serviceStartMinute === 0 && site.serviceEndMinute === 1440
   return {
-    airtelCode: site.airtelCode,
+    customerSiteCode: site.customerSiteCode,
     coloplusCode: site.coloplusCode,
     name: site.name,
     address: site.address,
@@ -98,7 +98,7 @@ function valuesFromSite(site: SiteProfile): SiteProfileFormValues {
 
 function toInput(values: SiteProfileFormValues): SiteProfileInput {
   return {
-    airtelCode: values.airtelCode.trim(),
+    customerSiteCode: values.customerSiteCode.trim(),
     coloplusCode: values.coloplusCode.trim(),
     name: values.name.trim(),
     address: values.address.trim(),
@@ -222,7 +222,7 @@ export function SiteFormPanel({ open, onClose, site }: SiteFormPanelProps) {
     <SidePanel
       open={open}
       onClose={handleClose}
-      eyebrow={isEdit ? site?.airtelCode : 'New site'}
+      eyebrow={isEdit ? site?.customerSiteCode : 'New site'}
       title={isEdit ? site?.name || '' : 'Add a site'}
       subtitle={isEdit ? undefined : 'Codes must be unique across every site.'}
       maxWidth="2xl"
@@ -250,13 +250,13 @@ export function SiteFormPanel({ open, onClose, site }: SiteFormPanelProps) {
         <section className="flex flex-col gap-4">
           <h3 className="text-sm font-semibold text-text">Identity</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Airtel code" htmlFor="site-airtel-code" error={showError('airtelCode')}>
+            <Field label="Customer site code" htmlFor="site-customer-site-code" error={showError('customerSiteCode')}>
               <Input
-                id="site-airtel-code"
-                value={values.airtelCode}
-                invalid={Boolean(showError('airtelCode'))}
-                onChange={(event) => handleChange('airtelCode', event.target.value)}
-                onBlur={() => handleBlur('airtelCode')}
+                id="site-customer-site-code"
+                value={values.customerSiteCode}
+                invalid={Boolean(showError('customerSiteCode'))}
+                onChange={(event) => handleChange('customerSiteCode', event.target.value)}
+                onBlur={() => handleBlur('customerSiteCode')}
               />
             </Field>
             <Field
@@ -512,7 +512,7 @@ export function SiteFormPanel({ open, onClose, site }: SiteFormPanelProps) {
 
         <section className="flex flex-col gap-4">
           <h3 className="text-sm font-semibold text-text">Contacts &amp; team</h3>
-          <Field label="Responsible team" htmlFor="site-responsible-team" hint="(optional) shown to Airtel -- a team name, never a person">
+          <Field label="Responsible team" htmlFor="site-responsible-team" hint="(optional) shown to the customer -- a team name, never a person">
             <Input
               id="site-responsible-team"
               value={values.responsibleTeam}
@@ -557,7 +557,7 @@ export function SiteFormPanel({ open, onClose, site }: SiteFormPanelProps) {
         icon={ExclamationTriangleIcon}
         confirmLabel="Save as suspended"
         pending={pending}
-        body={site && <ConfirmSummary title={site.name} meta={site.airtelCode} />}
+        body={site && <ConfirmSummary title={site.name} meta={site.customerSiteCode} />}
         onConfirm={() => pendingInput && void submit(pendingInput)}
         onCancel={() => setPendingInput(null)}
       />

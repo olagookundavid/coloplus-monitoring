@@ -99,7 +99,7 @@ function TicketDetailBody({
   const { label: priorityLabelText, tone: priorityTone } = ticketPriorityLabel(ticket.priority)
 
   function eventBody(event: TicketEvent): string {
-    return event.body || `${event.party === 'airtel' ? 'Airtel' : 'Coloplus'} updated the status`
+    return event.body || `${event.party === 'customer' ? 'the customer' : 'Coloplus'} updated the status`
   }
 
   async function handleComment() {
@@ -250,7 +250,7 @@ function TicketDetailBody({
             </Button>
           </div>
           <Checkbox
-            label="Internal — Airtel won't see this"
+            label="Internal — the customer won't see this"
             checked={commentInternal}
             onChange={(event) => setCommentInternal(event.target.checked)}
           />
@@ -403,7 +403,7 @@ export function SupervisorTickets() {
     },
     resolve: {
       title: 'Resolve this ticket?',
-      description: 'Records the resolution below and tells Airtel it is done.',
+      description: 'Records the resolution below and tells the customer it is done.',
     },
     reopenInternal: {
       title: 'Take this ticket back into work?',
@@ -420,7 +420,7 @@ export function SupervisorTickets() {
       <DashboardPageHeader
         eyebrow="Support"
         title="Tickets"
-        subtitle="Work the tickets Airtel raises against your sites."
+        subtitle="Work the tickets the customer raises against your sites."
       />
 
       {summaryQuery.isLoading ? (

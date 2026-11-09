@@ -1,14 +1,14 @@
 // The real, backend-known roles (backend/internal/domain/user.go) — never
 // invent a role here that has no permission set behind it.
 export type StaffRole =
-  'admin' | 'reporter' | 'supervisor' | 'airtel_viewer' | 'airtel_reviewer' | 'auditor'
+  'admin' | 'reporter' | 'supervisor' | 'viewer' | 'reviewer' | 'auditor'
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   admin: 'Coloplus administrator',
   reporter: 'Field officer',
   supervisor: 'Operations supervisor',
-  airtel_viewer: 'Airtel viewer',
-  airtel_reviewer: 'Airtel reviewer',
+  viewer: 'Viewer',
+  reviewer: 'Reviewer',
   auditor: 'Auditor',
 }
 
@@ -16,8 +16,8 @@ export const STAFF_ROLES: StaffRole[] = [
   'admin',
   'reporter',
   'supervisor',
-  'airtel_viewer',
-  'airtel_reviewer',
+  'viewer',
+  'reviewer',
   'auditor',
 ]
 

@@ -161,7 +161,7 @@ func (s *ReportService) CreateDraft(ctx context.Context, actor domain.Actor, sit
 }
 
 // load fetches a report and applies visibility: people outside the site's
-// scope, and Airtel users looking at anything unapproved, get "not found".
+// scope, and customer users looking at anything unapproved, get "not found".
 func (s *ReportService) load(ctx context.Context, actor domain.Actor, id string, forUpdate bool) (domain.DailyReport, error) {
 	r, err := s.reports.GetByID(ctx, id, forUpdate)
 	if err != nil {

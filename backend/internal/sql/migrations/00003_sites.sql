@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE sites (
     id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    airtel_code          TEXT             NOT NULL,
+    customer_site_code          TEXT             NOT NULL,
     coloplus_code        TEXT             NOT NULL,
     name                 TEXT             NOT NULL,
     address              TEXT             NOT NULL DEFAULT '',
@@ -24,8 +24,8 @@ CREATE TABLE sites (
     CHECK ((latitude IS NULL) = (longitude IS NULL))
 );
 
--- Duplicate Airtel site codes are rejected across the portfolio.
-CREATE UNIQUE INDEX sites_airtel_code_key ON sites (lower(airtel_code));
+-- Duplicate customer site codes are rejected across the portfolio.
+CREATE UNIQUE INDEX sites_customer_site_code_key ON sites (lower(customer_site_code));
 CREATE UNIQUE INDEX sites_coloplus_code_key ON sites (lower(coloplus_code));
 CREATE INDEX sites_state_idx ON sites (state);
 CREATE INDEX sites_status_idx ON sites (status);

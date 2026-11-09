@@ -15,7 +15,7 @@ import (
 )
 
 // A late report is stale data, never an outage: the people who owe it are told
-// once a day, Airtel is not emailed, and the wording says power is not known
+// once a day, the customer is not emailed, and the wording says power is not known
 // to be out.
 func TestReportAlerts_OverdueGoesToTheRightPeopleOnceAndNeverSaysOutage(t *testing.T) {
 	w := newWorkflow(t)
@@ -47,7 +47,7 @@ func TestReportAlerts_OverdueGoesToTheRightPeopleOnceAndNeverSaysOutage(t *testi
 		}
 	}
 	if got := len(w.mailer.to(w.airEmail)); got != 0 {
-		t.Fatalf("Airtel was emailed %d times about Coloplus's missing report", got)
+		t.Fatalf("The customer was emailed %d times about Coloplus's missing report", got)
 	}
 }
 
@@ -61,7 +61,7 @@ func TestAudit_SearchNeedsAccessAndRespectsSiteScope(t *testing.T) {
 	}, w.supervisor), 201).str("id")
 
 	w.expect(w.call("GET", "/api/v1/audit", nil, w.supervisor), 403)
-	w.expect(w.call("GET", "/api/v1/audit", nil, w.airtel), 403)
+	w.expect(w.call("GET", "/api/v1/audit", nil, w.customer), 403)
 	found := w.expect(w.call("GET", "/api/v1/audit?entity_id="+inc+"&action=incident.reported", nil, w.admin), 200)
 	if found.str("total") != "1" {
 		t.Fatalf("admin search = %s", found.Raw)
@@ -105,9 +105,9 @@ func servicesAuditInput(entityID string) services.SearchAuditInput {
 }
 
 // The site screen in one call must not weaken any rule: a day with no
-// approved report is a gap rather than zero, Airtel sees only published
+// approved report is a gap rather than zero, the customer sees only published
 // incidents, and an outsider cannot probe a site.
-func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
+func TestSiteOverview_GapsStayGapsAndCustomerSeesOnlyPublished(t *testing.T) {
 	w := newWorkflow(t)
 	orig := w.draft(1)
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+orig+"/submit", nil, w.reporter), 200)
@@ -120,7 +120,7 @@ func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
 		}, w.supervisor), 201).str("id")
 	}
 	open("Internal only")
-	shared := open("Shared with Airtel")
+	shared := open("Shared with the customer")
 	w.expect(w.call("POST", "/api/v1/incidents/"+shared+"/publish", nil, w.supervisor), 200)
 
 	url := "/api/v1/sites/" + w.site + "/overview?days=3"
@@ -139,9 +139,9 @@ func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
 		t.Fatalf("staff should see both incidents: %s", staff.Raw)
 	}
 
-	air := w.expect(w.call("GET", url, nil, w.airtel), 200)
+	air := w.expect(w.call("GET", url, nil, w.customer), 200)
 	if len(air.list("published_incidents")) != 1 || air.Body["incidents"] != nil || strings.Contains(air.Raw, "transformer") || strings.Contains(air.Raw, "Internal only") {
-		t.Fatalf("Airtel sees more than the published incident: %s", air.Raw)
+		t.Fatalf("The customer sees more than the published incident: %s", air.Raw)
 	}
 	w.expect(w.call("GET", url, nil, w.ot), 404)
 }
@@ -150,9 +150,9 @@ func TestSiteOverview_GapsStayGapsAndAirtelSeesOnlyPublished(t *testing.T) {
 // stay inside the caller's sites, and leave an audit trail.
 func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
 	w := newWorkflow(t)
-	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	revEmail, _ := w.seedUser(domain.RoleReviewer, w.site)
 	reviewer := w.login(revEmail)
-	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elseEmail, _ := w.seedUser(domain.RoleReviewer, w.newSite(w.admin))
 	elsewhere := w.login(elseEmail)
 
 	orig := w.draft(1)
@@ -209,7 +209,7 @@ func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
 		}
 	}
 	check(w.supervisor)
-	check(w.airtel)
+	check(w.customer)
 
 	w.expect(w.call("GET", url, nil, w.ot), 403)                         // a reporter has no export right
 	w.expect(w.call("GET", url+"&site_id="+w.site, nil, elsewhere), 404) // not their site
@@ -224,12 +224,12 @@ func TestExport_DailySummariesKeepGapsDisputesAndScope(t *testing.T) {
 	}
 }
 
-// The incident register must not show Airtel an unpublished incident, must
+// The incident register must not show the customer an unpublished incident, must
 // not invent a duration before restoration is recorded, and stays inside the
 // caller's sites and region.
 func TestExport_IncidentRegisterHidesUnpublishedAndKeepsScope(t *testing.T) {
 	w := newWorkflow(t)
-	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elseEmail, _ := w.seedUser(domain.RoleReviewer, w.newSite(w.admin))
 	elsewhere := w.login(elseEmail)
 	w.exec(`UPDATE sites SET region = 'Lagos Island', responsible_team = 'Island field team' WHERE id = $1`, w.site)
 
@@ -240,7 +240,7 @@ func TestExport_IncidentRegisterHidesUnpublishedAndKeepsScope(t *testing.T) {
 		}, w.supervisor), 201).str("id")
 	}
 	open("Internal only")
-	w.expect(w.call("POST", "/api/v1/incidents/"+open("Shared with Airtel")+"/publish", nil, w.supervisor), 200)
+	w.expect(w.call("POST", "/api/v1/incidents/"+open("Shared with the customer")+"/publish", nil, w.supervisor), 200)
 
 	from, _ := w.reportDay(1)
 	to := time.Now().In(w.loc).Format("2006-01-02")
@@ -255,9 +255,9 @@ func TestExport_IncidentRegisterHidesUnpublishedAndKeepsScope(t *testing.T) {
 		return recs
 	}
 
-	air := rows(w.airtel, "")
+	air := rows(w.customer, "")
 	if len(air) != 2 || strings.Contains(strings.Join(air[1], "|"), "Internal only") || strings.Contains(strings.Join(air[1], "|"), "transformer") {
-		t.Fatalf("Airtel must get the published incident only: %v", air)
+		t.Fatalf("The customer must get the published incident only: %v", air)
 	}
 	col := map[string]int{}
 	for i, h := range air[0] {
@@ -309,7 +309,7 @@ func TestAuditorRole_ReadsInScopeAndChangesNothing(t *testing.T) {
 
 // The drill-down behind an outage card lists each reported outage once, traced
 // to its report; the reason is Coloplus's; an incident links to the outage
-// during it without double counting; and "Airtel" cannot reach an unpublished
+// during it without double counting; and "The customer" cannot reach an unpublished
 // incident's outage.
 func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
 	w := newWorkflow(t)
@@ -328,10 +328,10 @@ func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
 	if first["report_id"] != id || first["minutes"] != 30.0 || first["reason"] == nil {
 		t.Fatalf("an outage must trace to its report and carry its reason for staff: %v", first)
 	}
-	if cust := w.expect(w.call("GET", url, nil, w.airtel), 200); strings.Contains(cust.Raw, "Grid failure") || strings.Contains(cust.Raw, `"reason"`) {
+	if cust := w.expect(w.call("GET", url, nil, w.customer), 200); strings.Contains(cust.Raw, "Grid failure") || strings.Contains(cust.Raw, `"reason"`) {
 		t.Fatalf("the reason is Coloplus's own: %s", cust.Raw)
 	}
-	w.expect(w.call("GET", url+"&site_id="+w.newSite(w.admin), nil, w.airtel), 404)
+	w.expect(w.call("GET", url+"&site_id="+w.newSite(w.admin), nil, w.customer), 404)
 
 	// An incident that started before the outage links to it, once.
 	inc := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
@@ -341,9 +341,9 @@ func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
 	if o.Body["total_minutes"] != 30.0 || o.Body["open"] != true || len(o.list("outages")) != 1 {
 		t.Fatalf("the incident should link to the 30 minutes of outage during it: %s", o.Raw)
 	}
-	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.airtel), 404) // not published
+	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.customer), 404) // not published
 	w.expect(w.call("POST", "/api/v1/incidents/"+inc+"/publish", nil, w.supervisor), 200)
-	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.airtel), 200)
+	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.customer), 200)
 	w.expect(w.call("GET", "/api/v1/incidents/"+inc+"/outages", nil, w.ot), 404)
 }
 
@@ -351,9 +351,9 @@ func TestDrilldown_OutagesAreTracedCountedOnceAndScoped(t *testing.T) {
 // what they should, stay inside the caller's sites and leave an audit trail.
 func TestReportPacks_MonthlyWeeklyAndBacklog(t *testing.T) {
 	w := newWorkflow(t)
-	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	revEmail, _ := w.seedUser(domain.RoleReviewer, w.site)
 	reviewer := w.login(revEmail)
-	elseEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.newSite(w.admin))
+	elseEmail, _ := w.seedUser(domain.RoleReviewer, w.newSite(w.admin))
 	elsewhere := w.login(elseEmail)
 
 	id := w.draft(1)
@@ -434,9 +434,9 @@ func TestIssuedExports_FingerprintStoredCopyAndImmutable(t *testing.T) {
 	id := w.draft(1)
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/submit", nil, w.reporter), 200)
 	w.expect(w.call("POST", "/api/v1/daily-reports/"+id+"/approve", nil, w.supervisor), 200)
-	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	revEmail, _ := w.seedUser(domain.RoleReviewer, w.site)
 	reviewer := w.login(revEmail)
-	otherEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	otherEmail, _ := w.seedUser(domain.RoleReviewer, w.site)
 	other := w.login(otherEmail)
 
 	day, _ := w.reportDay(1)

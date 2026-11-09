@@ -38,7 +38,7 @@ export function SiteProfilePanel({ site, open, onClose, onOpenReport }: SiteProf
       open={open}
       onClose={onClose}
       eyebrow="SITE PROFILE"
-      title={`${site.airtelCode} · ${site.name}`}
+      title={`${site.customerSiteCode} · ${site.name}`}
       footer={
         <>
           <ButtonLink variant="outline" to={ROUTES.OPS_INCIDENTS}>

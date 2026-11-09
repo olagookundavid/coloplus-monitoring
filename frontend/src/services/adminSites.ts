@@ -17,7 +17,7 @@ import { mapAxiosError } from './auth'
 // rest for the site-management page.
 interface SiteDTO {
   id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   name: string
   address: string
@@ -47,7 +47,7 @@ interface SiteDTO {
 function mapAdminSite(dto: SiteDTO): AdminSite {
   return {
     id: dto.id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     coloplusCode: dto.coloplus_code,
     name: dto.name,
     siteType: dto.site_type,
@@ -59,7 +59,7 @@ function mapAdminSite(dto: SiteDTO): AdminSite {
 function mapSiteProfile(dto: SiteDTO): SiteProfile {
   return {
     id: dto.id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     coloplusCode: dto.coloplus_code,
     name: dto.name,
     address: dto.address,
@@ -89,7 +89,7 @@ function mapSiteProfile(dto: SiteDTO): SiteProfile {
 
 function toSiteRequestBody(input: SiteProfileInput) {
   return {
-    airtel_code: input.airtelCode,
+    customer_site_code: input.customerSiteCode,
     coloplus_code: input.coloplusCode,
     name: input.name,
     address: input.address,

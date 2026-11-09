@@ -13,7 +13,7 @@ interface AttachmentDTO {
   size_bytes: number
   sha256: string
   status: AttachmentStatus
-  party: 'airtel' | 'coloplus'
+  party: 'customer' | 'coloplus'
   created_at: string
   confirmed_at?: string
   internal?: boolean

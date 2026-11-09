@@ -96,9 +96,9 @@ export function App() {
           }
         />
 
-        {/* published.read is the door key both airtel_viewer and
-            airtel_reviewer hold -- the one permission unique to the two
-            Airtel roles among everyone not already routed to /ops/* by
+        {/* published.read is the door key both viewer and
+            reviewer hold -- the one permission unique to the two
+            customer roles among everyone not already routed to /ops/* by
             landingRouteFor. Reviewer-only actions (raise/comment/withdraw a
             dispute, inspect/accept/reject acceptance) are gated per-button
             inside Disputes/Acceptance, same pattern as Approvals.tsx. */}
@@ -316,7 +316,7 @@ export function App() {
         </Route>
 
         {/* An eighth, separate block: exports.create is held by admin and
-            supervisor alike (and by both Airtel roles, who never reach the
+            supervisor alike (and by both customer roles, who never reach the
             ops portal at all) -- the real permission the backend checks for
             /exports/issued. Who actually sees in it (own exports vs
             everyone's) is decided server-side by audit.read, not by

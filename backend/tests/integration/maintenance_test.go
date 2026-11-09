@@ -28,7 +28,7 @@ func TestMaintenance_NoticeCapSecondPersonAndOverlap(t *testing.T) {
 	soon := time.Now().Add(2 * time.Hour)
 	w.expect(w.call("POST", url, map[string]any{"starts_at": soon.Format(time.RFC3339), "ends_at": soon.Add(time.Hour).Format(time.RFC3339), "reason": "Generator service"}, w.reporter), 400)
 	ask(w.reporter, 0, 9, "Generator service", 400)
-	ask(w.airtel, 0, 2, "Generator service", 403)
+	ask(w.customer, 0, 2, "Generator service", 403)
 
 	first := ask(w.reporter, 0, 8, "Generator service", 201)
 	id := first.str("id")
@@ -53,7 +53,7 @@ func TestMaintenance_NoticeCapSecondPersonAndOverlap(t *testing.T) {
 
 	// Cancelling needs a reason; the customer can see the window but not who asked.
 	w.expect(w.call("POST", "/api/v1/maintenance/"+id+"/cancel", map[string]any{"note": "x"}, w.reporter), 400)
-	seen := w.expect(w.call("GET", "/api/v1/maintenance?site_id="+w.site, nil, w.airtel), 200)
+	seen := w.expect(w.call("GET", "/api/v1/maintenance?site_id="+w.site, nil, w.customer), 200)
 	if len(seen.list("windows")) != 2 || seen.list("windows")[0].(map[string]any)["requested_by"] != nil || seen.list("windows")[0].(map[string]any)["requested_by_name"] != nil {
 		t.Fatalf("customer view = %s", seen.Raw)
 	}
@@ -74,7 +74,7 @@ func TestFigures_MaintenanceExclusionAndMidnightCarryOver(t *testing.T) {
 
 	row := func(date string) map[string]any {
 		t.Helper()
-		r := w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+date, nil, w.airtel), 200)
+		r := w.expect(w.call("GET", "/api/v1/dashboard/overview?date="+date, nil, w.customer), 200)
 		for _, s := range r.list("sites") {
 			if m := s.(map[string]any); m["site_id"] == w.site {
 				return m["summary"].(map[string]any)

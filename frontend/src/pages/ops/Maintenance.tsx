@@ -258,7 +258,7 @@ export function Maintenance() {
           <option value="">All sites</option>
           {sites.map((site) => (
             <option key={site.id} value={site.id}>
-              {site.airtelCode} · {site.name}
+              {site.customerSiteCode} · {site.name}
             </option>
           ))}
         </Select>

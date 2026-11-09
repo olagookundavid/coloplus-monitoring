@@ -77,7 +77,7 @@ func (s *ExportService) StoreRun(ctx context.Context, actor domain.Actor, month 
 
 func runRowOf(r PerformanceRow, from, to time.Time) domain.RunRow {
 	return domain.RunRow{
-		SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, SiteName: r.Site.Name,
+		SiteID: r.Site.ID, CustomerSiteCode: r.Site.CustomerSiteCode, SiteName: r.Site.Name,
 		EligibleMinutes: r.Summary.EligibleMinutes, ServedMinutes: r.Summary.ServedMinutes, OutageMinutes: r.Summary.OutageMinutes,
 		UnknownMinutes: r.Summary.UnknownMinutes, AssumedMinutes: r.Summary.AssumedMinutes,
 		DaysInPeriod: r.Quality.Days, DaysReported: r.Quality.ReportedDays,
@@ -105,7 +105,7 @@ func (s *ExportService) Run(ctx context.Context, actor domain.Actor, id string) 
 
 // RunChange is one site whose figures differ between a stored run and today.
 type RunChange struct {
-	SiteID, AirtelCode, SiteName string
+	SiteID, CustomerSiteCode, SiteName string
 	// Then is nil for a site that was not in the run; Now is nil for a site
 	// that no longer appears.
 	Then, Now *domain.RunRow
@@ -158,20 +158,20 @@ func (s *ExportService) CompareRun(ctx context.Context, actor domain.Actor, id s
 		delete(then, now.SiteID)
 		switch {
 		case !ok:
-			out.Changes = append(out.Changes, RunChange{SiteID: now.SiteID, AirtelCode: now.AirtelCode, SiteName: now.SiteName, Now: &now, ReportsChanged: true})
+			out.Changes = append(out.Changes, RunChange{SiteID: now.SiteID, CustomerSiteCode: now.CustomerSiteCode, SiteName: now.SiteName, Now: &now, ReportsChanged: true})
 		case t.SameFigures(now) && t.Fingerprint == now.Fingerprint:
 			out.Unchanged++
 		default:
 			tt := t
 			out.Changes = append(out.Changes, RunChange{
-				SiteID: now.SiteID, AirtelCode: now.AirtelCode, SiteName: now.SiteName, Then: &tt, Now: &now,
+				SiteID: now.SiteID, CustomerSiteCode: now.CustomerSiteCode, SiteName: now.SiteName, Then: &tt, Now: &now,
 				ReportsChanged: t.Fingerprint != now.Fingerprint,
 			})
 		}
 	}
 	for _, t := range then {
 		tt := t
-		out.Changes = append(out.Changes, RunChange{SiteID: t.SiteID, AirtelCode: t.AirtelCode, SiteName: t.SiteName, Then: &tt, ReportsChanged: true})
+		out.Changes = append(out.Changes, RunChange{SiteID: t.SiteID, CustomerSiteCode: t.CustomerSiteCode, SiteName: t.SiteName, Then: &tt, ReportsChanged: true})
 	}
 	return out, nil
 }

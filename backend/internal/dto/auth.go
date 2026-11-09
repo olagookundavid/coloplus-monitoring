@@ -129,3 +129,8 @@ type SiteRefDTO struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 }
+
+// LogoutAllResponse says how many accounts were signed out.
+type LogoutAllResponse struct {
+	Accounts int64 `json:"accounts" example:"12"`
+}

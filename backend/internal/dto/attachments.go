@@ -15,8 +15,8 @@ type RequestUploadRequest struct {
 	// SHA256 is the file's SHA-256 as 64 lower-case hex characters. The store
 	// refuses an upload that does not match it.
 	SHA256 string `json:"sha256"`
-	// Shared lets Airtel see a file Coloplus sends. Left out, a Coloplus file
-	// is internal. Airtel's own files are always visible to Coloplus.
+	// Shared lets the customer see a file Coloplus sends. Left out, a Coloplus file
+	// is internal. The customer's own files are always visible to Coloplus.
 	Shared bool `json:"shared,omitempty"`
 }
 
@@ -34,7 +34,7 @@ type AttachmentDTO struct {
 	SHA256      string `json:"sha256"`
 	// Status is pending until the upload is confirmed, then ready.
 	Status string `json:"status"`
-	// Party is who sent it: airtel or coloplus.
+	// Party is who sent it: customer or coloplus.
 	Party          string     `json:"party"`
 	CreatedAt      time.Time  `json:"created_at"`
 	ConfirmedAt    *time.Time `json:"confirmed_at,omitempty"`

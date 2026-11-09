@@ -25,12 +25,12 @@ import { acceptanceStageLabel, formatDateTimeWAT, nameOrId, toast } from '../../
 
 const NO_ACCEPTANCES: Acceptance[] = []
 
-type Bucket = 'airtel' | 'coloplus' | 'decided'
+type Bucket = 'customer' | 'coloplus' | 'decided'
 type TabValue = Bucket | 'all'
 
 function bucketFor(acceptance: Acceptance): Bucket {
   if (acceptance.stage === 'accepted' || acceptance.stage === 'rejected') return 'decided'
-  return acceptance.waitingOn === 'airtel' ? 'airtel' : 'coloplus'
+  return acceptance.waitingOn === 'customer' ? 'customer' : 'coloplus'
 }
 
 function AcceptanceDetailPane({
@@ -49,7 +49,7 @@ function AcceptanceDetailPane({
   const attachmentsQuery = useAttachments('acceptance', acceptance.siteId)
 
   const { label, tone } = acceptanceStageLabel(acceptance.stage)
-  const canActNow = canAct && acceptance.waitingOn === 'airtel'
+  const canActNow = canAct && acceptance.waitingOn === 'customer'
 
   async function handleTransition(stage: 'inspected' | 'accepted' | 'rejected', note?: string) {
     try {
@@ -80,7 +80,7 @@ function AcceptanceDetailPane({
         <div className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
           <dt className="text-text-muted">Waiting on</dt>
           <dd className="font-medium text-text">
-            {acceptance.waitingOn === 'airtel' ? 'Airtel' : 'Coloplus'}
+            {acceptance.waitingOn === 'customer' ? 'the customer' : 'Coloplus'}
           </dd>
         </div>
         {acceptance.nextAction && (
@@ -176,11 +176,11 @@ export function Acceptance() {
   const acceptancesQuery = useAcceptances()
   const acceptances = acceptancesQuery.data ?? NO_ACCEPTANCES
 
-  const [tab, setTab] = useState<TabValue>('airtel')
+  const [tab, setTab] = useState<TabValue>('customer')
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null)
 
   const counts = useMemo(() => {
-    const result = { airtel: 0, coloplus: 0, decided: 0 }
+    const result = { customer: 0, coloplus: 0, decided: 0 }
     for (const acceptance of acceptances) result[bucketFor(acceptance)]++
     return result
   }, [acceptances])
@@ -193,7 +193,7 @@ export function Acceptance() {
   const selected = visible.find((a) => a.siteId === selectedSiteId) ?? visible[0] ?? null
 
   const tabItems: TabItem<TabValue>[] = [
-    { value: 'airtel', label: `Waiting on you ${counts.airtel}` },
+    { value: 'customer', label: `Waiting on you ${counts.customer}` },
     { value: 'coloplus', label: `With Coloplus ${counts.coloplus}` },
     { value: 'decided', label: `Decided ${counts.decided}` },
     { value: 'all', label: `All ${acceptances.length}` },

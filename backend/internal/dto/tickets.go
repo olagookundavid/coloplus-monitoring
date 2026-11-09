@@ -21,7 +21,7 @@ type RaiseTicketRequest struct {
 
 type TransitionTicketRequest struct {
 	// Status is in_progress or resolved for Coloplus, open to reopen a
-	// resolved ticket for Airtel.
+	// resolved ticket for the customer.
 	Status string `json:"status" example:"in_progress"`
 	// Note explains the step. Needed to resolve, to reopen, and to take a
 	// resolved ticket back into work.
@@ -30,7 +30,7 @@ type TransitionTicketRequest struct {
 
 type TicketCommentRequest struct {
 	Body string `json:"body"`
-	// Internal keeps the comment inside Coloplus; Airtel never sees it.
+	// Internal keeps the comment inside Coloplus; the customer never sees it.
 	Internal bool `json:"internal,omitempty"`
 }
 
@@ -39,7 +39,7 @@ type LinkIncidentRequest struct {
 }
 
 // TicketDTO is one ticket. RaisedBy, AssigneeID and ResolvedBy are Coloplus's
-// own view and are left out for Airtel, and so is a linked incident until it
+// own view and are left out for the customer, and so is a linked incident until it
 // has been published to them.
 type TicketDTO struct {
 	ID           string `json:"id"`
@@ -71,7 +71,7 @@ type TicketDTO struct {
 
 type TicketEventDTO struct {
 	ID string `json:"id"`
-	// Party is airtel or coloplus.
+	// Party is customer or coloplus.
 	Party string `json:"party"`
 	// Kind is comment, status or link (staff only).
 	Kind       string `json:"kind"`

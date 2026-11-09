@@ -195,7 +195,7 @@ func TestIncident_AlertsReachTheRightPeopleOnce(t *testing.T) {
 	w := newWorkflow(t)
 	api := "/api/v1/incidents/"
 	strangerEmail, _ := w.seedUser(domain.RoleSupervisor) // supervises no site
-	otherAirtel, _ := w.seedUser(domain.RoleAirtelViewer) // sees no site
+	otherCustomer, _ := w.seedUser(domain.RoleViewer)     // sees no site
 
 	id := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/incidents", map[string]any{
 		"category": "generator_failure", "severity": "critical", "impact": "outage", "title": "Generator down",
@@ -234,7 +234,7 @@ func TestIncident_AlertsReachTheRightPeopleOnce(t *testing.T) {
 	if strings.Contains(got[0].Text, "bearings") || strings.Contains(got[0].Text, "engineer") {
 		t.Fatalf("the customer notice leaked internal detail: %s", got[0].Text)
 	}
-	if len(w.mailer.to(otherAirtel)) != 0 {
+	if len(w.mailer.to(otherCustomer)) != 0 {
 		t.Fatal("a customer user who cannot see the site must not be notified")
 	}
 	w.expect(w.call("POST", api+id+"/publish", nil, w.supervisor), 200) // repeat

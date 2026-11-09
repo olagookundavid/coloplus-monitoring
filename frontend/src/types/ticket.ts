@@ -21,13 +21,13 @@ export type TicketEventKind = 'comment' | 'status' | 'link'
 
 export interface TicketEvent {
   id: string
-  /** airtel or coloplus. */
-  party: 'airtel' | 'coloplus'
+  /** customer or coloplus. */
+  party: 'customer' | 'coloplus'
   kind: TicketEventKind
   fromStatus?: TicketStatus
   toStatus?: TicketStatus
   body: string
-  /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
+  /** Only ever sent to Coloplus staff; stays undefined for the customer. */
   internal?: boolean
   authorId?: string
   authorName?: string
@@ -49,12 +49,12 @@ export interface Ticket {
   resolution?: string
   resolvedAt?: string
   reopenCount: number
-  /** Absent until the linked incident has been published to Airtel. */
+  /** Absent until the linked incident has been published to the customer. */
   incidentId?: string
   incidentRef?: string
   createdAt: string
   updatedAt: string
-  /** Coloplus's own view; left out for Airtel. */
+  /** Coloplus's own view; left out for the customer. */
   raisedBy?: string
   raisedByName?: string
   assigneeId?: string

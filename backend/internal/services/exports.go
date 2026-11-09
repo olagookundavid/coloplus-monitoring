@@ -241,7 +241,7 @@ const ExportIncidentRegisterAssumptions = "Start and restoration are times recor
 	"Faults with no outage are listed apart from service interruptions by their impact."
 
 // IncidentRegister lists every incident that started in the range, within the
-// caller's sites. Airtel gets published incidents only, as everywhere else.
+// caller's sites. The customer gets published incidents only, as everywhere else.
 func (s *ExportService) IncidentRegister(ctx context.Context, actor domain.Actor, in ExportIncidentsInput) (IncidentRegisterExport, error) {
 	if !actor.Can(domain.PermExportsCreate) {
 		return IncidentRegisterExport{}, apperrors.ErrForbidden

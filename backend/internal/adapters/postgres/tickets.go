@@ -17,7 +17,7 @@ type TicketRepository struct{ db *DB }
 func NewTicketRepository(db *DB) *TicketRepository { return &TicketRepository{db: db} }
 
 // The incident is joined so the caller can tell whether it has been published
-// to Airtel without a query per ticket.
+// to the customer without a query per ticket.
 const ticketColumns = `t.id::text, t.number, t.site_id::text, t.category, t.priority, t.subject, t.description,
 	t.contact_email, t.status, t.raised_by::text, COALESCE(t.assignee_id::text, ''), t.resolution, t.resolved_at,
 	COALESCE(t.resolved_by::text, ''), t.reopen_count, t.client_key, COALESCE(t.incident_id::text, ''),

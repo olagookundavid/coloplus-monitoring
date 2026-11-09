@@ -389,7 +389,7 @@ export function FuelPanel({ open, onClose, siteId, siteName }: FuelPanelProps) {
             <Field
               label="Internal note"
               htmlFor="fuel-note"
-              hint="(optional) Coloplus only -- never shown to Airtel."
+              hint="(optional) Coloplus only -- never shown to the customer."
             >
               <Textarea
                 id="fuel-note"

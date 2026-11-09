@@ -374,7 +374,7 @@ func (s *IncidentService) AddUpdate(ctx context.Context, actor domain.Actor, id 
 			return conflict("this incident is closed")
 		}
 		if in.CustomerVisible && i.PublishedAt == nil {
-			return conflict("publish the incident to Airtel before sending them an update")
+			return conflict("publish the incident to the customer before sending them an update")
 		}
 		now := s.clock.Now()
 		if in.NextUpdateDue != nil && !in.NextUpdateDue.After(now) {
@@ -420,7 +420,7 @@ func (s *IncidentService) AddUpdate(ctx context.Context, actor domain.Actor, id 
 	return out, err
 }
 
-// Publish shares the incident with Airtel. It does not wait for the daily
+// Publish shares the incident with the customer. It does not wait for the daily
 // report to be approved. Publishing twice changes nothing.
 func (s *IncidentService) Publish(ctx context.Context, actor domain.Actor, id string) (domain.Incident, error) {
 	if !actor.Can(domain.PermIncidentsManage) {

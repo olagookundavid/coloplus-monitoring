@@ -64,7 +64,7 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
 
   const ticketId = ticket.id
   const siteLabel = site
-    ? `${site.name} (${site.airtelCode}) · ${site.region}`
+    ? `${site.name} (${site.customerSiteCode}) · ${site.region}`
     : nameOrId(ticket.siteName, ticket.siteId)
   const { label: statusLabel, tone: statusTone } = ticketStatusLabel(ticket.status)
   const { label: priorityLabel, tone: priorityTone } = ticketPriorityLabel(ticket.priority)
@@ -167,7 +167,7 @@ export function TicketDetailPanel({ ticket, open, onClose }: TicketDetailPanelPr
                   </span>
                   <span className="text-text">
                     {event.body ||
-                      `${event.party === 'airtel' ? 'You' : 'Coloplus'} updated the status`}
+                      `${event.party === 'customer' ? 'You' : 'Coloplus'} updated the status`}
                     {isStaff && event.authorName && (
                       <span className="text-text-muted"> · {event.authorName}</span>
                     )}

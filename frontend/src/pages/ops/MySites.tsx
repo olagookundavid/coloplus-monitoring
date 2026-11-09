@@ -52,7 +52,7 @@ function matchesType(row: MySiteRow, filter: string): boolean {
 function matchesSearch(row: MySiteRow, query: string): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true
-  return row.airtelCode.toLowerCase().includes(q) || row.name.toLowerCase().includes(q)
+  return row.customerSiteCode.toLowerCase().includes(q) || row.name.toLowerCase().includes(q)
 }
 
 export function MySites() {

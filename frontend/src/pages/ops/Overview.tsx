@@ -226,7 +226,7 @@ export function Overview() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-text">{site.name}</p>
                       <p className="truncate text-xs text-text-muted">
-                        {site.airtelCode}, {site.state}
+                        {site.customerSiteCode}, {site.state}
                       </p>
                     </div>
                     <ButtonLink

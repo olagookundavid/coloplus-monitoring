@@ -371,6 +371,40 @@ func (s *UserService) ResetMFAByEmail(ctx context.Context, email string) (domain
 	return user, s.resetMFA(ctx, user, "", "console")
 }
 
+// LogoutEveryone ends every session at once, the caller's own included, so
+// everybody signs in again. Use it after a change that alters what people may
+// see or do, or when a token may have leaked.
+func (s *UserService) LogoutEveryone(ctx context.Context, actor domain.Actor) (int64, error) {
+	if !actor.Can(domain.PermUsersManage) {
+		return 0, apperrors.ErrForbidden
+	}
+	return s.logoutEveryone(ctx, actor.UserID, "api")
+}
+
+// LogoutEveryoneFromConsole is the same from the server console, for when no
+// administrator can sign in to do it.
+func (s *UserService) LogoutEveryoneFromConsole(ctx context.Context) (int64, error) {
+	return s.logoutEveryone(ctx, "", "console")
+}
+
+func (s *UserService) logoutEveryone(ctx context.Context, byID, via string) (int64, error) {
+	var covered int64
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Authenticate forgives sessionSkew, so the cut-off is moved on by the same
+		// amount: a session issued just before this moment is ended too.
+		n, err := s.users.RevokeAllSessions(ctx, s.clock.Now().Add(sessionSkew))
+		if err != nil {
+			return err
+		}
+		covered = n
+		return s.audit.RecordInTx(ctx, domain.AuditEvent{
+			ActorID: byID, Action: "auth.logout_all", EntityType: "session",
+			Metadata: map[string]any{"accounts": n, "via": via},
+		})
+	})
+	return covered, err
+}
+
 func (s *UserService) resetMFA(ctx context.Context, user domain.User, byID, via string) error {
 	return s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.users.ResetTOTP(ctx, user.ID, s.clock.Now()); err != nil {

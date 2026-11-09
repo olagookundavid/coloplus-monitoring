@@ -74,7 +74,7 @@ export function Corrections() {
   function openPanel(report: DailyReport) {
     const site = sitesById.get(report.siteId) ?? {
       siteId: report.siteId,
-      airtelCode: report.siteId,
+      customerSiteCode: report.siteId,
       coloplusCode: report.siteId,
       name: report.siteId,
       siteType: '',

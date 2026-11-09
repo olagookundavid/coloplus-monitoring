@@ -60,7 +60,7 @@ export interface ReportStatusSummary {
 // reporter-relevant fields of dto.SiteRowDTO.
 export interface SiteReportRow {
   siteId: string
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   siteType: string

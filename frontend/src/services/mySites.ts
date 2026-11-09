@@ -25,7 +25,7 @@ interface DayBarDTO {
 
 interface MySiteRowDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   name: string
   site_type: string
@@ -83,7 +83,7 @@ export async function fetchMySites(): Promise<MySitesResponse> {
       generatedAt: data.generated_at,
       sites: data.sites.map((site) => ({
         siteId: site.site_id,
-        airtelCode: site.airtel_code,
+        customerSiteCode: site.customer_site_code,
         coloplusCode: site.coloplus_code,
         name: site.name,
         siteType: site.site_type,

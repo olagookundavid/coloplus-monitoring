@@ -190,7 +190,7 @@ func coloplusAcceptanceActor(userID string) domain.Actor {
 	}}
 }
 
-func airtelAcceptanceActor(userID string) domain.Actor {
+func customerAcceptanceActor(userID string) domain.Actor {
 	return domain.Actor{UserID: userID, AllSites: true, Permissions: map[domain.Permission]struct{}{
 		domain.PermAcceptanceReview: {}, domain.PermAcceptanceRead: {},
 	}}
@@ -202,7 +202,7 @@ func coloplusDisputeActor(userID string) domain.Actor {
 	}}
 }
 
-func airtelDisputeActor(userID string) domain.Actor {
+func customerDisputeActor(userID string) domain.Actor {
 	return domain.Actor{UserID: userID, AllSites: true, Permissions: map[domain.Permission]struct{}{
 		domain.PermDisputesRaise: {}, domain.PermDisputesRead: {},
 	}}
@@ -214,7 +214,7 @@ func coloplusTicketActor(userID string) domain.Actor {
 	}}
 }
 
-func airtelTicketActor(userID string) domain.Actor {
+func customerTicketActor(userID string) domain.Actor {
 	return domain.Actor{UserID: userID, AllSites: true, Permissions: map[domain.Permission]struct{}{
 		domain.PermTicketsRaise: {}, domain.PermTicketsRead: {},
 	}}
@@ -300,13 +300,13 @@ func dailyIntervals(date time.Time, loc *time.Location, primary, backup domain.P
 }
 
 func (sd *seeder) ensureSite(ctx context.Context, actor domain.Actor, site domain.Site) (domain.Site, error) {
-	existing, _, err := sd.siteRepo.List(ctx, ports.SiteFilter{AllSites: true, Query: site.AirtelCode, Limit: 10})
+	existing, _, err := sd.siteRepo.List(ctx, ports.SiteFilter{AllSites: true, Query: site.CustomerSiteCode, Limit: 10})
 	if err != nil {
 		return domain.Site{}, err
 	}
 	for _, s := range existing {
-		if s.AirtelCode == site.AirtelCode {
-			sd.log.Info("site already seeded", "airtel_code", s.AirtelCode, "id", s.ID)
+		if s.CustomerSiteCode == site.CustomerSiteCode {
+			sd.log.Info("site already seeded", "customer_site_code", s.CustomerSiteCode, "id", s.ID)
 			return s, nil
 		}
 	}
@@ -314,7 +314,7 @@ func (sd *seeder) ensureSite(ctx context.Context, actor domain.Actor, site domai
 	if err != nil {
 		return domain.Site{}, err
 	}
-	sd.log.Info("site created", "airtel_code", created.AirtelCode, "id", created.ID)
+	sd.log.Info("site created", "customer_site_code", created.CustomerSiteCode, "id", created.ID)
 	return created, nil
 }
 
@@ -570,7 +570,7 @@ func (sd *seeder) ensureIncidentAt(ctx context.Context, spec incidentSpec) error
 	}
 
 	// Publish, if asked, before closing: Publish refuses a closed incident
-	// (an incident goes to Airtel while still open; closing is the last word,
+	// (an incident goes to the customer while still open; closing is the last word,
 	// not a trigger to tell them for the first time).
 	if spec.publish {
 		if _, err := sd.incidents.Publish(ctx, spec.supervisor2, id); err != nil {
@@ -615,10 +615,10 @@ func (sd *seeder) ensureIncidentCorrection(
 }
 
 // ensureDisputeAt raises a dispute and, depending on target, carries it
-// through Coloplus's review and Airtel's response -- stopping at whichever
+// through Coloplus's review and the customer's response -- stopping at whichever
 // status is asked for, so every reachable DisputeStatus has an example.
 func (sd *seeder) ensureDisputeAt(
-	ctx context.Context, coloplus, airtel domain.Actor, siteID, reportID, title string, target domain.DisputeStatus,
+	ctx context.Context, coloplus, customer domain.Actor, siteID, reportID, title string, target domain.DisputeStatus,
 ) error {
 	existing, _, err := sd.disputeRepo.List(ctx, ports.DisputeFilter{AllSites: true, SiteID: siteID, Limit: 50})
 	if err != nil {
@@ -630,7 +630,7 @@ func (sd *seeder) ensureDisputeAt(
 			return nil
 		}
 	}
-	created, err := sd.disputes.Raise(ctx, airtel, services.DisputeInput{
+	created, err := sd.disputes.Raise(ctx, customer, services.DisputeInput{
 		SiteID: siteID, ReportID: reportID, Category: domain.DisputeWrongDuration,
 		Title:       title,
 		Description: "Seeded sample dispute.",
@@ -671,7 +671,7 @@ func (sd *seeder) ensureDisputeAt(
 		if target == domain.DisputeResolved {
 			return nil
 		}
-		_, err := sd.disputes.Transition(ctx, airtel, id, domain.DisputeStep{To: domain.DisputeClosed})
+		_, err := sd.disputes.Transition(ctx, customer, id, domain.DisputeStep{To: domain.DisputeClosed})
 		return err
 	}
 	return nil
@@ -680,7 +680,7 @@ func (sd *seeder) ensureDisputeAt(
 // ensureTicketAt raises a support ticket and, depending on target, carries it
 // through Coloplus's workflow.
 func (sd *seeder) ensureTicketAt(
-	ctx context.Context, coloplus, airtel domain.Actor, siteID, subject string,
+	ctx context.Context, coloplus, customer domain.Actor, siteID, subject string,
 	category domain.TicketCategory, priority domain.TicketPriority, target domain.TicketStatus,
 ) error {
 	existing, _, err := sd.ticketRepo.List(ctx, ports.TicketFilter{AllSites: true, SiteID: siteID, Limit: 50})
@@ -693,9 +693,9 @@ func (sd *seeder) ensureTicketAt(
 			return nil
 		}
 	}
-	created, err := sd.tickets.Raise(ctx, airtel, services.TicketInput{
+	created, err := sd.tickets.Raise(ctx, customer, services.TicketInput{
 		SiteID: siteID, Category: category, Priority: priority, Subject: subject,
-		Description: "Seeded sample ticket.", ContactEmail: "ops.contact@airtel.africa",
+		Description: "Seeded sample ticket.", ContactEmail: "ops.contact@customer.example",
 	})
 	if err != nil {
 		return err
@@ -730,9 +730,9 @@ func (sd *seeder) ensureAcceptanceRequested(ctx context.Context, coloplus domain
 	return err
 }
 
-// ensureAcceptanceAccepted walks the full Coloplus -> Airtel sequence so one
+// ensureAcceptanceAccepted walks the full Coloplus -> the customer sequence so one
 // site ends up active (see AcceptanceService.activate).
-func (sd *seeder) ensureAcceptanceAccepted(ctx context.Context, coloplus, airtel domain.Actor, siteID string) error {
+func (sd *seeder) ensureAcceptanceAccepted(ctx context.Context, coloplus, customer domain.Actor, siteID string) error {
 	if _, err := sd.acceptanceRepo.GetBySite(ctx, siteID, false); err == nil {
 		sd.log.Info("acceptance already seeded", "site_id", siteID)
 		return nil
@@ -752,10 +752,10 @@ func (sd *seeder) ensureAcceptanceAccepted(ctx context.Context, coloplus, airtel
 	}); err != nil {
 		return err
 	}
-	if _, err := sd.acceptance.Transition(ctx, airtel, siteID, domain.AcceptanceStep{To: domain.StageInspected}); err != nil {
+	if _, err := sd.acceptance.Transition(ctx, customer, siteID, domain.AcceptanceStep{To: domain.StageInspected}); err != nil {
 		return err
 	}
-	_, err := sd.acceptance.Transition(ctx, airtel, siteID, domain.AcceptanceStep{To: domain.StageAccepted})
+	_, err := sd.acceptance.Transition(ctx, customer, siteID, domain.AcceptanceStep{To: domain.StageAccepted})
 	return err
 }
 
@@ -778,7 +778,7 @@ func (sd *seeder) ensureAcceptanceBuilt(ctx context.Context, coloplus domain.Act
 }
 
 // ensureAcceptanceReadyForInspection stops once Coloplus has submitted the
-// dossier and it is waiting on Airtel.
+// dossier and it is waiting on the customer.
 func (sd *seeder) ensureAcceptanceReadyForInspection(ctx context.Context, coloplus domain.Actor, siteID string) error {
 	if _, err := sd.acceptanceRepo.GetBySite(ctx, siteID, false); err == nil {
 		sd.log.Info("acceptance already seeded", "site_id", siteID)
@@ -800,9 +800,9 @@ func (sd *seeder) ensureAcceptanceReadyForInspection(ctx context.Context, colopl
 	return err
 }
 
-// ensureAcceptanceRejected walks Coloplus through to ready, then has Airtel
+// ensureAcceptanceRejected walks Coloplus through to ready, then has the customer
 // reject it, the negative-path end state.
-func (sd *seeder) ensureAcceptanceRejected(ctx context.Context, coloplus, airtel domain.Actor, siteID string) error {
+func (sd *seeder) ensureAcceptanceRejected(ctx context.Context, coloplus, customer domain.Actor, siteID string) error {
 	if _, err := sd.acceptanceRepo.GetBySite(ctx, siteID, false); err == nil {
 		sd.log.Info("acceptance already seeded", "site_id", siteID)
 		return nil
@@ -822,10 +822,10 @@ func (sd *seeder) ensureAcceptanceRejected(ctx context.Context, coloplus, airtel
 	}); err != nil {
 		return err
 	}
-	if _, err := sd.acceptance.Transition(ctx, airtel, siteID, domain.AcceptanceStep{To: domain.StageInspected}); err != nil {
+	if _, err := sd.acceptance.Transition(ctx, customer, siteID, domain.AcceptanceStep{To: domain.StageInspected}); err != nil {
 		return err
 	}
-	_, err := sd.acceptance.Transition(ctx, airtel, siteID, domain.AcceptanceStep{
+	_, err := sd.acceptance.Transition(ctx, customer, siteID, domain.AcceptanceStep{
 		To: domain.StageRejected, Note: "Seeded: the enclosure does not meet the ventilation spec.",
 	})
 	return err
@@ -1005,7 +1005,7 @@ func (sd *seeder) run(ctx context.Context) error {
 	enuguCommissioned := time.Date(2023, time.July, 8, 0, 0, 0, 0, time.UTC)
 	siteSpecs := []domain.Site{
 		{
-			AirtelCode: "ATL-LEK-001", ColoplusCode: "CPL-LEK-001", Name: "Lekki Toll Gate Mast",
+			CustomerSiteCode: "CUS-LEK-001", ColoplusCode: "CPL-LEK-001", Name: "Lekki Toll Gate Mast",
 			Address: "Lekki-Epe Expressway, Toll Gate", Region: "South West", State: "Lagos", SiteType: "Mast",
 			PowerSources:   []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
 			ConsumptionLPH: &lekkiRate, TankCapacityLitres: &lekkiTank,
@@ -1014,7 +1014,7 @@ func (sd *seeder) run(ctx context.Context) error {
 			CommissioningDate: &lekkiCommissioned, Latitude: &lekkiLat, Longitude: &lekkiLng,
 		},
 		{
-			AirtelCode: "ATL-IKJ-002", ColoplusCode: "CPL-IKJ-002", Name: "Ikeja Central Hub",
+			CustomerSiteCode: "CUS-IKJ-002", ColoplusCode: "CPL-IKJ-002", Name: "Ikeja Central Hub",
 			Address: "Oba Akran Avenue, Ikeja", Region: "South West", State: "Lagos", SiteType: "Hub",
 			PowerSources:   []domain.PowerSource{domain.SourceGrid, domain.SourceSolar},
 			ConsumptionLPH: &ikejaRate, TankCapacityLitres: &ikejaTank,
@@ -1023,9 +1023,9 @@ func (sd *seeder) run(ctx context.Context) error {
 			CommissioningDate: &ikejaCommissioned, Latitude: &ikejaLat, Longitude: &ikejaLng,
 		},
 		{
-			AirtelCode: "ATL-GRK-003", ColoplusCode: "CPL-GRK-003", Name: "Abuja Garki Node",
+			CustomerSiteCode: "CUS-GRK-003", ColoplusCode: "CPL-GRK-003", Name: "Abuja Garki Node",
 			Address: "Area 3, Garki", Region: "North Central", State: "FCT", SiteType: "Node",
-			PowerSources: []domain.PowerSource{domain.SourceGenerator, domain.SourceBattery},
+			PowerSources:    []domain.PowerSource{domain.SourceGenerator, domain.SourceBattery},
 			ResponsibleTeam: "FCT Field Team", GeneratorCapacity: "30 kVA diesel generator",
 			AccessContactName: "Musa Ibrahim", AccessContactPhone: "+234 805 345 6789", SupervisorName: "Tunde Supervisor",
 			CommissioningDate: &garkiCommissioned, Latitude: &garkiLat, Longitude: &garkiLng,
@@ -1035,25 +1035,25 @@ func (sd *seeder) run(ctx context.Context) error {
 			UnreportedTime: domain.UnreportedUnknown,
 		},
 		{
-			AirtelCode: "ATL-PHC-004", ColoplusCode: "CPL-PHC-004", Name: "Port Harcourt Trans-Amadi Site",
+			CustomerSiteCode: "CUS-PHC-004", ColoplusCode: "CPL-PHC-004", Name: "Port Harcourt Trans-Amadi Site",
 			Address: "Trans-Amadi Industrial Layout", Region: "South South", State: "Rivers", SiteType: "Tower",
-			PowerSources: []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator, domain.SourceSolar},
+			PowerSources:    []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator, domain.SourceSolar},
 			ResponsibleTeam: "South South Field Team", GeneratorCapacity: "50 kVA diesel generator",
 			AccessContactName: "Blessing Okafor", AccessContactPhone: "+234 806 456 7890", SupervisorName: "Tunde Supervisor",
 			CommissioningDate: &phcCommissioned, Latitude: &phcLat, Longitude: &phcLng,
 		},
 		{
-			AirtelCode: "ATL-KAN-005", ColoplusCode: "CPL-KAN-005", Name: "Kano Sabon Gari Node",
+			CustomerSiteCode: "CUS-KAN-005", ColoplusCode: "CPL-KAN-005", Name: "Kano Sabon Gari Node",
 			Address: "Sabon Gari Market Road", Region: "North West", State: "Kano", SiteType: "Node",
-			PowerSources: []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
+			PowerSources:    []domain.PowerSource{domain.SourceGrid, domain.SourceGenerator},
 			ResponsibleTeam: "North West Field Team", GeneratorCapacity: "35 kVA diesel generator",
 			AccessContactName: "Abubakar Sani", AccessContactPhone: "+234 807 567 8901", SupervisorName: "Sam Supervisor",
 			CommissioningDate: &kanoCommissioned, Latitude: &kanoLat, Longitude: &kanoLng,
 		},
 		{
-			AirtelCode: "ATL-ENU-006", ColoplusCode: "CPL-ENU-006", Name: "Enugu Independence Layout Hub",
+			CustomerSiteCode: "CUS-ENU-006", ColoplusCode: "CPL-ENU-006", Name: "Enugu Independence Layout Hub",
 			Address: "Independence Layout", Region: "South East", State: "Enugu", SiteType: "Hub",
-			PowerSources: []domain.PowerSource{domain.SourceGenerator, domain.SourceSolar, domain.SourceBattery},
+			PowerSources:    []domain.PowerSource{domain.SourceGenerator, domain.SourceSolar, domain.SourceBattery},
 			ResponsibleTeam: "South East Field Team", GeneratorCapacity: "40 kVA diesel generator",
 			AccessContactName: "Chukwuemeka Nwosu", AccessContactPhone: "+234 808 678 9012", SupervisorName: "Tunde Supervisor",
 			CommissioningDate: &enuguCommissioned, Latitude: &enuguLat, Longitude: &enuguLng,
@@ -1063,7 +1063,7 @@ func (sd *seeder) run(ctx context.Context) error {
 	for i, spec := range siteSpecs {
 		site, err := sd.ensureSite(ctx, bootstrap, spec)
 		if err != nil {
-			return fmt.Errorf("seeding site %s: %w", spec.AirtelCode, err)
+			return fmt.Errorf("seeding site %s: %w", spec.CustomerSiteCode, err)
 		}
 		siteIDs[i] = site.ID
 	}
@@ -1104,18 +1104,18 @@ func (sd *seeder) run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("seeding second reporter: %w", err)
 	}
-	if _, err := sd.ensureUser(ctx, bootstrap, "viewer@airtel.africa", "Vera Viewer", domain.RoleAirtelViewer, siteIDs); err != nil {
-		return fmt.Errorf("seeding airtel viewer: %w", err)
+	if _, err := sd.ensureUser(ctx, bootstrap, "viewer@customer.example", "Vera Viewer", domain.RoleViewer, siteIDs); err != nil {
+		return fmt.Errorf("seeding viewer: %w", err)
 	}
-	if _, err := sd.ensureUser(ctx, bootstrap, "viewer2@airtel.africa", "Dayo Viewer", domain.RoleAirtelViewer, siteIDs); err != nil {
-		return fmt.Errorf("seeding second airtel viewer: %w", err)
+	if _, err := sd.ensureUser(ctx, bootstrap, "viewer2@customer.example", "Dayo Viewer", domain.RoleViewer, siteIDs); err != nil {
+		return fmt.Errorf("seeding second viewer: %w", err)
 	}
-	reviewer, err := sd.ensureUser(ctx, bootstrap, "reviewer@airtel.africa", "Rex Reviewer", domain.RoleAirtelReviewer, siteIDs)
+	reviewer, err := sd.ensureUser(ctx, bootstrap, "reviewer@customer.example", "Rex Reviewer", domain.RoleReviewer, siteIDs)
 	if err != nil {
-		return fmt.Errorf("seeding airtel reviewer: %w", err)
+		return fmt.Errorf("seeding reviewer: %w", err)
 	}
-	if _, err := sd.ensureUser(ctx, bootstrap, "reviewer2@airtel.africa", "Nkem Reviewer", domain.RoleAirtelReviewer, siteIDs); err != nil {
-		return fmt.Errorf("seeding second airtel reviewer: %w", err)
+	if _, err := sd.ensureUser(ctx, bootstrap, "reviewer2@customer.example", "Nkem Reviewer", domain.RoleReviewer, siteIDs); err != nil {
+		return fmt.Errorf("seeding second reviewer: %w", err)
 	}
 	// Auditor is site-scoped, like a reporter (DECISIONS 045) -- nil site ids
 	// would leave both accounts able to sign in but seeing no sites, no
@@ -1267,9 +1267,9 @@ func (sd *seeder) run(ctx context.Context) error {
 		}
 	}
 
-	// Disputes: Airtel's reviewer disputes reports and sites across the
+	// Disputes: The customer's reviewer disputes reports and sites across the
 	// workflow's six statuses.
-	coloplusDispute, airtelDispute := coloplusDisputeActor(supervisor.ID), airtelDisputeActor(reviewer.ID)
+	coloplusDispute, customerDispute := coloplusDisputeActor(supervisor.ID), customerDisputeActor(reviewer.ID)
 	disputeSpecs := []struct {
 		siteID, reportID, title string
 		target                  domain.DisputeStatus
@@ -1282,13 +1282,13 @@ func (sd *seeder) run(ctx context.Context) error {
 		{enuguID, "", "Outage duration already addressed", domain.DisputeClosed},
 	}
 	for _, spec := range disputeSpecs {
-		if err := sd.ensureDisputeAt(ctx, coloplusDispute, airtelDispute, spec.siteID, spec.reportID, spec.title, spec.target); err != nil {
+		if err := sd.ensureDisputeAt(ctx, coloplusDispute, customerDispute, spec.siteID, spec.reportID, spec.title, spec.target); err != nil {
 			return fmt.Errorf("seeding dispute %q: %w", spec.title, err)
 		}
 	}
 
-	// Support tickets: Airtel raises, Coloplus works them.
-	coloplusTicket, airtelTicket := coloplusTicketActor(supervisor2.ID), airtelTicketActor(reviewer.ID)
+	// Support tickets: The customer raises, Coloplus works them.
+	coloplusTicket, customerTicket := coloplusTicketActor(supervisor2.ID), customerTicketActor(reviewer.ID)
 	ticketSpecs := []struct {
 		siteID, subject string
 		category        domain.TicketCategory
@@ -1300,15 +1300,15 @@ func (sd *seeder) run(ctx context.Context) error {
 		{garkiID, "Fence damaged by weather", domain.TicketAccessRestriction, domain.TicketHigh, domain.TicketResolved},
 	}
 	for _, spec := range ticketSpecs {
-		if err := sd.ensureTicketAt(ctx, coloplusTicket, airtelTicket, spec.siteID, spec.subject, spec.category, spec.priority, spec.target); err != nil {
+		if err := sd.ensureTicketAt(ctx, coloplusTicket, customerTicket, spec.siteID, spec.subject, spec.category, spec.priority, spec.target); err != nil {
 			return fmt.Errorf("seeding ticket %q: %w", spec.subject, err)
 		}
 	}
 
 	// Acceptance: the full spread across six sites -- accepted (activates the
 	// site), requested, built, ready for inspection, rejected and on hold.
-	coloplusAcceptance, airtelAcceptance := coloplusAcceptanceActor(supervisor.ID), airtelAcceptanceActor(reviewer.ID)
-	if err := sd.ensureAcceptanceAccepted(ctx, coloplusAcceptance, airtelAcceptance, lekkiID); err != nil {
+	coloplusAcceptance, customerAcceptance := coloplusAcceptanceActor(supervisor.ID), customerAcceptanceActor(reviewer.ID)
+	if err := sd.ensureAcceptanceAccepted(ctx, coloplusAcceptance, customerAcceptance, lekkiID); err != nil {
 		return fmt.Errorf("seeding Lekki acceptance: %w", err)
 	}
 	if err := sd.ensureAcceptanceRequested(ctx, coloplusAcceptance, ikejaID); err != nil {
@@ -1317,7 +1317,7 @@ func (sd *seeder) run(ctx context.Context) error {
 	if err := sd.ensureAcceptanceBuilt(ctx, coloplusAcceptance, garkiID); err != nil {
 		return fmt.Errorf("seeding Garki acceptance: %w", err)
 	}
-	if err := sd.ensureAcceptanceRejected(ctx, coloplusAcceptance, airtelAcceptance, phcID); err != nil {
+	if err := sd.ensureAcceptanceRejected(ctx, coloplusAcceptance, customerAcceptance, phcID); err != nil {
 		return fmt.Errorf("seeding Port Harcourt acceptance: %w", err)
 	}
 	if err := sd.ensureAcceptanceOnHold(ctx, coloplusAcceptance, kanoID); err != nil {
@@ -1416,8 +1416,8 @@ func (sd *seeder) run(ctx context.Context) error {
 		"admin", "admin@coloplus.africa / admin2@coloplus.africa",
 		"supervisor", "supervisor@coloplus.africa / supervisor2@coloplus.africa",
 		"reporter", "reporter@coloplus.africa / reporter2@coloplus.africa",
-		"airtel_viewer", "viewer@airtel.africa / viewer2@airtel.africa",
-		"airtel_reviewer", "reviewer@airtel.africa / reviewer2@airtel.africa",
+		"viewer", "viewer@customer.example / viewer2@customer.example",
+		"reviewer", "reviewer@customer.example / reviewer2@customer.example",
 		"auditor", "auditor@coloplus.africa / auditor2@coloplus.africa",
 	)
 	return nil

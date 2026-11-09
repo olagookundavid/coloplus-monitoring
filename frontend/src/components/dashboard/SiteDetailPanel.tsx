@@ -71,7 +71,7 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
   const condition = siteConditionLabel(site.condition)
   const acceptance = overview?.acceptance
   const canActOnAcceptance =
-    canReviewAcceptance && acceptance?.waitingOn === 'airtel' && !overviewQuery.isLoading
+    canReviewAcceptance && acceptance?.waitingOn === 'customer' && !overviewQuery.isLoading
 
   async function handleConfirmAcceptance() {
     if (!pendingAction || !site) return
@@ -99,7 +99,7 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
     <SidePanel
       open={open}
       onClose={onClose}
-      eyebrow={`${site.airtelCode} · ${site.region.toUpperCase()}`}
+      eyebrow={`${site.customerSiteCode} · ${site.region.toUpperCase()}`}
       title={site.name}
       headerActions={
         <Button icon={PlusIcon} size="sm" onClick={onCreateTicket}>
@@ -265,7 +265,7 @@ export function SiteDetailPanel({ site, open, onClose, onCreateTicket }: SiteDet
                 <dl className="mt-4 divide-y divide-border">
                   <ProfileRow
                     label="Waiting on"
-                    value={acceptance.waitingOn === 'airtel' ? 'Airtel' : 'Coloplus'}
+                    value={acceptance.waitingOn === 'customer' ? 'Customer' : 'Coloplus'}
                   />
                   {acceptance.nextAction && (
                     <ProfileRow label="Next action" value={acceptance.nextAction} />

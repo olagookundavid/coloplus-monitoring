@@ -68,7 +68,7 @@ interface DisputeListResponseDTO {
 interface DisputeSummaryDTO {
   open: number
   with_coloplus: number
-  with_airtel: number
+  with_customer: number
 }
 
 export function mapDispute(dto: DisputeDTO): Dispute {
@@ -157,7 +157,7 @@ export async function fetchDisputeDetail(id: string): Promise<DisputeDetail> {
 export async function fetchDisputeSummary(): Promise<DisputeSummary> {
   try {
     const { data } = await getApi().get<DisputeSummaryDTO>('/disputes/summary')
-    return { open: data.open, withColoplus: data.with_coloplus, withAirtel: data.with_airtel }
+    return { open: data.open, withColoplus: data.with_coloplus, withCustomer: data.with_customer }
   } catch (error) {
     throw mapAxiosError(error, 'Could not load the dispute summary.')
   }

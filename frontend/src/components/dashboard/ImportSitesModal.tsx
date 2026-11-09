@@ -16,7 +16,7 @@ const NO_ROWS: SiteImportRow[] = []
 
 const COLUMNS: Column<SiteImportRow>[] = [
   { header: 'Line', accessor: (row) => row.line },
-  { header: 'Airtel code', accessor: (row) => row.airtelCode },
+  { header: 'Customer site code', accessor: (row) => row.customerSiteCode },
   {
     header: 'Action',
     accessor: (row) => row.action,
@@ -44,7 +44,7 @@ const COLUMNS: Column<SiteImportRow>[] = [
 // Two internal stages: pick a file (dry-run it immediately) -> preview the
 // result, with its per-row actions/problems *as* the confirmation -- there
 // is no separate ConfirmDialog on top of "Import N sites". Matched by
-// Airtel code, all-or-nothing: see backend/internal/services/site_import.go.
+// Customer site code, all-or-nothing: see backend/internal/services/site_import.go.
 export function ImportSitesModal({ open, onClose }: ImportSitesModalProps) {
   const mutation = useImportSitesMutation()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -131,7 +131,7 @@ export function ImportSitesModal({ open, onClose }: ImportSitesModalProps) {
       open={open}
       onClose={handleClose}
       title="Import sites from CSV"
-      subtitle="Matched by Airtel code. A blank cell on an existing site leaves that field unchanged."
+      subtitle="Matched by Customer site code. A blank cell on an existing site leaves that field unchanged."
       maxWidth="3xl"
       footer={
         stats ? (
@@ -205,7 +205,7 @@ export function ImportSitesModal({ open, onClose }: ImportSitesModalProps) {
             </p>
             {!checking && (
               <p className="text-xs text-text-muted">
-                Header row with airtel_code and any other site column. Up to 1,000 rows, 800 KB.
+                Header row with customer_site_code and any other site column. Up to 1,000 rows, 800 KB.
               </p>
             )}
           </div>

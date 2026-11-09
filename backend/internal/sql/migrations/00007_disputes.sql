@@ -1,19 +1,19 @@
 -- +goose Up
--- The Airtel reviewer is an Airtel viewer who may also raise disputes, add
+-- The reviewer is an Viewer who may also raise disputes, add
 -- review comments and acknowledge a resolution (PRD section 4).
-INSERT INTO roles (id, name) VALUES ('airtel_reviewer', 'Airtel reviewer');
+INSERT INTO roles (id, name) VALUES ('reviewer', 'reviewer');
 
 INSERT INTO permissions (id, description) VALUES
     ('disputes.read',   'Read disputes within scope'),
-    ('disputes.raise',  'Raise disputes, comment, withdraw, reopen and acknowledge a resolution (Airtel)'),
+    ('disputes.raise',  'Raise disputes, comment, withdraw, reopen and acknowledge a resolution (customer)'),
     ('disputes.manage', 'Review, request evidence, agree a correction and resolve disputes (Coloplus)');
 
 INSERT INTO role_permissions (role_id, permission_id) VALUES
-    ('airtel_reviewer', 'sites.read'),
-    ('airtel_reviewer', 'published.read'),
-    ('airtel_reviewer', 'disputes.read'),
-    ('airtel_reviewer', 'disputes.raise'),
-    ('airtel_viewer',   'disputes.read'),
+    ('reviewer', 'sites.read'),
+    ('reviewer', 'published.read'),
+    ('reviewer', 'disputes.read'),
+    ('reviewer', 'disputes.raise'),
+    ('viewer',   'disputes.read'),
     ('admin',           'disputes.read'),
     ('supervisor',      'disputes.read'),
     ('supervisor',      'disputes.manage');
@@ -23,7 +23,7 @@ CREATE TABLE disputes (
     number               BIGINT GENERATED ALWAYS AS IDENTITY,
     site_id              UUID        NOT NULL REFERENCES sites (id),
     -- What is disputed: the site as a whole, a published report, or one
-    -- interval of it. A report is the revision Airtel was looking at.
+    -- interval of it. A report is the revision the customer was looking at.
     report_id            UUID REFERENCES daily_reports (id),
     interval_id          UUID REFERENCES power_intervals (id),
     metric               TEXT        NOT NULL DEFAULT '' CHECK (metric IN (
@@ -45,7 +45,7 @@ CREATE TABLE disputes (
     resolution_report_id UUID REFERENCES daily_reports (id),
     resolved_at          TIMESTAMPTZ,
     resolved_by          UUID REFERENCES users (id),
-    -- Airtel's side: its agreement is a separate act from Coloplus's approval.
+    -- The customer's side: its agreement is a separate act from Coloplus's approval.
     acknowledged_at      TIMESTAMPTZ,
     acknowledged_by      UUID REFERENCES users (id),
     reopen_count         INT         NOT NULL DEFAULT 0,
@@ -56,7 +56,7 @@ CREATE TABLE disputes (
     CHECK (period_from IS NULL OR period_from <= period_to),
     CHECK (status <> 'resolved' OR (outcome IN ('upheld', 'not_upheld') AND resolved_at IS NOT NULL)),
     CHECK (status NOT IN ('open', 'under_review', 'awaiting_evidence', 'agreed_correction') OR outcome = ''),
-    -- Closed means Airtel acknowledged the resolution, or withdrew the dispute.
+    -- Closed means the customer acknowledged the resolution, or withdrew the dispute.
     CHECK (status <> 'closed' OR outcome = 'withdrawn' OR (outcome IN ('upheld', 'not_upheld') AND acknowledged_at IS NOT NULL)),
     -- An upheld dispute about a report must end in a corrected revision.
     CHECK (NOT (outcome = 'upheld' AND report_id IS NOT NULL) OR resolution_report_id IS NOT NULL)
@@ -77,14 +77,14 @@ CREATE UNIQUE INDEX disputes_open_target_key ON disputes (
 ) WHERE status <> 'closed';
 
 -- Everything said or done on a dispute, from both parties. Internal entries
--- are Coloplus's own notes and never reach Airtel.
+-- are Coloplus's own notes and never reach the customer.
 CREATE TABLE dispute_events (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     -- Orders the history exactly, even for entries made in one transaction.
     seq         BIGINT GENERATED ALWAYS AS IDENTITY,
     dispute_id  UUID        NOT NULL REFERENCES disputes (id),
     author_id   UUID        NOT NULL REFERENCES users (id),
-    party       TEXT        NOT NULL CHECK (party IN ('airtel', 'coloplus')),
+    party       TEXT        NOT NULL CHECK (party IN ('customer', 'coloplus')),
     kind        TEXT        NOT NULL CHECK (kind IN ('comment', 'status')),
     from_status TEXT        NOT NULL DEFAULT '',
     to_status   TEXT        NOT NULL DEFAULT '',

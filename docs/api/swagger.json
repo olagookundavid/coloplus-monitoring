@@ -150,7 +150,7 @@
         },
         "/api/v1/attachments": {
             "get": {
-                "description": "Received files only. Coloplus's internal files are left out for Airtel. For acceptance, owner_id is the site's id.",
+                "description": "Received files only. Coloplus's internal files are left out for the customer. For acceptance, owner_id is the site's id.",
                 "produces": [
                     "application/json"
                 ],
@@ -472,6 +472,29 @@
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/api/v1/auth/logout-all": {
+            "post": {
+                "description": "Ends every session at once, the caller's included: all of them sign in again. Needs user management; recorded in the audit log.",
+                "tags": [
+                    "users"
+                ],
+                "summary": "Sign everybody out",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.LogoutAllResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -861,7 +884,7 @@
         },
         "/api/v1/daily-reports/{id}": {
             "get": {
-                "description": "Airtel users receive the published view of approved reports only.",
+                "description": "Customer users receive the published view of approved reports only.",
                 "produces": [
                     "application/json"
                 ],
@@ -1445,7 +1468,7 @@
         },
         "/api/v1/disputes/{id}": {
             "get": {
-                "description": "Both parties' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel.",
+                "description": "Both parties' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for the customer.",
                 "produces": [
                     "application/json"
                 ],
@@ -1480,7 +1503,7 @@
         },
         "/api/v1/disputes/{id}/comments": {
             "post": {
-                "description": "Both parties can comment. Coloplus can mark a comment internal so Airtel never sees it. An Airtel comment on a dispute waiting for their evidence hands it back to Coloplus.",
+                "description": "Both parties can comment. Coloplus can mark a comment internal so the customer never sees it. A customer comment on a dispute waiting for their evidence hands it back to Coloplus.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1521,7 +1544,7 @@
         },
         "/api/v1/disputes/{id}/transition": {
             "post": {
-                "description": "Coloplus: open to under_review, then awaiting_evidence, agreed_correction or resolved. Resolving needs an outcome; upheld needs the correction agreed first and, for a report, the corrected approved revision. Airtel: closed withdraws it, or acknowledges a resolution; under_review gives evidence or reopens a resolution. Repeating a step that already happened changes nothing. Coloplus's approval and Airtel's agreement are recorded separately.",
+                "description": "Coloplus: open to under_review, then awaiting_evidence, agreed_correction or resolved. Resolving needs an outcome; upheld needs the correction agreed first and, for a report, the corrected approved revision. Customer: closed withdraws it, or acknowledges a resolution; under_review gives evidence or reopens a resolution. Repeating a step that already happened changes nothing. Coloplus's approval and the customer's agreement are recorded separately.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1668,7 +1691,7 @@
         },
         "/api/v1/exports/incidents.csv": {
             "get": {
-                "description": "One row per reported fault that started in the period, with its site, severity, impact, status and observed times. Airtel gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.",
+                "description": "One row per reported fault that started in the period, with its site, severity, impact, status and observed times. The customer gets published incidents only, as everywhere else. Duration is blank until restoration is recorded; a restoration target is a plan and is shown apart. Faults with no outage are told apart by impact. Needs export access; an export is recorded in the audit log.",
                 "produces": [
                     "text/csv"
                 ],
@@ -2092,7 +2115,7 @@
         },
         "/api/v1/incidents": {
             "get": {
-                "description": "Airtel users see only incidents that have been published to them.",
+                "description": "Customer users see only incidents that have been published to them.",
                 "produces": [
                     "application/json"
                 ],
@@ -2181,7 +2204,7 @@
         },
         "/api/v1/incidents/{id}": {
             "get": {
-                "description": "Staff get the full record and every update. Airtel gets the published view and the updates written for them.",
+                "description": "Staff get the full record and every update. The customer gets the published view and the updates written for them.",
                 "produces": [
                     "application/json"
                 ],
@@ -2310,7 +2333,7 @@
         },
         "/api/v1/incidents/{id}/outages": {
             "get": {
-                "description": "Links the incident to the outage the approved daily reports show between its start and its restoration (or now, while it is open), each minute counted once. Nothing is added to the daily figures. An \"Airtel\" user sees this only for a published incident.",
+                "description": "Links the incident to the outage the approved daily reports show between its start and its restoration (or now, while it is open), each minute counted once. Nothing is added to the daily figures. An \"The customer\" user sees this only for a published incident.",
                 "produces": [
                     "application/json"
                 ],
@@ -2352,7 +2375,7 @@
                 "tags": [
                     "incidents"
                 ],
-                "summary": "Share an incident with Airtel",
+                "summary": "Share an incident with the customer",
                 "parameters": [
                     {
                         "type": "string",
@@ -2427,7 +2450,7 @@
         },
         "/api/v1/incidents/{id}/updates": {
             "post": {
-                "description": "Anyone who can work on the incident may add a note. Supervisors can also set the plan (next action, next update time, restoration target) and mark an update for Airtel, which needs the incident to be published first.",
+                "description": "Anyone who can work on the incident may add a note. Supervisors can also set the plan (next action, next update time, restoration target) and mark an update for the customer, which needs the incident to be published first.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2869,7 +2892,7 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Search Airtel code, Coloplus code or name",
+                        "description": "Search customer site code, Coloplus code or name",
                         "name": "q",
                         "in": "query"
                     },
@@ -2977,7 +3000,7 @@
         },
         "/api/v1/sites/import": {
             "post": {
-                "description": "Creates new sites and updates existing ones, matched on the Airtel code. Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: airtel_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.",
+                "description": "Creates new sites and updates existing ones, matched on the customer site code (column customer_site_code). Send the file's text in the csv field (the front end reads the chosen file and sends its text; the API takes JSON only). Columns: customer_site_code (required), coloplus_code, name, state, power_sources (grid;generator), region, address, site_type, responsible_team, service_start and service_end (06:00, 24:00), freshness_hours, status, commissioning_date (2026-09-01), latitude, longitude, consumption_lph, tank_capacity_litres, unreported_time, generator_capacity, access_contact_name, access_contact_phone, supervisor_name. On an existing site a blank cell leaves the value as it is. At most 1,000 rows. It is all or nothing: if any row has a problem nothing is written and every problem is listed by line. Set dry_run to check a file first. Needs site management; recorded in the audit log.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3173,7 +3196,7 @@
         },
         "/api/v1/sites/{id}/acceptance/transition": {
             "post": {
-                "description": "Coloplus: requested to built, then ready_for_inspection with the dossier; a rejected site goes back to built once fixed. Airtel: ready_for_inspection to inspected or rejected; inspected to accepted or rejected. Either side can put it on_hold with a reason and resume it by naming the stage it left. Only Airtel's accepted counts as acceptance, and it brings a pending site into service. Repeating a step changes nothing.",
+                "description": "Coloplus: requested to built, then ready_for_inspection with the dossier; a rejected site goes back to built once fixed. Customer: ready_for_inspection to inspected or rejected; inspected to accepted or rejected. Either side can put it on_hold with a reason and resume it by naming the stage it left. Only the customer's accepted counts as acceptance, and it brings a pending site into service. Repeating a step changes nothing.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3289,7 +3312,7 @@
                 "tags": [
                     "disputes"
                 ],
-                "summary": "Raise a dispute (Airtel reviewer)",
+                "summary": "Raise a dispute (reviewer)",
                 "parameters": [
                     {
                         "type": "string",
@@ -3512,7 +3535,7 @@
         },
         "/api/v1/sites/{id}/overview": {
             "get": {
-                "description": "Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; Airtel gets published incidents only.",
+                "description": "Profile, current condition and as-of time, the last days (gaps included, never shown as zero or available), open incidents, open disputes and the acceptance process. Sections the caller may not see are left out; the customer gets published incidents only.",
                 "produces": [
                     "application/json"
                 ],
@@ -3688,7 +3711,7 @@
         },
         "/api/v1/tickets/{id}": {
             "get": {
-                "description": "Both sides' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for Airtel, and so is a linked incident until it is published to them.",
+                "description": "Both sides' comments and every status change, oldest first. Coloplus's internal notes and staff details are left out for the customer, and so is a linked incident until it is published to them.",
                 "produces": [
                     "application/json"
                 ],
@@ -3723,7 +3746,7 @@
         },
         "/api/v1/tickets/{id}/comments": {
             "post": {
-                "description": "Both sides can comment, also after it is resolved. Coloplus can mark a comment internal so Airtel never sees it.",
+                "description": "Both sides can comment, also after it is resolved. Coloplus can mark a comment internal so the customer never sees it.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3764,7 +3787,7 @@
         },
         "/api/v1/tickets/{id}/incident": {
             "post": {
-                "description": "The incident must be at the same site. The link is noted internally; Airtel sees it on the ticket only once the incident has been published to them.",
+                "description": "The incident must be at the same site. The link is noted internally; the customer sees it on the ticket only once the incident has been published to them.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3811,7 +3834,7 @@
         },
         "/api/v1/tickets/{id}/transition": {
             "post": {
-                "description": "Coloplus: open to in_progress or resolved, in_progress to resolved, and resolved back to in_progress. Resolving needs a note. Airtel: status open reopens a resolved ticket, with a note. Repeating a step that already happened changes nothing.",
+                "description": "Coloplus: open to in_progress or resolved, in_progress to resolved, and resolved back to in_progress. Resolving needs a note. Customer: status open reopens a resolved ticket, with a note. Repeating a step that already happened changes nothing.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4108,7 +4131,7 @@
                     "type": "string"
                 },
                 "decided_at": {
-                    "description": "DecidedAt is when Airtel accepted. Nothing else counts as acceptance.",
+                    "description": "DecidedAt is when the customer accepted. Nothing else counts as acceptance.",
                     "type": "string"
                 },
                 "dossier": {
@@ -4163,7 +4186,7 @@
                     "type": "string"
                 },
                 "waiting_on": {
-                    "description": "WaitingOn is coloplus or airtel: whose move it is.",
+                    "description": "WaitingOn is coloplus or customer: whose move it is.",
                     "type": "string"
                 }
             }
@@ -4328,7 +4351,7 @@
                     "type": "string"
                 },
                 "party": {
-                    "description": "Party is who sent it: airtel or coloplus.",
+                    "description": "Party is who sent it: customer or coloplus.",
                     "type": "string"
                 },
                 "scan_status": {
@@ -4681,7 +4704,7 @@
                     "type": "string"
                 },
                 "internal": {
-                    "description": "Internal keeps the comment inside Coloplus; Airtel never sees it.",
+                    "description": "Internal keeps the comment inside Coloplus; the customer never sees it.",
                     "type": "boolean"
                 }
             }
@@ -4699,7 +4722,7 @@
                     "type": "string"
                 },
                 "description": {
-                    "description": "Description is what Airtel wrote when raising it.",
+                    "description": "Description is what the customer wrote when raising it.",
                     "type": "string"
                 },
                 "id": {
@@ -4712,7 +4735,7 @@
                     "type": "string"
                 },
                 "outcome": {
-                    "description": "Outcome is upheld or not_upheld once Coloplus resolves it, withdrawn if Airtel dropped it.",
+                    "description": "Outcome is upheld or not_upheld once Coloplus resolves it, withdrawn if the customer dropped it.",
                     "type": "string"
                 },
                 "owner_id": {
@@ -4756,7 +4779,7 @@
                     "type": "string"
                 },
                 "resolved_at": {
-                    "description": "ResolvedAt is Coloplus's decision; AcknowledgedAt is Airtel's agreement.",
+                    "description": "ResolvedAt is Coloplus's decision; AcknowledgedAt is the customer's agreement.",
                     "type": "string"
                 },
                 "resolved_by": {
@@ -4781,7 +4804,7 @@
                     "type": "string"
                 },
                 "waiting_on": {
-                    "description": "WaitingOn is whose move it is: coloplus or airtel; empty once closed.",
+                    "description": "WaitingOn is whose move it is: coloplus or customer; empty once closed.",
                     "type": "string"
                 }
             }
@@ -4829,7 +4852,7 @@
                     "type": "string"
                 },
                 "party": {
-                    "description": "Party is airtel or coloplus.",
+                    "description": "Party is customer or coloplus.",
                     "type": "string"
                 },
                 "to_status": {
@@ -4864,11 +4887,11 @@
                     "description": "Open is every dispute not yet closed.",
                     "type": "integer"
                 },
-                "with_airtel": {
+                "with_coloplus": {
+                    "description": "WithColoplus are waiting on Coloplus; WithCustomer (the customer, field with_customer) (evidence or acknowledgement).",
                     "type": "integer"
                 },
-                "with_coloplus": {
-                    "description": "WithColoplus are waiting on Coloplus; WithAirtel on Airtel (evidence or acknowledgement).",
+                "with_customer": {
                     "type": "integer"
                 }
             }
@@ -5322,7 +5345,7 @@
                     "$ref": "#/definitions/dto.PublishedIncidentDTO"
                 },
                 "updates": {
-                    "description": "Updates is the full history for staff; Airtel's updates are inside Published.",
+                    "description": "Updates is the full history for staff; the customer's updates are inside Published.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/dto.IncidentUpdateDTO"
@@ -5471,7 +5494,7 @@
                     "type": "string"
                 },
                 "customer_visible": {
-                    "description": "CustomerVisible shares this update with Airtel; the incident must be published.",
+                    "description": "CustomerVisible shares this update with the customer; the incident must be published.",
                     "type": "boolean"
                 },
                 "next_action": {
@@ -5632,6 +5655,15 @@
                 },
                 "user": {
                     "$ref": "#/definitions/dto.UserDTO"
+                }
+            }
+        },
+        "dto.LogoutAllResponse": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "integer",
+                    "example": 12
                 }
             }
         },
@@ -5807,9 +5839,6 @@
                 "address": {
                     "type": "string"
                 },
-                "airtel_code": {
-                    "type": "string"
-                },
                 "availability_pct_30d": {
                     "description": "AvailabilityPct30d is the pooled reported availability over the\ntrailing 30 days. Null when the site has no approved report in the\nwindow -- never 0.",
                     "type": "number"
@@ -5822,6 +5851,9 @@
                     }
                 },
                 "coloplus_code": {
+                    "type": "string"
+                },
+                "customer_site_code": {
                     "type": "string"
                 },
                 "fuel": {
@@ -5940,10 +5972,10 @@
         "dto.OutageItemDTO": {
             "type": "object",
             "properties": {
-                "airtel_code": {
+                "coloplus_code": {
                     "type": "string"
                 },
-                "coloplus_code": {
+                "customer_site_code": {
                     "type": "string"
                 },
                 "end": {
@@ -6640,7 +6672,7 @@
                     "type": "string"
                 },
                 "shared": {
-                    "description": "Shared lets Airtel see a file Coloplus sends. Left out, a Coloplus file\nis internal. Airtel's own files are always visible to Coloplus.",
+                    "description": "Shared lets the customer see a file Coloplus sends. Left out, a Coloplus file\nis internal. The customer's own files are always visible to Coloplus.",
                     "type": "boolean"
                 },
                 "size_bytes": {
@@ -6671,7 +6703,7 @@
         "dto.RunChangeDTO": {
             "type": "object",
             "properties": {
-                "airtel_code": {
+                "customer_site_code": {
                     "type": "string"
                 },
                 "now": {
@@ -6721,9 +6753,6 @@
         "dto.RunRowDTO": {
             "type": "object",
             "properties": {
-                "airtel_code": {
-                    "type": "string"
-                },
                 "assumed_minutes": {
                     "type": "integer"
                 },
@@ -6732,6 +6761,9 @@
                 },
                 "coverage_percent": {
                     "type": "number"
+                },
+                "customer_site_code": {
+                    "type": "string"
                 },
                 "days_in_period": {
                     "type": "integer"
@@ -6842,9 +6874,6 @@
                 "address": {
                     "type": "string"
                 },
-                "airtel_code": {
-                    "type": "string"
-                },
                 "coloplus_code": {
                     "type": "string"
                 },
@@ -6857,6 +6886,9 @@
                     "example": 4.5
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "customer_site_code": {
                     "type": "string"
                 },
                 "freshness_hours": {
@@ -6999,7 +7031,7 @@
                     "type": "string",
                     "example": "create"
                 },
-                "airtel_code": {
+                "customer_site_code": {
                     "type": "string"
                 },
                 "line": {
@@ -7109,9 +7141,6 @@
                 "address": {
                     "type": "string"
                 },
-                "airtel_code": {
-                    "type": "string"
-                },
                 "coloplus_code": {
                     "type": "string"
                 },
@@ -7121,6 +7150,9 @@
                 },
                 "consumption_lph": {
                     "type": "number"
+                },
+                "customer_site_code": {
+                    "type": "string"
                 },
                 "freshness_hours": {
                     "type": "integer"
@@ -7185,9 +7217,6 @@
         "dto.SiteRowDTO": {
             "type": "object",
             "properties": {
-                "airtel_code": {
-                    "type": "string"
-                },
                 "as_of": {
                     "type": "string"
                 },
@@ -7203,6 +7232,9 @@
                     "description": "CurrentSource is what the site was last observed running on; absent when\nthe report is stale, the last interval was an outage or none was observed.",
                     "type": "string",
                     "example": "grid"
+                },
+                "customer_site_code": {
+                    "type": "string"
                 },
                 "data_quality": {
                     "description": "DataQuality says how much of the figure rests on reports.",
@@ -7343,7 +7375,7 @@
                     "type": "string"
                 },
                 "internal": {
-                    "description": "Internal keeps the comment inside Coloplus; Airtel never sees it.",
+                    "description": "Internal keeps the comment inside Coloplus; the customer never sees it.",
                     "type": "boolean"
                 }
             }
@@ -7469,7 +7501,7 @@
                     "type": "string"
                 },
                 "party": {
-                    "description": "Party is airtel or coloplus.",
+                    "description": "Party is customer or coloplus.",
                     "type": "string"
                 },
                 "to_status": {
@@ -7553,7 +7585,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "description": "Status is under_review, awaiting_evidence, agreed_correction, resolved\nor closed. Coloplus reviews and settles; Airtel withdraws, gives\nevidence or reopens (under_review), and acknowledges a resolution (closed).",
+                    "description": "Status is under_review, awaiting_evidence, agreed_correction, resolved\nor closed. Coloplus reviews and settles; the customer withdraws, gives\nevidence or reopens (under_review), and acknowledges a resolution (closed).",
                     "type": "string",
                     "example": "under_review"
                 }
@@ -7589,7 +7621,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "description": "Status is in_progress or resolved for Coloplus, open to reopen a\nresolved ticket for Airtel.",
+                    "description": "Status is in_progress or resolved for Coloplus, open to reopen a\nresolved ticket for the customer.",
                     "type": "string",
                     "example": "in_progress"
                 }

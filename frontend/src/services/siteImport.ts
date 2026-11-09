@@ -4,7 +4,7 @@ import { mapAxiosError } from './auth'
 
 interface SiteImportRowDTO {
   line: number
-  airtel_code: string
+  customer_site_code: string
   action: SiteImportRowAction
   problems?: string[]
 }
@@ -22,7 +22,7 @@ interface SiteImportResultDTO {
 function mapSiteImportRow(dto: SiteImportRowDTO): SiteImportRow {
   return {
     line: dto.line,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     action: dto.action,
     problems: dto.problems,
   }

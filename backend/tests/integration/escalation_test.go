@@ -32,7 +32,7 @@ func TestEscalation_AcceptanceDeadlinesAndOverdueDisputes(t *testing.T) {
 
 	// A step with no date set is given the default for its stage.
 	site := w.expect(w.call("POST", "/api/v1/sites", map[string]any{
-		"airtel_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "New site", "state": "Lagos",
+		"customer_site_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "New site", "state": "Lagos",
 		"power_sources": []string{"grid"}, "status": "pending_acceptance",
 	}, w.admin), 201).str("id")
 	api := "/api/v1/sites/" + site + "/acceptance"
@@ -69,7 +69,7 @@ func TestEscalation_AcceptanceDeadlinesAndOverdueDisputes(t *testing.T) {
 	}
 
 	// A dispute waiting on Coloplus for four days is alerted once; a fresh one is not.
-	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, w.site)
+	revEmail, _ := w.seedUser(domain.RoleReviewer, w.site)
 	reviewer := w.login(revEmail)
 	id := w.expect(w.call("POST", "/api/v1/sites/"+w.site+"/disputes", map[string]any{
 		"category": "missing_report", "title": "No report for the 3rd", "period_from": "2026-01-03", "period_to": "2026-01-03",

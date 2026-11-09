@@ -32,7 +32,7 @@ export const SITE_COLUMNS: Column<PortfolioSite>[] = [
       <div>
         <p className="font-medium text-text">{site.name}</p>
         <p className="text-xs text-text-muted">
-          {site.airtelCode} · {site.region}
+          {site.customerSiteCode} · {site.region}
         </p>
       </div>
     ),

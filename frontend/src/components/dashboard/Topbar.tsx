@@ -10,7 +10,7 @@ import { TopbarClock } from './TopbarClock'
 
 export interface TopbarProps {
   nav: NavGroup[]
-  /** The signed-in customer's own co-brand mark (e.g. Airtel) — only the
+  /** The signed-in customer's own co-brand mark (e.g. a customer logo) — only the
       customer portal passes this; ops portals have no customer to brand for. */
   brandMark?: ReactNode
 }

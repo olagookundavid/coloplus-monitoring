@@ -19,8 +19,8 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('supervisor',      'fuel.read'),
     ('supervisor',      'fuel.record'),
     ('supervisor',      'fuel.manage'),
-    ('airtel_viewer',   'fuel.read'),
-    ('airtel_reviewer', 'fuel.read');
+    ('viewer',   'fuel.read'),
+    ('reviewer', 'fuel.read');
 
 -- What came into the tank, or what the tank held when someone looked.
 CREATE TABLE fuel_entries (

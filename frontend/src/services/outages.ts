@@ -4,7 +4,7 @@ import type { IncidentOutages, Outage, OutageListParams, OutageListResult } from
 
 interface OutageItemDTO {
   site_id: string
-  airtel_code: string
+  customer_site_code: string
   coloplus_code: string
   site_name: string
   region: string
@@ -32,7 +32,7 @@ interface OutageListResponseDTO {
 function mapOutage(dto: OutageItemDTO): Outage {
   return {
     siteId: dto.site_id,
-    airtelCode: dto.airtel_code,
+    customerSiteCode: dto.customer_site_code,
     coloplusCode: dto.coloplus_code,
     siteName: dto.site_name,
     region: dto.region,

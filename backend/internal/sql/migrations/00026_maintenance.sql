@@ -34,4 +34,4 @@ INSERT INTO role_permissions (role_id, permission_id) VALUES
     ('admin', 'maintenance.read'), ('admin', 'maintenance.request'), ('admin', 'maintenance.approve'),
     ('supervisor', 'maintenance.read'), ('supervisor', 'maintenance.request'), ('supervisor', 'maintenance.approve'),
     ('reporter', 'maintenance.read'), ('reporter', 'maintenance.request'),
-    ('airtel_viewer', 'maintenance.read'), ('airtel_reviewer', 'maintenance.read'), ('auditor', 'maintenance.read');
+    ('viewer', 'maintenance.read'), ('reviewer', 'maintenance.read'), ('auditor', 'maintenance.read');

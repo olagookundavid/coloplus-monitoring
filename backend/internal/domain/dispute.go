@@ -67,7 +67,7 @@ func ValidDisputeMetric(m DisputeMetric) bool {
 	return false
 }
 
-// DisputeOutcome is how Coloplus settled it, or withdrawn when Airtel dropped it.
+// DisputeOutcome is how Coloplus settled it, or withdrawn when the customer dropped it.
 type DisputeOutcome string
 
 const (
@@ -78,11 +78,11 @@ const (
 )
 
 // DisputeParty is which side of the dispute a person is on. Their permissions
-// decide it, never their name: Coloplus staff manage, Airtel reviewers raise.
+// decide it, never their name: Coloplus staff manage, reviewers raise.
 type DisputeParty string
 
 const (
-	PartyAirtel   DisputeParty = "airtel"
+	PartyCustomer DisputeParty = "customer"
 	PartyColoplus DisputeParty = "coloplus"
 )
 
@@ -92,7 +92,7 @@ func PartyOf(a Actor) (DisputeParty, bool) {
 	case a.Can(PermDisputesManage):
 		return PartyColoplus, true
 	case a.Can(PermDisputesRaise):
-		return PartyAirtel, true
+		return PartyCustomer, true
 	}
 	return "", false
 }
@@ -138,13 +138,13 @@ type Dispute struct {
 func (d Dispute) Open() bool { return d.Status != DisputeClosed }
 
 // WaitingOn says whose move it is: Coloplus while it reviews or corrects,
-// Airtel while it owes evidence or an acknowledgement. Nobody once closed.
+// the customer while it owes evidence or an acknowledgement. Nobody once closed.
 func (d Dispute) WaitingOn() DisputeParty {
 	switch d.Status {
 	case DisputeOpen, DisputeUnderReview, DisputeAgreedCorrection:
 		return PartyColoplus
 	case DisputeAwaitingEvidence, DisputeResolved:
-		return PartyAirtel
+		return PartyCustomer
 	}
 	return ""
 }
@@ -196,7 +196,7 @@ type DisputeStep struct {
 }
 
 // CanMove says whether the party may take the dispute from where it is to the
-// step's status. Coloplus reviews and settles; Airtel withdraws, supplies
+// step's status. Coloplus reviews and settles; the customer withdraws, supplies
 // evidence, reopens or acknowledges. Nobody may leave closed.
 func (d Dispute) CanMove(party DisputeParty, to DisputeStatus) bool {
 	switch party {
@@ -211,7 +211,7 @@ func (d Dispute) CanMove(party DisputeParty, to DisputeStatus) bool {
 		case DisputeAgreedCorrection:
 			return to == DisputeResolved
 		}
-	case PartyAirtel:
+	case PartyCustomer:
 		switch d.Status {
 		case DisputeOpen, DisputeUnderReview:
 			return to == DisputeClosed
@@ -260,11 +260,11 @@ func (d Dispute) CheckStep(party DisputeParty, s DisputeStep) []string {
 		default:
 			problems = append(problems, "say whether the dispute is upheld or not upheld")
 		}
-	case party == PartyAirtel && s.To == DisputeUnderReview:
+	case party == PartyCustomer && s.To == DisputeUnderReview:
 		if note == "" {
 			problems = append(problems, "say what changed: the new evidence, or why you do not accept the resolution")
 		}
-	case party == PartyAirtel && s.To == DisputeClosed && d.Status != DisputeResolved:
+	case party == PartyCustomer && s.To == DisputeClosed && d.Status != DisputeResolved:
 		if note == "" {
 			problems = append(problems, "say why you are withdrawing it")
 		}
@@ -287,14 +287,14 @@ func (d *Dispute) Apply(party DisputeParty, actorID string, s DisputeStep, now t
 			d.ResolutionReportID = s.ResolutionReportID
 		}
 		d.ResolvedAt, d.ResolvedBy = &now, actorID
-	case party == PartyAirtel && s.To == DisputeUnderReview && from == DisputeResolved:
+	case party == PartyCustomer && s.To == DisputeUnderReview && from == DisputeResolved:
 		// Reopened: the resolution no longer stands.
 		d.Outcome, d.Resolution, d.ResolutionReportID = OutcomeNone, "", ""
 		d.ResolvedAt, d.ResolvedBy = nil, ""
 		d.ReopenCount++
-	case party == PartyAirtel && s.To == DisputeClosed && from == DisputeResolved:
+	case party == PartyCustomer && s.To == DisputeClosed && from == DisputeResolved:
 		d.AcknowledgedAt, d.AcknowledgedBy = &now, actorID
-	case party == PartyAirtel && s.To == DisputeClosed:
+	case party == PartyCustomer && s.To == DisputeClosed:
 		d.Outcome = OutcomeWithdrawn
 	}
 }
@@ -309,7 +309,7 @@ type DisputeEvent struct {
 	FromStatus DisputeStatus
 	ToStatus   DisputeStatus
 	Body       string
-	// Internal entries are Coloplus's own notes and are never shown to Airtel.
+	// Internal entries are Coloplus's own notes and are never shown to the customer.
 	Internal  bool
 	CreatedAt time.Time
 }

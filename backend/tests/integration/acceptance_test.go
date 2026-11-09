@@ -18,21 +18,21 @@ func countSubject(mails []domain.Email, part string) int {
 	return n
 }
 
-// Acceptance is Airtel's decision alone: Coloplus builds and submits a
-// dossier, Airtel inspects and accepts or rejects, and only that acceptance
+// Acceptance is the customer's decision alone: Coloplus builds and submits a
+// dossier, the customer inspects and accepts or rejects, and only that acceptance
 // brings a pending site into service. A hold stops the clock, and a missed
 // due time is alerted once.
-func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.T) {
+func TestAcceptance_OnlyCustomerAcceptsAndThatBringsTheSiteIntoService(t *testing.T) {
 	w := newWorkflow(t)
 	ctx := context.Background()
 
 	site := w.expect(w.call("POST", "/api/v1/sites", map[string]any{
-		"airtel_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "New site", "state": "Lagos",
+		"customer_site_code": uniq("AIR"), "coloplus_code": uniq("CP"), "name": "New site", "state": "Lagos",
 		"power_sources": []string{"grid"}, "status": "pending_acceptance",
 	}, w.admin), 201).str("id")
 	supEmail, _ := w.seedUser(domain.RoleSupervisor, site)
-	revEmail, _ := w.seedUser(domain.RoleAirtelReviewer, site)
-	viewEmail, _ := w.seedUser(domain.RoleAirtelViewer, site)
+	revEmail, _ := w.seedUser(domain.RoleReviewer, site)
+	viewEmail, _ := w.seedUser(domain.RoleViewer, site)
 	repEmail, _ := w.seedUser(domain.RoleReporter, site)
 	sup, reviewer, viewer, rep := w.login(supEmail), w.login(revEmail), w.login(viewEmail), w.login(repEmail)
 
@@ -48,7 +48,7 @@ func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.
 	w.expect(w.call("POST", api, nil, sup), 409)
 	w.expect(w.call("GET", api, nil, w.ot), 404)
 
-	// Coloplus cannot skip ahead, and cannot accept for Airtel at any point.
+	// Coloplus cannot skip ahead, and cannot accept for the customer at any point.
 	w.expect(step(sup, map[string]any{"stage": "accepted"}), 409)
 	w.expect(step(sup, map[string]any{"stage": "ready_for_inspection", "note": "dossier"}), 409)
 	w.expect(step(sup, map[string]any{"stage": "built"}), 200)
@@ -58,8 +58,8 @@ func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.
 	w.expect(step(sup, map[string]any{"stage": "inspected"}), 409)
 	w.expect(step(sup, map[string]any{"stage": "accepted"}), 409)
 	w.expect(step(viewer, map[string]any{"stage": "inspected"}), 403)
-	if r := w.expect(w.call("GET", api, nil, viewer), 200); r.str("acceptance", "waiting_on") != "airtel" {
-		t.Fatalf("after the dossier it should wait on Airtel: %s", r.Raw)
+	if r := w.expect(w.call("GET", api, nil, viewer), 200); r.str("acceptance", "waiting_on") != "customer" {
+		t.Fatalf("after the dossier it should wait on the customer: %s", r.Raw)
 	}
 
 	// A missed due time is alerted once, to whoever the step waits on and to Coloplus.
@@ -76,7 +76,7 @@ func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.
 		}
 	}
 
-	// Airtel must inspect before accepting, and must say why it rejects.
+	// The customer must inspect before accepting, and must say why it rejects.
 	w.expect(step(reviewer, map[string]any{"stage": "accepted"}), 409)
 	w.expect(step(reviewer, map[string]any{"stage": "rejected"}), 400)
 	w.expect(step(reviewer, map[string]any{"stage": "rejected", "note": "Battery bank not installed."}), 200)
@@ -90,7 +90,7 @@ func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.
 
 	// A hold needs a reason, stops everything until resumed, and resumes to where it was.
 	w.expect(step(sup, map[string]any{"stage": "on_hold"}), 400)
-	w.expect(step(sup, map[string]any{"stage": "on_hold", "note": "Waiting for Airtel's access card."}), 200)
+	w.expect(step(sup, map[string]any{"stage": "on_hold", "note": "Waiting for the customer's access card."}), 200)
 	w.expect(step(reviewer, map[string]any{"stage": "accepted"}), 409)
 	w.expect(step(reviewer, map[string]any{"stage": "built"}), 409)
 	w.expect(step(reviewer, map[string]any{"stage": "inspected"}), 200)
@@ -98,7 +98,7 @@ func TestAcceptance_OnlyAirtelAcceptsAndThatBringsTheSiteIntoService(t *testing.
 		t.Fatalf("stage after resuming = %s", st)
 	}
 
-	// Only now, by Airtel, is the site accepted, and only now does it enter service.
+	// Only now, by the customer, is the site accepted, and only now does it enter service.
 	w.expect(step(sup, map[string]any{"stage": "accepted"}), 409)
 	accepted := w.expect(step(reviewer, map[string]any{"stage": "accepted", "note": "Accepted."}), 200)
 	if accepted.str("decided_at") == "" {

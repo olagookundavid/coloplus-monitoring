@@ -63,7 +63,7 @@ func (a *api) getAcceptance(c *gin.Context) {
 // transitionAcceptance godoc
 //
 //	@Summary		Move a site's acceptance to its next stage
-//	@Description	Coloplus: requested to built, then ready_for_inspection with the dossier; a rejected site goes back to built once fixed. Airtel: ready_for_inspection to inspected or rejected; inspected to accepted or rejected. Either side can put it on_hold with a reason and resume it by naming the stage it left. Only Airtel's accepted counts as acceptance, and it brings a pending site into service. Repeating a step changes nothing.
+//	@Description	Coloplus: requested to built, then ready_for_inspection with the dossier; a rejected site goes back to built once fixed. Customer: ready_for_inspection to inspected or rejected; inspected to accepted or rejected. Either side can put it on_hold with a reason and resume it by naming the stage it left. Only the customer's accepted counts as acceptance, and it brings a pending site into service. Repeating a step changes nothing.
 //	@Tags			acceptance
 //	@Accept			json
 //	@Produce		json

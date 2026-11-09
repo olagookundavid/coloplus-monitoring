@@ -32,17 +32,17 @@ export interface CustomerLayoutContextValue {
 // this one layout route, read only by its own children (Overview, Sites,
 // SupportTickets), never truly global (architecture standard §4 reserves
 // contexts/ for Auth-like global state).
-// Airtel's own co-brand mark — fixed here only, never reused as an app
+// The customer's own co-brand mark — fixed here only, never reused as an app
 // color elsewhere (frontend/CLAUDE.md §7). No real logo asset yet, same
 // provisional caveat as the Coloplus wordmark.
-const AIRTEL_BRAND_MARK = <span className="text-lg font-bold italic text-red-600">airtel</span>
+const CUSTOMER_BRAND_MARK = <span className="text-lg font-bold italic text-red-600">Customer</span>
 
 export function CustomerLayout() {
   const { can } = usePermissions()
-  // disputes.raise is the one permission that separates airtel_reviewer
-  // from airtel_viewer (Decision 034) -- every other customer-portal
+  // disputes.raise is the one permission that separates reviewer
+  // from viewer (Decision 034) -- every other customer-portal
   // permission is shared, so this single check is enough.
-  const portalLabel = can('disputes.raise') ? 'Airtel reviewer portal' : 'Airtel viewer portal'
+  const portalLabel = can('disputes.raise') ? 'Reviewer portal' : 'Viewer portal'
 
   const [region, setRegion] = useState<string>('')
   const [period, setPeriod] = useState<string>(PERIOD_PRESETS[0] ?? '')
@@ -67,7 +67,7 @@ export function CustomerLayout() {
     <DashboardShell
       nav={CUSTOMER_NAV_GROUPS}
       portalLabel={portalLabel}
-      brandMark={AIRTEL_BRAND_MARK}
+      brandMark={CUSTOMER_BRAND_MARK}
     >
       <Outlet context={context} />
       <CreateTicketModal

@@ -152,7 +152,7 @@ export function LogIncidentModal({ open, onClose }: LogIncidentModalProps) {
             <option value="">Select a site</option>
             {sites.map((site) => (
               <option key={site.siteId} value={site.siteId}>
-                {site.airtelCode} · {site.name}
+                {site.customerSiteCode} · {site.name}
               </option>
             ))}
           </Select>

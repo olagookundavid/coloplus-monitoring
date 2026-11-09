@@ -25,7 +25,7 @@ func TestPerf_DashboardAt1000SitesAnd50Users(t *testing.T) {
 
 	t.Log("building 1,000 sites x 30 approved days x 3 intervals ...")
 	start := time.Now()
-	w.exec(`INSERT INTO sites (airtel_code, coloplus_code, name, state, region, power_sources, status)
+	w.exec(`INSERT INTO sites (customer_site_code, coloplus_code, name, state, region, power_sources, status)
 	        SELECT 'PA'||g, 'PC'||g, 'Perf '||g, 'Lagos', (ARRAY['Lagos','Abuja','Kano','Port Harcourt'])[1+g%4],
 	               ARRAY['grid','generator'], 'active'
 	        FROM generate_series(1, 1000) g`)
@@ -47,9 +47,9 @@ func TestPerf_DashboardAt1000SitesAnd50Users(t *testing.T) {
 	w.exec(`ANALYZE`)
 	t.Logf("built in %s", time.Since(start).Round(time.Second))
 
-	email, uid := w.seedUser(domain.RoleAirtelViewer)
+	email, uid := w.seedUser(domain.RoleViewer)
 	w.exec(`INSERT INTO user_sites (user_id, site_id) SELECT $1, id FROM sites WHERE name LIKE 'Perf %'`, uid)
-	airtel := w.login(email)
+	customer := w.login(email)
 
 	day, _ := w.reportDay(1)
 	from, _ := w.reportDay(30)
@@ -70,7 +70,7 @@ func TestPerf_DashboardAt1000SitesAnd50Users(t *testing.T) {
 		var ms []time.Duration
 		for i := 0; i < 8; i++ {
 			t0 := time.Now()
-			w.expect(w.call("GET", calls[n], nil, airtel), 200)
+			w.expect(w.call("GET", calls[n], nil, customer), 200)
 			ms = append(ms, time.Since(t0))
 		}
 		t.Logf("alone       %-22s p50 %-8s max %s", n, pct(ms, 50), pct(ms, 100))
@@ -88,7 +88,7 @@ func TestPerf_DashboardAt1000SitesAnd50Users(t *testing.T) {
 			for i := 0; i < 4; i++ {
 				n := names[(p+i)%len(names)]
 				s := time.Now()
-				r := w.call("GET", calls[n], nil, airtel)
+				r := w.call("GET", calls[n], nil, customer)
 				d := time.Since(s)
 				mu.Lock()
 				all[n] = append(all[n], d)

@@ -21,7 +21,7 @@ func TestSiteImport_AllOrNothingDryRunAndBlankCellsKeepValues(t *testing.T) {
 	reporter := s.login(repEmail)
 
 	a, b, cp1, cp2 := uniq("IMP"), uniq("IMP"), uniq("CPI"), uniq("CPI")
-	head := "airtel_code,coloplus_code,name,state,power_sources,consumption_lph,service_start,service_end\n"
+	head := "customer_site_code,coloplus_code,name,state,power_sources,consumption_lph,service_start,service_end\n"
 	good := head + a + "," + cp1 + ",Alpha,Lagos,grid;generator,4.5,00:00,24:00\n" + b + "," + cp2 + ",Beta,Ogun,grid,,06:00,18:00\n"
 
 	// Not for field staff.
@@ -57,7 +57,7 @@ func TestSiteImport_AllOrNothingDryRunAndBlankCellsKeepValues(t *testing.T) {
 	}
 
 	// An update with blank cells leaves the fuel rate and window alone.
-	upd := "airtel_code,name,consumption_lph\n" + a + ",Alpha renamed,\n"
+	upd := "customer_site_code,name,consumption_lph\n" + a + ",Alpha renamed,\n"
 	s.expect(s.postCSV("/api/v1/sites/import", upd, admin), 200)
 	got := s.expect(s.call("GET", "/api/v1/sites?q="+a, nil, admin), 200)
 	site := got.list("sites")[0].(map[string]any)

@@ -98,7 +98,7 @@ export function SiteAssignments() {
 
   const columns: Column<AdminSite>[] = useMemo(
     () => [
-      { header: 'Site', accessor: (site) => site.airtelCode },
+      { header: 'Site', accessor: (site) => site.customerSiteCode },
       {
         header: 'Name and type',
         accessor: (site) => site.name,

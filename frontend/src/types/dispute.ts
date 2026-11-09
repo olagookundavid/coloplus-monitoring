@@ -1,5 +1,5 @@
 // Mirrors dto.DisputeDTO (backend/internal/dto/disputes.go). RaisedBy/
-// OwnerID/ResolvedBy are Coloplus's own view and left out for Airtel
+// OwnerID/ResolvedBy are Coloplus's own view and left out for the customer
 // (backend/internal/transport/http/mappers.go:297-309) -- always optional
 // here, never assumed present.
 
@@ -21,7 +21,7 @@ export type DisputeMetric =
 export type DisputeStatus =
   'open' | 'under_review' | 'awaiting_evidence' | 'agreed_correction' | 'resolved' | 'closed'
 
-export type DisputeParty = 'airtel' | 'coloplus'
+export type DisputeParty = 'customer' | 'coloplus'
 export type DisputeOutcome = 'upheld' | 'not_upheld'
 
 export type DisputeEventKind = 'comment' | 'status'
@@ -33,7 +33,7 @@ export interface DisputeEvent {
   fromStatus?: DisputeStatus
   toStatus?: DisputeStatus
   body: string
-  /** Only ever sent to Coloplus staff; stays undefined for Airtel. */
+  /** Only ever sent to Coloplus staff; stays undefined for the customer. */
   internal?: boolean
   authorId?: string
   authorName?: string
@@ -64,12 +64,12 @@ export interface Dispute {
   resolutionReportLabel?: string
   /** Coloplus's decision. */
   resolvedAt?: string
-  /** Airtel's agreement -- a resolved dispute isn't closed until this is set. */
+  /** the customer's agreement -- a resolved dispute isn't closed until this is set. */
   acknowledgedAt?: string
   reopenCount: number
   createdAt: string
   updatedAt: string
-  /** Coloplus's own view; left out for Airtel. */
+  /** Coloplus's own view; left out for the customer. */
   raisedBy?: string
   raisedByName?: string
   ownerId?: string
@@ -86,7 +86,7 @@ export interface DisputeDetail {
 export interface DisputeSummary {
   open: number
   withColoplus: number
-  withAirtel: number
+  withCustomer: number
 }
 
 export interface RaiseDisputeInput {

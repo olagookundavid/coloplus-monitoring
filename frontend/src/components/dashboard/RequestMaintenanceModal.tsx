@@ -157,7 +157,7 @@ export function RequestMaintenanceModal({ open, onClose, rules }: RequestMainten
             <option value="">Select a site</option>
             {sites.map((site) => (
               <option key={site.id} value={site.id}>
-                {site.airtelCode} · {site.name}
+                {site.customerSiteCode} · {site.name}
               </option>
             ))}
           </Select>

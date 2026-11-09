@@ -5,7 +5,7 @@ import type { PowerSource, SiteStatus, UnreportedTimePolicy } from '../types'
 // Mirrors domain.Site.Validate() (backend/internal/domain/site.go) so
 // errors surface before a network round trip.
 export interface SiteProfileFormValues {
-  airtelCode: string
+  customerSiteCode: string
   coloplusCode: string
   name: string
   address: string
@@ -51,8 +51,8 @@ function optionalPositiveNumber(max: number, message: string) {
 }
 
 export const siteProfileSchema = Joi.object<SiteProfileFormValues>({
-  airtelCode: Joi.string().trim().required().messages({
-    'string.empty': 'Enter the Airtel code.',
+  customerSiteCode: Joi.string().trim().required().messages({
+    'string.empty': 'Enter the Customer site code.',
   }),
   coloplusCode: Joi.string().trim().required().messages({
     'string.empty': 'Enter the Coloplus code.',

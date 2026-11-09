@@ -16,7 +16,7 @@ type SiteRepository struct{ db *DB }
 
 func NewSiteRepository(db *DB) *SiteRepository { return &SiteRepository{db: db} }
 
-const siteColumns = `id::text, airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
+const siteColumns = `id::text, customer_site_code, coloplus_code, name, address, region, state, site_type, power_sources,
 	service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude,
 	generator_capacity, access_contact_name, access_contact_phone, supervisor_name,
 	created_at, updated_at, responsible_team, consumption_lph, tank_capacity_litres, unreported_time`
@@ -25,7 +25,7 @@ func scanSite(row pgx.Row) (domain.Site, error) {
 	var s domain.Site
 	var sources []string
 	var status, unreported string
-	err := row.Scan(&s.ID, &s.AirtelCode, &s.ColoplusCode, &s.Name, &s.Address, &s.Region, &s.State, &s.SiteType, &sources,
+	err := row.Scan(&s.ID, &s.CustomerSiteCode, &s.ColoplusCode, &s.Name, &s.Address, &s.Region, &s.State, &s.SiteType, &sources,
 		&s.ServiceStartMinute, &s.ServiceEndMinute, &s.FreshnessHours, &status, &s.CommissioningDate, &s.Latitude, &s.Longitude,
 		&s.GeneratorCapacity, &s.AccessContactName, &s.AccessContactPhone, &s.SupervisorName,
 		&s.CreatedAt, &s.UpdatedAt, &s.ResponsibleTeam, &s.ConsumptionLPH, &s.TankCapacityLitres, &unreported)
@@ -45,16 +45,16 @@ func sourceStrings(in []domain.PowerSource) []string {
 	return out
 }
 
-const siteConflictMsg = "a site with this Airtel code or Coloplus code already exists"
+const siteConflictMsg = "a site with this customer site code or Coloplus code already exists"
 
 func (r *SiteRepository) Create(ctx context.Context, s domain.Site) (domain.Site, error) {
 	row := r.db.q(ctx).QueryRow(ctx,
-		`INSERT INTO sites (airtel_code, coloplus_code, name, address, region, state, site_type, power_sources,
+		`INSERT INTO sites (customer_site_code, coloplus_code, name, address, region, state, site_type, power_sources,
 		        service_start_minute, service_end_minute, freshness_hours, status, commissioning_date, latitude, longitude,
 		        generator_capacity, access_contact_name, access_contact_phone, supervisor_name, responsible_team,
 		        consumption_lph, tank_capacity_litres, unreported_time)
 		 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23) RETURNING `+siteColumns,
-		s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
+		s.CustomerSiteCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
 		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude,
 		s.GeneratorCapacity, s.AccessContactName, s.AccessContactPhone, s.SupervisorName, s.ResponsibleTeam,
 		s.ConsumptionLPH, s.TankCapacityLitres, string(unreportedOrDefault(s.UnreportedTime)))
@@ -72,13 +72,13 @@ func (r *SiteRepository) GetByID(ctx context.Context, id string) (domain.Site, e
 
 func (r *SiteRepository) Update(ctx context.Context, s domain.Site) error {
 	_, err := r.db.q(ctx).Exec(ctx,
-		`UPDATE sites SET airtel_code=$2, coloplus_code=$3, name=$4, address=$5, region=$6, state=$7, site_type=$8,
+		`UPDATE sites SET customer_site_code=$2, coloplus_code=$3, name=$4, address=$5, region=$6, state=$7, site_type=$8,
 		        power_sources=$9, service_start_minute=$10, service_end_minute=$11, freshness_hours=$12, status=$13,
 		        commissioning_date=$14, latitude=$15, longitude=$16,
 		        generator_capacity=$17, access_contact_name=$18, access_contact_phone=$19, supervisor_name=$20,
 		        responsible_team=$21, consumption_lph=$22, tank_capacity_litres=$23, unreported_time=$24, updated_at=now()
 		 WHERE id = $1`,
-		s.ID, s.AirtelCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
+		s.ID, s.CustomerSiteCode, s.ColoplusCode, s.Name, s.Address, s.Region, s.State, s.SiteType, sourceStrings(s.PowerSources),
 		s.ServiceStartMinute, s.ServiceEndMinute, s.FreshnessHours, string(s.Status), s.CommissioningDate, s.Latitude, s.Longitude,
 		s.GeneratorCapacity, s.AccessContactName, s.AccessContactPhone, s.SupervisorName, s.ResponsibleTeam,
 		s.ConsumptionLPH, s.TankCapacityLitres, string(unreportedOrDefault(s.UnreportedTime)))
@@ -97,7 +97,7 @@ func (r *SiteRepository) List(ctx context.Context, f ports.SiteFilter) ([]domain
 		add("id = ANY(?::uuid[])", nonNil(f.SiteIDs))
 	}
 	if f.Query != "" {
-		add("(airtel_code ILIKE ? OR coloplus_code ILIKE ? OR name ILIKE ?)", "%"+escapeLike(f.Query)+"%")
+		add("(customer_site_code ILIKE ? OR coloplus_code ILIKE ? OR name ILIKE ?)", "%"+escapeLike(f.Query)+"%")
 	}
 	if f.State != "" {
 		add("lower(state) = lower(?)", f.State)
@@ -131,7 +131,7 @@ func (r *SiteRepository) List(ctx context.Context, f ports.SiteFilter) ([]domain
 	args = append(args, f.Limit, f.Offset)
 	rows, err := q.Query(ctx,
 		`SELECT `+siteColumns+` FROM sites`+clause+
-			fmt.Sprintf(` ORDER BY airtel_code LIMIT $%d OFFSET $%d`, len(args)-1, len(args)), args...)
+			fmt.Sprintf(` ORDER BY customer_site_code LIMIT $%d OFFSET $%d`, len(args)-1, len(args)), args...)
 	if err != nil {
 		return nil, 0, mapErr(err, "")
 	}
@@ -192,7 +192,7 @@ func unreportedOrDefault(p domain.UnreportedPolicy) domain.UnreportedPolicy {
 }
 
 func (r *SiteRepository) CodeIndex(ctx context.Context) ([]ports.SiteCodes, error) {
-	rows, err := r.db.q(ctx).Query(ctx, `SELECT id::text, airtel_code, coloplus_code FROM sites`)
+	rows, err := r.db.q(ctx).Query(ctx, `SELECT id::text, customer_site_code, coloplus_code FROM sites`)
 	if err != nil {
 		return nil, mapErr(err, "")
 	}
@@ -200,7 +200,7 @@ func (r *SiteRepository) CodeIndex(ctx context.Context) ([]ports.SiteCodes, erro
 	out := []ports.SiteCodes{}
 	for rows.Next() {
 		var c ports.SiteCodes
-		if err := rows.Scan(&c.ID, &c.AirtelCode, &c.ColoplusCode); err != nil {
+		if err := rows.Scan(&c.ID, &c.CustomerSiteCode, &c.ColoplusCode); err != nil {
 			return nil, fmt.Errorf("scanning site codes: %w", err)
 		}
 		out = append(out, c)

@@ -23,7 +23,7 @@ func toSiteDTO(s domain.Site) dto.SiteDTO {
 		sources[i] = string(p)
 	}
 	out := dto.SiteDTO{
-		ID: s.ID, AirtelCode: s.AirtelCode, ColoplusCode: s.ColoplusCode, Name: s.Name, Address: s.Address,
+		ID: s.ID, CustomerSiteCode: s.CustomerSiteCode, ColoplusCode: s.ColoplusCode, Name: s.Name, Address: s.Address,
 		Region: s.Region, State: s.State, SiteType: s.SiteType, PowerSources: sources, ResponsibleTeam: s.ResponsibleTeam,
 		ConsumptionLPH: s.ConsumptionLPH, TankCapacityLitres: s.TankCapacityLitres,
 		UnreportedTime:     string(unreportedOrAvailable(s.UnreportedTime)),
@@ -46,7 +46,7 @@ func fromSiteRequest(r dto.SiteRequest) (domain.Site, error) {
 		sources[i] = domain.PowerSource(p)
 	}
 	site := domain.Site{
-		AirtelCode: r.AirtelCode, ColoplusCode: r.ColoplusCode, Name: r.Name, Address: r.Address,
+		CustomerSiteCode: r.CustomerSiteCode, ColoplusCode: r.ColoplusCode, Name: r.Name, Address: r.Address,
 		Region: r.Region, State: r.State, SiteType: r.SiteType, PowerSources: sources, ResponsibleTeam: strings.TrimSpace(r.ResponsibleTeam),
 		ConsumptionLPH: r.ConsumptionLPH, TankCapacityLitres: r.TankCapacityLitres,
 		UnreportedTime:     domain.UnreportedPolicy(r.UnreportedTime),
@@ -170,7 +170,7 @@ func toOverviewResponse(o services.Overview, loc *time.Location) dto.OverviewRes
 	rows := make([]dto.SiteRowDTO, len(o.Sites))
 	for i, r := range o.Sites {
 		row := dto.SiteRowDTO{
-			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
+			SiteID: r.Site.ID, CustomerSiteCode: r.Site.CustomerSiteCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			SiteType: r.Site.SiteType, State: r.Site.State, Status: string(r.Site.Status), Condition: string(r.Condition),
 			Region: r.Site.Region, ResponsibleTeam: r.Site.ResponsibleTeam, CurrentSource: string(r.CurrentSource), DaysReported: r.DaysReported, DaysWithoutReport: r.DaysWithoutReport,
 			DataQuality: toDataQualityDTO(r.Quality), SLA: toSLADTO(r.SLA),
@@ -212,7 +212,7 @@ func toMySitesResponse(m services.MySites) dto.MySitesResponse {
 			bars[j] = dto.DayBarDTO{Date: b.Date.Format("2006-01-02"), Color: string(b.Color)}
 		}
 		rows[i] = dto.MySiteRowDTO{
-			SiteID: r.Site.ID, AirtelCode: r.Site.AirtelCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
+			SiteID: r.Site.ID, CustomerSiteCode: r.Site.CustomerSiteCode, ColoplusCode: r.Site.ColoplusCode, Name: r.Site.Name,
 			SiteType: r.Site.SiteType, Address: r.Site.Address, State: r.Site.State,
 			GeneratorCapacity: r.Site.GeneratorCapacity, AccessContactName: r.Site.AccessContactName,
 			AccessContactPhone: r.Site.AccessContactPhone, SupervisorName: r.Site.SupervisorName,
@@ -298,7 +298,7 @@ func dateString(t *time.Time) string {
 	return t.Format("2006-01-02")
 }
 
-// toDisputeDTO builds the view for the caller's side. Airtel never gets
+// toDisputeDTO builds the view for the caller's side. The customer never gets
 // Coloplus staff ids: who owns or resolved a dispute is Coloplus's own detail.
 func toDisputeDTO(d domain.Dispute, staff bool) dto.DisputeDTO {
 	out := dto.DisputeDTO{
@@ -333,7 +333,7 @@ func toTicketDTO(t domain.Ticket, staff bool) dto.TicketDTO {
 		Resolution: t.Resolution, ResolvedAt: t.ResolvedAt, ReopenCount: t.ReopenCount,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt,
 	}
-	// Airtel is told about a linked incident only once it has been published to them.
+	// The customer is told about a linked incident only once it has been published to them.
 	if t.IncidentID != "" && (staff || t.IncidentPublished) {
 		out.IncidentID, out.IncidentRef = t.IncidentID, incidentRef(t.IncidentNumber)
 	}

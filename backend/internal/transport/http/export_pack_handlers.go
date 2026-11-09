@@ -65,7 +65,7 @@ func utcTime(t *time.Time) string {
 }
 
 var monthlyHeader = []string{
-	"site_id", "airtel_code", "coloplus_code", "site_name", "region", "responsible_team", "site_status",
+	"site_id", "customer_site_code", "coloplus_code", "site_name", "region", "responsible_team", "site_status",
 	"period_from", "period_to", "time_zone",
 	"eligible_minutes", "served_minutes", "outage_minutes", "unknown_minutes", "assumed_available_minutes", "assumed_outage_minutes", "excluded_maintenance_minutes",
 	"reported_availability_percent", "confirmed_served_share_percent", "coverage_percent", "source_minutes", "generator_hours",
@@ -105,7 +105,7 @@ func (a *api) exportMonthly(c *gin.Context) {
 		}
 		sla := slaCells(r.SLA)
 		rows = append(rows, []string{
-			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
+			r.Site.ID, safeCell(r.Site.CustomerSiteCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
 			safeCell(r.Site.ResponsibleTeam), string(r.Site.Status),
 			pack.From.Format("2006-01-02"), pack.To.Format("2006-01-02"), pack.Timezone,
 			itoa(s.EligibleMinutes), itoa(s.ServedMinutes), itoa(s.OutageMinutes), itoa(s.UnknownMinutes), itoa(s.AssumedMinutes), itoa(s.CarriedMinutes), itoa(s.ExcludedMinutes),
@@ -129,7 +129,7 @@ func slaCells(r *domain.SLAResult) [3]string {
 }
 
 var weeklyHeader = []string{
-	"site_id", "airtel_code", "coloplus_code", "site_name", "region", "responsible_team", "week_from", "week_to", "time_zone",
+	"site_id", "customer_site_code", "coloplus_code", "site_name", "region", "responsible_team", "week_from", "week_to", "time_zone",
 	"exceptions", "outage_minutes", "outage_events", "days_without_report", "late_reports", "corrections",
 	"open_incidents", "overdue_incidents", "open_disputes", "sites_in_view", "generated_at_utc", "note",
 }
@@ -160,7 +160,7 @@ func (a *api) exportWeekly(c *gin.Context) {
 	rows := make([][]string, 0, len(rep.Rows))
 	for _, r := range rep.Rows {
 		rows = append(rows, []string{
-			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
+			r.Site.ID, safeCell(r.Site.CustomerSiteCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
 			safeCell(r.Site.ResponsibleTeam), rep.From.Format("2006-01-02"), rep.To.Format("2006-01-02"), rep.Timezone,
 			strings.Join(r.Reasons, ";"), itoa(r.OutageMinutes), itoa(r.OutageEvents), itoa(r.DaysWithoutReport), itoa(r.LateReports),
 			itoa(r.Corrections), itoa(r.OpenIncidents), itoa(r.OverdueIncidents), itoa(r.OpenDisputes), itoa(rep.SitesInView), gen,
@@ -172,7 +172,7 @@ func (a *api) exportWeekly(c *gin.Context) {
 }
 
 var backlogHeader = []string{
-	"site_id", "airtel_code", "coloplus_code", "site_name", "region", "site_status", "time_zone",
+	"site_id", "customer_site_code", "coloplus_code", "site_name", "region", "site_status", "time_zone",
 	"acceptance_stage", "waiting_on", "next_action", "due_at_utc", "overdue", "hours_since_ready_for_inspection",
 	"generated_at_utc", "note",
 }
@@ -197,7 +197,7 @@ func (a *api) exportBacklog(c *gin.Context) {
 	rows := make([][]string, 0, len(b.Rows))
 	for _, r := range b.Rows {
 		rows = append(rows, []string{
-			r.Site.ID, safeCell(r.Site.AirtelCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
+			r.Site.ID, safeCell(r.Site.CustomerSiteCode), safeCell(r.Site.ColoplusCode), safeCell(r.Site.Name), safeCell(r.Site.Region),
 			string(r.Site.Status), b.Timezone, string(r.Acceptance.Stage), string(r.Acceptance.Responsible),
 			safeCell(r.Acceptance.NextAction), utcTime(r.Acceptance.DueAt), yesNo(r.Overdue), itoa(r.ReadyAgeHours), gen,
 			"Time waiting for inspection is not operational performance and is not part of availability.",

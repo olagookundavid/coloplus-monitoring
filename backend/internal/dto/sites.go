@@ -3,16 +3,16 @@ package dto
 import "time"
 
 type SiteDTO struct {
-	ID              string   `json:"id"`
-	AirtelCode      string   `json:"airtel_code"`
-	ColoplusCode    string   `json:"coloplus_code"`
-	Name            string   `json:"name"`
-	Address         string   `json:"address"`
-	Region          string   `json:"region"`
-	State           string   `json:"state"`
-	SiteType        string   `json:"site_type"`
-	PowerSources    []string `json:"power_sources" example:"grid,generator"`
-	ResponsibleTeam string   `json:"responsible_team" example:"Lagos Island field team"`
+	ID               string   `json:"id"`
+	CustomerSiteCode string   `json:"customer_site_code"`
+	ColoplusCode     string   `json:"coloplus_code"`
+	Name             string   `json:"name"`
+	Address          string   `json:"address"`
+	Region           string   `json:"region"`
+	State            string   `json:"state"`
+	SiteType         string   `json:"site_type"`
+	PowerSources     []string `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam  string   `json:"responsible_team" example:"Lagos Island field team"`
 	// ConsumptionLPH is the generator's agreed fuel use in litres per running
 	// hour; null until agreed. TankCapacityLitres is the tank size; null if unknown.
 	// UnreportedTime is how time nobody reported counts: available (the default,
@@ -38,15 +38,15 @@ type SiteDTO struct {
 // SiteRequest creates or replaces a site. Leave service window and freshness
 // at zero to get a 24-hour window and a 30-hour freshness threshold.
 type SiteRequest struct {
-	AirtelCode      string   `json:"airtel_code"`
-	ColoplusCode    string   `json:"coloplus_code"`
-	Name            string   `json:"name"`
-	Address         string   `json:"address"`
-	Region          string   `json:"region"`
-	State           string   `json:"state"`
-	SiteType        string   `json:"site_type"`
-	PowerSources    []string `json:"power_sources" example:"grid,generator"`
-	ResponsibleTeam string   `json:"responsible_team"`
+	CustomerSiteCode string   `json:"customer_site_code"`
+	ColoplusCode     string   `json:"coloplus_code"`
+	Name             string   `json:"name"`
+	Address          string   `json:"address"`
+	Region           string   `json:"region"`
+	State            string   `json:"state"`
+	SiteType         string   `json:"site_type"`
+	PowerSources     []string `json:"power_sources" example:"grid,generator"`
+	ResponsibleTeam  string   `json:"responsible_team"`
 	// UnreportedTime is available (default) or unknown.
 	UnreportedTime     string   `json:"unreported_time,omitempty"`
 	ConsumptionLPH     *float64 `json:"consumption_lph,omitempty"`
@@ -82,7 +82,7 @@ type SiteDayDTO struct {
 }
 
 // SiteOverviewResponse is the whole site screen in one call. Sections the
-// caller may not see are left out. Airtel gets published incidents only.
+// caller may not see are left out. The customer gets published incidents only.
 type SiteOverviewResponse struct {
 	Site     SiteDTO `json:"site"`
 	Timezone string  `json:"timezone"`
@@ -102,10 +102,10 @@ type SiteOverviewResponse struct {
 
 // SiteImportRowDTO is the outcome for one row of an import file.
 type SiteImportRowDTO struct {
-	Line       int      `json:"line" example:"2"`
-	AirtelCode string   `json:"airtel_code"`
-	Action     string   `json:"action" example:"create"`
-	Problems   []string `json:"problems,omitempty"`
+	Line             int      `json:"line" example:"2"`
+	CustomerSiteCode string   `json:"customer_site_code"`
+	Action           string   `json:"action" example:"create"`
+	Problems         []string `json:"problems,omitempty"`
 }
 
 // SiteImportResponse says what an import did or, for a dry run or a rejected

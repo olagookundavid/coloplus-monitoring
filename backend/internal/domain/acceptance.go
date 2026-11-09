@@ -30,8 +30,8 @@ func ValidAcceptanceStage(s AcceptanceStage) bool {
 const maxAcceptanceText = 4000
 
 // Acceptance is a site's commissioning and acceptance process. It is kept
-// apart from the operational record: reporting well never counts as Airtel's
-// acceptance, and nothing but Airtel's own decision does.
+// apart from the operational record: reporting well never counts as the customer's
+// acceptance, and nothing but the customer's own decision does.
 type Acceptance struct {
 	ID     string
 	SiteID string
@@ -62,8 +62,8 @@ type Acceptance struct {
 var stageDueDays = map[AcceptanceStage]int{
 	StageRequested:          14, // Coloplus builds
 	StageBuilt:              3,  // Coloplus declares the site ready
-	StageReadyForInspection: 5,  // Airtel inspects
-	StageInspected:          5,  // Airtel decides
+	StageReadyForInspection: 5,  // The customer inspects
+	StageInspected:          5,  // The customer decides
 	StageRejected:           14, // Coloplus fixes what was found
 }
 
@@ -107,7 +107,7 @@ type AcceptanceStep struct {
 }
 
 // CanMove says whether the party may take the process from where it is to the
-// step's stage. Coloplus builds and submits; only Airtel inspects, accepts or
+// step's stage. Coloplus builds and submits; only the customer inspects, accepts or
 // rejects. Either side may hold or resume. Accepted is final.
 func (a Acceptance) CanMove(party DisputeParty, to AcceptanceStage) bool {
 	if a.Stage == StageAccepted {
@@ -129,7 +129,7 @@ func (a Acceptance) CanMove(party DisputeParty, to AcceptanceStage) bool {
 		case StageRejected:
 			return to == StageBuilt
 		}
-	case PartyAirtel:
+	case PartyCustomer:
 		switch a.Stage {
 		case StageReadyForInspection:
 			return to == StageInspected || to == StageRejected
@@ -202,7 +202,7 @@ func (a *Acceptance) Apply(party DisputeParty, actorID string, s AcceptanceStep,
 	case StageBuilt:
 		a.BuiltAt, a.Reason, a.Responsible = &now, "", PartyColoplus
 	case StageReadyForInspection:
-		a.ReadyAt, a.Dossier, a.Reason, a.Responsible = &now, note, "", PartyAirtel
+		a.ReadyAt, a.Dossier, a.Reason, a.Responsible = &now, note, "", PartyCustomer
 	case StageInspected:
 		a.InspectedAt = &now
 	case StageRejected:
@@ -235,7 +235,7 @@ func AcceptanceParty(a Actor) (DisputeParty, bool) {
 	case a.Can(PermAcceptanceManage):
 		return PartyColoplus, true
 	case a.Can(PermAcceptanceReview):
-		return PartyAirtel, true
+		return PartyCustomer, true
 	}
 	return "", false
 }

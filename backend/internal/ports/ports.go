@@ -109,6 +109,9 @@ type UserRepository interface {
 	SetTOTP(ctx context.Context, id, sealedSecret string, enabled bool) error
 	// ResetTOTP turns two-step verification off and ends older sessions.
 	ResetTOTP(ctx context.Context, id string, at time.Time) error
+	// RevokeAllSessions ends every session issued before at, for everyone,
+	// and returns how many accounts it covered.
+	RevokeAllSessions(ctx context.Context, at time.Time) (int64, error)
 	// RoleRequiresMFA says whether the role must sign in with two steps.
 	RoleRequiresMFA(ctx context.Context, role domain.Role) (bool, error)
 	// SetPassword stores a new hash, clears lockout, and ends older sessions.
@@ -172,7 +175,7 @@ type SiteRepository interface {
 
 // SiteCodes identifies a site by its two business codes.
 type SiteCodes struct {
-	ID, AirtelCode, ColoplusCode string
+	ID, CustomerSiteCode, ColoplusCode string
 }
 
 // ReportFilter narrows a report listing. Scope works as in SiteFilter.
@@ -330,10 +333,10 @@ type DisputeFilter struct {
 }
 
 // DisputeCounts is the headline numbers for a scope. WithColoplus are waiting
-// on Coloplus (open, under review, correction agreed); WithAirtel are waiting
-// on Airtel (evidence requested, or a resolution to acknowledge).
+// on Coloplus (open, under review, correction agreed); WithCustomer are waiting
+// on the customer (evidence requested, or a resolution to acknowledge).
 type DisputeCounts struct {
-	Open, WithColoplus, WithAirtel int
+	Open, WithColoplus, WithCustomer int
 }
 
 type DisputeRepository interface {

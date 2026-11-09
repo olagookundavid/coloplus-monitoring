@@ -1,10 +1,10 @@
 -- +goose Up
 -- Two-step sign-in is required by role (PRD section 11): Coloplus's
--- administrators and supervisors, and every Airtel user. Code asks the role,
+-- administrators and supervisors, and every the customer user. Code asks the role,
 -- never its name.
 ALTER TABLE roles ADD COLUMN mfa_required BOOLEAN NOT NULL DEFAULT FALSE;
 UPDATE roles SET mfa_required = TRUE
- WHERE id IN ('admin', 'supervisor', 'airtel_viewer', 'airtel_reviewer');
+ WHERE id IN ('admin', 'supervisor', 'viewer', 'reviewer');
 
 -- One-time codes for a lost phone. Only a hash is stored, and each code works
 -- once.

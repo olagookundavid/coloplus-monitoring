@@ -12,9 +12,9 @@ import (
 	"coloplus-backend/internal/ports"
 )
 
-// DisputeService runs the dispute workflow between Airtel's reviewers and
+// DisputeService runs the dispute workflow between the customer's reviewers and
 // Coloplus: raise, review, ask for evidence, agree a correction, resolve,
-// acknowledge. Coloplus's approval and Airtel's agreement are separate acts,
+// acknowledge. Coloplus's approval and the customer's agreement are separate acts,
 // and neither changes the original operational record.
 type DisputeService struct {
 	disputes ports.DisputeRepository
@@ -122,7 +122,7 @@ type ListDisputesInput struct {
 }
 
 // IsStaff says whether the caller sees Coloplus's side of a dispute: who owns
-// it and the internal notes. Airtel users never do.
+// it and the internal notes. Customer users never do.
 func (s *DisputeService) IsStaff(actor domain.Actor) bool {
 	return !actor.Can(domain.PermPublishedRead)
 }
@@ -155,7 +155,7 @@ func (s *DisputeService) event(actor domain.Actor, action string, d domain.Dispu
 }
 
 // Raise opens a dispute about a site, a published report, or one interval of
-// it. Only an approved report can be disputed, because that is all Airtel sees.
+// it. Only an approved report can be disputed, because that is all the customer sees.
 func (s *DisputeService) Raise(ctx context.Context, actor domain.Actor, in DisputeInput) (domain.Dispute, error) {
 	if !actor.Can(domain.PermDisputesRaise) {
 		return domain.Dispute{}, apperrors.ErrForbidden
@@ -188,7 +188,7 @@ func (s *DisputeService) Raise(ctx context.Context, actor domain.Actor, in Dispu
 			return err
 		}
 		e, err := s.disputes.AddEvent(ctx, domain.DisputeEvent{
-			DisputeID: created.ID, AuthorID: actor.UserID, Party: domain.PartyAirtel, Kind: domain.EventStatus,
+			DisputeID: created.ID, AuthorID: actor.UserID, Party: domain.PartyCustomer, Kind: domain.EventStatus,
 			ToStatus: domain.DisputeOpen, Body: created.Description, CreatedAt: now,
 		})
 		if err != nil {
@@ -229,7 +229,7 @@ func (s *DisputeService) checkTarget(ctx context.Context, d domain.Dispute) erro
 	return invalid("that interval is not part of this report")
 }
 
-// Get returns a dispute with its history. Airtel does not see Coloplus's
+// Get returns a dispute with its history. The customer does not see Coloplus's
 // internal notes.
 func (s *DisputeService) Get(ctx context.Context, actor domain.Actor, id string) (DisputeView, error) {
 	d, err := s.load(ctx, actor, id, false)
@@ -273,7 +273,7 @@ func (s *DisputeService) OpenByReport(ctx context.Context, actor domain.Actor, r
 }
 
 // Comment adds to the conversation. Coloplus may mark a comment internal, so
-// Airtel never sees it. An Airtel comment on a dispute waiting for their
+// The customer never sees it. A customer comment on a dispute waiting for their
 // evidence hands it back to Coloplus.
 func (s *DisputeService) Comment(ctx context.Context, actor domain.Actor, id, body string, internal bool) (domain.DisputeEvent, error) {
 	party, ok := domain.PartyOf(actor)
@@ -309,7 +309,7 @@ func (s *DisputeService) Comment(ctx context.Context, actor domain.Actor, id, bo
 				return err
 			}
 		}
-		if party == domain.PartyAirtel && d.Status == domain.DisputeAwaitingEvidence {
+		if party == domain.PartyCustomer && d.Status == domain.DisputeAwaitingEvidence {
 			return s.move(ctx, actor, party, d, domain.DisputeStep{To: domain.DisputeUnderReview, Note: "Evidence provided"}, false)
 		}
 		return nil
@@ -321,7 +321,7 @@ func (s *DisputeService) Comment(ctx context.Context, actor domain.Actor, id, bo
 // already happened changes nothing, so a retry is safe.
 //
 //	Coloplus: open -> under review -> awaiting evidence | agreed correction | resolved
-//	Airtel:   withdraw (closes it), give evidence or reopen (back to under review),
+//	Customer:   withdraw (closes it), give evidence or reopen (back to under review),
 //	          acknowledge a resolution (closes it)
 func (s *DisputeService) Transition(ctx context.Context, actor domain.Actor, id string, step domain.DisputeStep) (domain.Dispute, error) {
 	party, ok := domain.PartyOf(actor)

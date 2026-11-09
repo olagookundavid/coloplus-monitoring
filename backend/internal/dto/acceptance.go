@@ -26,7 +26,7 @@ type AcceptanceDTO struct {
 	Stage    string `json:"stage"`
 	// HeldFrom is the stage a hold returns to.
 	HeldFrom string `json:"held_from,omitempty"`
-	// WaitingOn is coloplus or airtel: whose move it is.
+	// WaitingOn is coloplus or customer: whose move it is.
 	WaitingOn  string     `json:"waiting_on"`
 	NextAction string     `json:"next_action,omitempty"`
 	DueAt      *time.Time `json:"due_at,omitempty"`
@@ -42,7 +42,7 @@ type AcceptanceDTO struct {
 	BuiltAt       *time.Time `json:"built_at,omitempty"`
 	ReadyAt       *time.Time `json:"ready_at,omitempty"`
 	InspectedAt   *time.Time `json:"inspected_at,omitempty"`
-	// DecidedAt is when Airtel accepted. Nothing else counts as acceptance.
+	// DecidedAt is when the customer accepted. Nothing else counts as acceptance.
 	DecidedAt *time.Time `json:"decided_at,omitempty"`
 	UpdatedAt time.Time  `json:"updated_at"`
 }
