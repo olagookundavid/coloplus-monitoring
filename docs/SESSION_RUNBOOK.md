@@ -10,6 +10,16 @@ For the session on 4 November 2026. The test plan page is what the testers follo
 4. Invite the users (Users screen): two supervisors, two reporters, the customer reviewer (role `reviewer`), an optional `viewer`, a spare account for the lockout test, and **one more supervisor for yourself** (see below).
 5. Site assignments: reporters and supervisors as on the Test data tab. User detail, site scope: the reviewer gets the eight sites that are not Kano or Port Harcourt.
 6. Send one test invitation to yourself first and confirm the link opens the set-password page on www.remotems.com.
+7. **Sample history (optional, once everyone is invited and assigned).** On the server, in `~/apps/coloplus`:
+
+   ```bash
+   docker compose run --rm --no-deps coloplus-backend ./server seed-demo \
+     --reporter=<reporter email> \
+     --supervisors=<your supervisor email>,<teammate supervisor email> \
+     --reviewer=<reviewer email>
+   ```
+
+   (The same one-off form the deploy uses for `./server migrate`; run it after the deploy that contains this command has finished.) It stops with a plain message if an email is not invited, has the wrong role, or is not assigned to TEST-LAG-001, 002 and 003. Running it again changes nothing. It sends no email and leaves today empty. The audit log will name those people as the authors of the sample history (decision 073), so it is only for a database that gets wiped before real data goes in.
 
 ## Why you need a supervisor login of your own
 

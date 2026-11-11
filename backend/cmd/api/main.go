@@ -89,8 +89,14 @@ func run(args []string) error {
 	if len(args) > 0 && args[0] == "seed" {
 		return seed(ctx, cfg, log)
 	}
+	// `api seed-demo` attaches sample history to people who are already
+	// invited (by email), on the TEST- sites. Safe for production: it makes no
+	// users, sets no password and sends no email.
+	if len(args) > 0 && args[0] == "seed-demo" {
+		return seedDemo(ctx, cfg, log, args[1:])
+	}
 	if len(args) > 0 {
-		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, logout-all, seed, check-storage)", args[0])
+		return fmt.Errorf("unknown command %q (known: migrate, create-admin, reset-mfa, logout-all, seed, seed-demo, check-storage)", args[0])
 	}
 	return serve(ctx, cfg, log)
 }

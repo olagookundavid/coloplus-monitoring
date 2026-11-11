@@ -1,0 +1,11 @@
+customer_site_code,coloplus_code,name,state,region,site_type,power_sources,service_start,service_end,freshness_hours,status,consumption_lph,tank_capacity_litres,responsible_team
+TEST-LAG-001,TEST-CP-L001,Ikeja Allen Avenue,Lagos,South West,Greenfield tower,grid;generator;battery,00:00,24:00,30,active,6,1000,Lagos Field Team
+TEST-LAG-002,TEST-CP-L002,Lekki Phase 1 Rooftop,Lagos,South West,Rooftop,grid;generator,00:00,24:00,30,active,5,800,Lagos Field Team
+TEST-LAG-003,TEST-CP-L003,Surulere Adeniran Ogunsanya,Lagos,South West,Greenfield tower,grid;battery,00:00,24:00,30,active,,,Lagos Field Team
+TEST-OGN-001,TEST-CP-O001,Abeokuta Sapon,Ogun,South West,Greenfield tower,grid;generator;solar,00:00,24:00,30,active,4,600,Lagos Field Team
+TEST-ABJ-001,TEST-CP-A001,Abuja Wuse II,FCT,North Central,Rooftop,grid;generator,00:00,24:00,30,active,5,800,Abuja Field Team
+TEST-ABJ-002,TEST-CP-A002,Abuja Gwarinpa,FCT,North Central,Greenfield tower,grid;generator;battery,00:00,24:00,30,active,6,1000,Abuja Field Team
+TEST-KAN-001,TEST-CP-K001,Kano Nassarawa GRA,Kano,North West,Greenfield tower,grid;generator,00:00,24:00,30,active,6,900,Abuja Field Team
+TEST-PHC-001,TEST-CP-P001,Port Harcourt GRA Phase 2,Rivers,South South,Greenfield tower,grid;generator,00:00,24:00,30,active,6,900,Abuja Field Team
+TEST-ENU-001,TEST-CP-E001,Enugu Independence Layout,Enugu,South East,Greenfield tower,grid;generator,00:00,24:00,30,pending_acceptance,5,800,Abuja Field Team
+TEST-IBA-001,TEST-CP-I001,Ibadan Bodija,Oyo,South West,Rooftop,grid;battery,00:00,24:00,30,suspended,,,Lagos Field Team

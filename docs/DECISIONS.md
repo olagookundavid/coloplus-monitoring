@@ -480,3 +480,10 @@ Why things are the way they are. Append-only: to change a decision, add an entry
 - **Why:** after a change that alters roles or what people may see (decision 071) or if a token may have leaked, the owner needs one step that makes every session start again. The console form works when no administrator can sign in.
 - **Not done:** per-role or per-site sign-out, and a button in the app (the endpoint is ready; see `docs/FRONTEND.md`).
 
+
+## 073: `api seed-demo` puts sample history on people who are already invited
+- **Type:** Operations tool · **Status:** Accepted (owner direction, 11 November 2026)
+- **Decision:** `api seed-demo --reporter=<email> --supervisors=<email>,<email> --reviewer=<email>` is run on the server's database after the people are invited and the `TEST-` sites are loaded. It makes no users and sets no password: each email must already exist with the right role and be assigned to TEST-LAG-001, 002 and 003, or it stops and says which. It then goes through the same services as the API (so every rule holds and every action has an audit row) and leaves past days only, so today stays empty for the testers: approved days on the three Lagos sites, one day corrected end to end, one report returned for a fix, three incidents (closed and published, in progress, just reported), a dispute open and one closed, a ticket open and one resolved, and a maintenance window waiting and one approved. Titles start with "Sample:". It is safe to run again.
+- **Why:** with two-step sign-in nobody's login can be used to build history for them, and typing it all in by hand takes longer than the test itself. `api seed` is not usable on production (shared published password, unrelated sites).
+- **Known cost:** the audit log names the invited people as the authors of that history although they did not do it. The audit log cannot be edited, so this is only acceptable because the database is wiped before real data goes in. Do not run it against a database that will be kept.
+- **No email:** the command runs with the email outbox switched off, so none of the sample actions mails the people it is attached to. The in-app alert centre still gets its rows.

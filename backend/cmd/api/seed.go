@@ -36,18 +36,37 @@ const seedPassword = "Coloplus123!"
 // configured for local development -- the upload endpoints answer 503
 // without it, and a DB row with no real stored file would be misleading.
 func seed(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	sd, closeDB, err := newSeeder(ctx, cfg, log, false)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+	return sd.run(ctx)
+}
+
+// silentOutbox is the email outbox with the writing turned off: the services
+// still run exactly as they do for the API, but no email is queued. The demo
+// command uses it so that sample history never mails the people it is
+// attached to. The in-app alert centre is unaffected.
+type silentOutbox struct{ ports.NotificationStore }
+
+func (silentOutbox) Enqueue(context.Context, domain.Notification) (bool, error) { return false, nil }
+
+// newSeeder wires the services the seed commands drive, over one small pool.
+// The caller closes the pool. With silent, no email is queued.
+func newSeeder(ctx context.Context, cfg config.Config, log *slog.Logger, silent bool) (*seeder, func(), error) {
 	pool, err := postgres.NewPool(ctx, postgres.PoolConfig{
 		URL: cfg.DB.URL, MaxConns: 4, MinConns: 0, Timezone: cfg.DB.Timezone,
 	})
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer pool.Close()
 	db := postgres.NewDB(pool)
 
 	loc, err := time.LoadLocation(cfg.App.ReportingTimezone)
 	if err != nil {
-		return fmt.Errorf("loading reporting time zone: %w", err)
+		pool.Close()
+		return nil, nil, fmt.Errorf("loading reporting time zone: %w", err)
 	}
 	clock := platform.SystemClock{}
 	audit := services.NewAuditService(postgres.NewAuditRepository(db), discardQueue{}, clock, log)
@@ -72,9 +91,14 @@ func seed(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 
 	mailer, err := newMailer(cfg, log)
 	if err != nil {
-		return err
+		pool.Close()
+		return nil, nil, err
 	}
-	notifications := services.NewNotificationService(notificationRepo, mailer, audit, clock, log).WithAlerts(alertRepo)
+	var outbox ports.NotificationStore = notificationRepo
+	if silent {
+		outbox = silentOutbox{notificationRepo}
+	}
+	notifications := services.NewNotificationService(outbox, mailer, audit, clock, log).WithAlerts(alertRepo)
 
 	exportService := services.NewExportService(siteRepo, reportRepo, disputeRepo, incidentRepo, txManager, audit, clock, loc).
 		WithRuns(calcRunRepo)
@@ -102,7 +126,7 @@ func seed(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		periods: services.NewPeriodService(periodRepo, exportService, txManager, audit, clock, loc, cfg.Periods.CloseGraceDays),
 		runs:    exportService,
 	}
-	return sd.run(ctx)
+	return sd, pool.Close, nil
 }
 
 type seeder struct {
