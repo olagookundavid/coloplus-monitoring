@@ -46,19 +46,20 @@ export interface CreateUserRequest {
   email: string
   name: string
   role: StaffRole
+  // Sites the person can see from their first sign-in. Leave out for none
+  // (administrators take none: they see every site).
+  siteIds?: string[]
 }
 
-// No password, no site_ids: leaving the password out is what triggers the
-// real invite-email flow; sites are assigned afterward on the Site
-// assignments page (PATCH /users/:id replaces the whole list anyway, so
-// there's no granular "assign at invite time" call to make here).
+// No password: leaving it out is what triggers the real invite-email flow.
+// The backend accepts the person's sites in the same request.
 export async function createUser(request: CreateUserRequest): Promise<ManagedUser> {
   try {
     const { data } = await getApi().post<UserDetailDTO>('/users', {
       email: request.email,
       full_name: request.name,
       role: request.role,
-      site_ids: [],
+      site_ids: request.siteIds ?? [],
     })
     return mapManagedUserDetail(data)
   } catch (error) {

@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 
-import { useCreateUserMutation } from '../../hooks'
+import { useAdminSites, useCreateUserMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
-import { STAFF_ROLES, STAFF_ROLE_LABELS, type StaffRole } from '../../types'
+import { STAFF_ROLES, STAFF_ROLE_LABELS, type AdminSite, type StaffRole } from '../../types'
 import { getFieldErrors, inviteUserSchema, toast, type InviteUserFormValues } from '../../utils'
 import { Button, Field, Input, Modal, Select } from '../ui'
+import { SiteChecklist } from './SiteChecklist'
 
 export interface InviteUserModalProps {
   open: boolean
@@ -12,14 +13,19 @@ export interface InviteUserModalProps {
 }
 
 const INITIAL_VALUES: InviteUserFormValues = { email: '', name: '', role: 'reporter' }
+const NO_SITES: AdminSite[] = []
+const NO_SITE_IDS: string[] = []
 
 export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
   const mutation = useCreateUserMutation()
+  const sitesQuery = useAdminSites()
+  const sites = sitesQuery.data ?? NO_SITES
 
   const [values, setValues] = useState<InviteUserFormValues>(INITIAL_VALUES)
   const [touched, setTouched] = useState<Partial<Record<keyof InviteUserFormValues, boolean>>>({})
   const [submitted, setSubmitted] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [siteIds, setSiteIds] = useState<string[]>(NO_SITE_IDS)
 
   const fieldErrors = getFieldErrors(inviteUserSchema, values)
 
@@ -43,6 +49,7 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
     setTouched({})
     setSubmitted(false)
     setFormError(null)
+    setSiteIds(NO_SITE_IDS)
   }
 
   function handleClose() {
@@ -57,7 +64,10 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
     if (Object.keys(fieldErrors).length > 0) return
 
     try {
-      await mutation.mutateAsync(values)
+      await mutation.mutateAsync({
+        ...values,
+        siteIds: values.role === 'admin' ? NO_SITE_IDS : siteIds,
+      })
       toast.success(`Invited ${values.name}.`)
       handleClose()
     } catch (error) {
@@ -72,7 +82,7 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
       open={open}
       onClose={handleClose}
       title="Invite a user"
-      subtitle="They'll get an email link to choose their own password. Site access is assigned afterward, from Site assignments."
+      subtitle="They'll get an email link to choose their own password. Choose the sites they can see below; you can change this later from their user page."
       footer={
         <>
           <Button variant="outline" onClick={handleClose}>
@@ -133,6 +143,17 @@ export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
             ))}
           </Select>
         </Field>
+
+        {values.role === 'admin' ? (
+          <p className="rounded-lg bg-surface-subtle p-3 text-xs text-text-muted">
+            Administrators can see every site, so no sites are chosen for them.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-sm font-medium text-text">Sites they can see</p>
+            <SiteChecklist sites={sites} selected={siteIds} onChange={setSiteIds} />
+          </div>
+        )}
       </form>
     </Modal>
   )

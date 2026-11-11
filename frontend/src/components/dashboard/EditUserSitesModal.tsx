@@ -4,20 +4,21 @@ import { useUpdateUserSitesMutation } from '../../hooks'
 import { AuthApiError } from '../../services'
 import type { AdminSite, ManagedUser } from '../../types'
 import { toast } from '../../utils'
-import { Button, Checkbox, Modal } from '../ui'
+import { Button, Modal } from '../ui'
+import { SiteChecklist } from './SiteChecklist'
 
-export interface EditAuditorSitesModalProps {
+export interface EditUserSitesModalProps {
   user: ManagedUser | null
   sites: AdminSite[]
   open: boolean
   onClose: () => void
 }
 
-// An auditor more plausibly needs many sites at once (a whole region, or
-// every site) rather than the one-reporter/one-supervisor-per-site shape
-// SiteAssignments.tsx offers -- a plain checklist against the full site
-// list, saved with the same useUpdateUserSitesMutation that page uses.
-export function EditAuditorSitesModal({ user, sites, open, onClose }: EditAuditorSitesModalProps) {
+// Which sites one person can see: a checklist against the full site list,
+// for any role that is limited to sites (supervisor, reporter, reviewer,
+// viewer, auditor). Saved with the same useUpdateUserSitesMutation that
+// Site assignments uses.
+export function EditUserSitesModal({ user, sites, open, onClose }: EditUserSitesModalProps) {
   const mutation = useUpdateUserSitesMutation()
   const [selected, setSelected] = useState<string[]>(user?.siteIds ?? [])
   const [formError, setFormError] = useState<string | null>(null)
@@ -30,12 +31,6 @@ export function EditAuditorSitesModal({ user, sites, open, onClose }: EditAudito
   function handleClose() {
     onClose()
     resetForm()
-  }
-
-  function toggleSite(siteId: string, checked: boolean) {
-    setSelected((current) =>
-      checked ? [...current, siteId] : current.filter((id) => id !== siteId)
-    )
   }
 
   async function handleSave() {
@@ -79,17 +74,7 @@ export function EditAuditorSitesModal({ user, sites, open, onClose }: EditAudito
           </div>
         )}
 
-        <div className="flex flex-col gap-1">
-          {sites.map((site) => (
-            <Checkbox
-              key={site.id}
-              label={site.name}
-              hint={`${site.customerSiteCode} · ${site.state}`}
-              checked={selected.includes(site.id)}
-              onChange={(event) => toggleSite(site.id, event.target.checked)}
-            />
-          ))}
-        </div>
+        <SiteChecklist sites={sites} selected={selected} onChange={setSelected} />
       </div>
     </Modal>
   )

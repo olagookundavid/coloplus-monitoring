@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react'
 import { PlusIcon } from '@heroicons/react/24/outline'
-import { useNavigate } from 'react-router-dom'
 
 import {
   DashboardPageHeader,
-  EditAuditorSitesModal,
+  EditUserSitesModal,
   InviteUserModal,
   UserDetailPanel,
 } from '../../components/dashboard'
 import { Button, DataTable, StatusBadge, Tabs, type Column } from '../../components/ui'
-import { ROUTES } from '../../constants'
 import { useAdminSites, useManagedUsers } from '../../hooks'
 import {
   STAFF_ROLES,
@@ -31,7 +29,6 @@ const NO_USERS: ManagedUser[] = []
 const NO_SITES: AdminSite[] = []
 
 export function Users() {
-  const navigate = useNavigate()
   const usersQuery = useManagedUsers()
   const sitesQuery = useAdminSites()
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
@@ -148,18 +145,11 @@ export function Users() {
         open={selectedUser !== null}
         onClose={() => setSelectedUserId(null)}
         onEditSiteScope={() => {
-          // Auditor is site-scoped but doesn't fit SiteAssignments.tsx's
-          // one-reporter/one-supervisor-per-site pickers -- a dedicated
-          // checklist modal instead of a navigation for that one role.
-          if (selectedUser?.role === 'auditor') {
-            setSiteModalUserId(selectedUser.id)
-          } else {
-            navigate(ROUTES.OPS_SITE_ASSIGNMENTS)
-          }
+          if (selectedUser) setSiteModalUserId(selectedUser.id)
         }}
       />
 
-      <EditAuditorSitesModal
+      <EditUserSitesModal
         key={siteModalUser?.id}
         user={siteModalUser}
         sites={sites}

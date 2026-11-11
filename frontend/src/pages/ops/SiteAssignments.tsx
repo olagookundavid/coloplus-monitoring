@@ -3,7 +3,7 @@ import { BriefcaseIcon, MapPinIcon, UserGroupIcon } from '@heroicons/react/24/ou
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
 import { SkeletonStatCards } from '../../components/skeletons'
-import { Checkbox, DataTable, Select, StatusBadge, Tabs, type Column } from '../../components/ui'
+import { Checkbox, DataTable, Select, Tabs, type Column } from '../../components/ui'
 import { useAdminSites, useManagedUsers, useUpdateUserSitesMutation } from '../../hooks'
 import type { AdminSite, ManagedUser } from '../../types'
 import { toast } from '../../utils'
@@ -57,15 +57,22 @@ export function SiteAssignments() {
   )
   const avgSitesPerOfficer = reporters.length > 0 ? sitesWithOfficer / reporters.length : 0
 
-  // The one field officer per site shown here is a UI convention, not a
-  // schema rule (user_sites has no per-site cardinality limit) -- picking a
-  // new one removes the site from whoever currently has it and adds it to
-  // the new pick, so the single-select stays an accurate "who's assigned."
-  async function handleFieldOfficerChange(site: AdminSite, newOfficerId: string) {
-    const current = fieldOfficerFor(site.id)
-    if ((current?.id ?? '') === newOfficerId) return
+  // One field officer and one supervisor per site shown here is a UI
+  // convention, not a schema rule (user_sites has no per-site cardinality
+  // limit) -- picking a new one removes the site from whoever is shown for it
+  // now and adds it to the new pick, so the single-select stays an accurate
+  // "who's assigned." Several supervisors on one site are managed from the
+  // person's own Edit sites list (Users).
+  async function handleAssignmentChange(
+    role: 'reporter' | 'supervisor',
+    site: AdminSite,
+    newPersonId: string
+  ) {
+    const pool = role === 'reporter' ? reporters : supervisors
+    const current = role === 'reporter' ? fieldOfficerFor(site.id) : supervisorFor(site.id)
+    if ((current?.id ?? '') === newPersonId) return
 
-    setPendingSiteId(site.id)
+    setPendingSiteId(`${role}:${site.id}`)
     try {
       const tasks: Promise<unknown>[] = []
       if (current) {
@@ -76,8 +83,8 @@ export function SiteAssignments() {
           })
         )
       }
-      if (newOfficerId) {
-        const next = reporters.find((r) => r.id === newOfficerId)
+      if (newPersonId) {
+        const next = pool.find((person) => person.id === newPersonId)
         if (next) {
           tasks.push(
             updateSitesMutation.mutateAsync({
@@ -88,7 +95,9 @@ export function SiteAssignments() {
         }
       }
       await Promise.all(tasks)
-      toast.success(`Updated the field officer for ${site.name}.`)
+      toast.success(
+        `Updated the ${role === 'reporter' ? 'field officer' : 'supervisor'} for ${site.name}.`
+      )
     } catch {
       toast.error('Could not update that assignment. Try again.')
     } finally {
@@ -118,8 +127,10 @@ export function SiteAssignments() {
           return (
             <Select
               value={current?.id ?? ''}
-              disabled={pendingSiteId === site.id}
-              onChange={(event) => void handleFieldOfficerChange(site, event.target.value)}
+              disabled={pendingSiteId === `reporter:${site.id}`}
+              onChange={(event) =>
+                void handleAssignmentChange('reporter', site, event.target.value)
+              }
               aria-label={`Field officer for ${site.name}`}
               className="w-full min-w-40"
             >
@@ -137,11 +148,24 @@ export function SiteAssignments() {
         header: 'Supervisor',
         accessor: (site) => supervisorFor(site.id)?.name ?? 'Needs supervisor',
         cell: (site) => {
-          const supervisor = supervisorFor(site.id)
-          return supervisor ? (
-            supervisor.name
-          ) : (
-            <StatusBadge label="Needs supervisor" tone="warning" />
+          const current = supervisorFor(site.id)
+          return (
+            <Select
+              value={current?.id ?? ''}
+              disabled={pendingSiteId === `supervisor:${site.id}`}
+              onChange={(event) =>
+                void handleAssignmentChange('supervisor', site, event.target.value)
+              }
+              aria-label={`Supervisor for ${site.name}`}
+              className="w-full min-w-40"
+            >
+              <option value="">Needs supervisor</option>
+              {supervisors.map((supervisor) => (
+                <option key={supervisor.id} value={supervisor.id}>
+                  {supervisor.name}
+                </option>
+              ))}
+            </Select>
           )
         },
       },
@@ -154,7 +178,7 @@ export function SiteAssignments() {
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
         title="Site assignments"
-        subtitle="Decide who reports on each site and who supervises it. Reporters only see sites assigned to them."
+        subtitle="Decide who reports on each site and who supervises it. Reporters and supervisors only see sites assigned to them. Reviewers, viewers and auditors get their sites from the Users page."
       />
 
       {sitesQuery.isLoading || usersQuery.isLoading ? (

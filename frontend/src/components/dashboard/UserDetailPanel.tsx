@@ -218,7 +218,7 @@ export function UserDetailPanel({
               <span className="text-sm text-text">{describeSiteScope(user, sites)}</span>
               {user.role !== 'admin' && (
                 <Button variant="link" size="sm" onClick={onEditSiteScope}>
-                  Edit
+                  Edit sites
                 </Button>
               )}
             </div>
