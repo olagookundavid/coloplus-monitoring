@@ -1,9 +1,17 @@
 import { useMemo, useState } from 'react'
-import { BriefcaseIcon, MapPinIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { BriefcaseIcon, MapPinIcon, UserGroupIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 import { DashboardPageHeader, StatCard } from '../../components/dashboard'
 import { SkeletonStatCards } from '../../components/skeletons'
-import { Checkbox, DataTable, Select, Tabs, type Column } from '../../components/ui'
+import {
+  Checkbox,
+  DataTable,
+  IconButton,
+  Select,
+  StatusBadge,
+  Tabs,
+  type Column,
+} from '../../components/ui'
 import { useAdminSites, useManagedUsers, useUpdateUserSitesMutation } from '../../hooks'
 import type { AdminSite, ManagedUser } from '../../types'
 import { toast } from '../../utils'
@@ -31,14 +39,16 @@ export function SiteAssignments() {
     [users]
   )
 
-  function fieldOfficerFor(siteId: string): ManagedUser | undefined {
-    return reporters.find((r) => r.siteIds?.includes(siteId))
+  // A site can have any number of field officers and supervisors (user_sites
+  // has no per-site limit), so these return everyone assigned.
+  function fieldOfficersFor(siteId: string): ManagedUser[] {
+    return reporters.filter((r) => r.siteIds?.includes(siteId))
   }
-  function supervisorFor(siteId: string): ManagedUser | undefined {
-    return supervisors.find((s) => s.siteIds?.includes(siteId))
+  function supervisorsFor(siteId: string): ManagedUser[] {
+    return supervisors.filter((s) => s.siteIds?.includes(siteId))
   }
   function needsAttention(site: AdminSite): boolean {
-    return !fieldOfficerFor(site.id) || !supervisorFor(site.id)
+    return fieldOfficersFor(site.id).length === 0 || supervisorsFor(site.id).length === 0
   }
 
   const states = useMemo(() => [...new Set(sites.map((s) => s.state))].sort(), [sites])
@@ -51,58 +61,92 @@ export function SiteAssignments() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- needsAttention closes over reporters/supervisors, already deps
   }, [sites, stateFilter, needsAttentionOnly, reporters, supervisors])
 
-  const sitesWithOfficer = sites.filter((s) => fieldOfficerFor(s.id)).length
+  const sitesWithOfficer = sites.filter((s) => fieldOfficersFor(s.id).length > 0).length
   const statesWithoutSupervisor = states.filter(
-    (state) => !sites.some((s) => s.state === state && supervisorFor(s.id))
+    (state) => !sites.some((s) => s.state === state && supervisorsFor(s.id).length > 0)
   )
   const avgSitesPerOfficer = reporters.length > 0 ? sitesWithOfficer / reporters.length : 0
 
-  // One field officer and one supervisor per site shown here is a UI
-  // convention, not a schema rule (user_sites has no per-site cardinality
-  // limit) -- picking a new one removes the site from whoever is shown for it
-  // now and adds it to the new pick, so the single-select stays an accurate
-  // "who's assigned." Several supervisors on one site are managed from the
-  // person's own Edit sites list (Users).
-  async function handleAssignmentChange(
+  // Adds or removes one person on one site. PATCH /users/:id replaces that
+  // person's whole site list, so we send their list with the site added or
+  // taken out; nobody else is touched.
+  async function changeAssignment(
     role: 'reporter' | 'supervisor',
     site: AdminSite,
-    newPersonId: string
+    person: ManagedUser,
+    action: 'add' | 'remove'
   ) {
-    const pool = role === 'reporter' ? reporters : supervisors
-    const current = role === 'reporter' ? fieldOfficerFor(site.id) : supervisorFor(site.id)
-    if ((current?.id ?? '') === newPersonId) return
+    const current = person.siteIds ?? []
+    const siteIds =
+      action === 'add' ? [...current, site.id] : current.filter((id) => id !== site.id)
 
     setPendingSiteId(`${role}:${site.id}`)
     try {
-      const tasks: Promise<unknown>[] = []
-      if (current) {
-        tasks.push(
-          updateSitesMutation.mutateAsync({
-            id: current.id,
-            siteIds: (current.siteIds ?? []).filter((id) => id !== site.id),
-          })
-        )
-      }
-      if (newPersonId) {
-        const next = pool.find((person) => person.id === newPersonId)
-        if (next) {
-          tasks.push(
-            updateSitesMutation.mutateAsync({
-              id: next.id,
-              siteIds: [...(next.siteIds ?? []), site.id],
-            })
-          )
-        }
-      }
-      await Promise.all(tasks)
+      await updateSitesMutation.mutateAsync({ id: person.id, siteIds })
       toast.success(
-        `Updated the ${role === 'reporter' ? 'field officer' : 'supervisor'} for ${site.name}.`
+        action === 'add'
+          ? `${person.name} now covers ${site.name}.`
+          : `${person.name} no longer covers ${site.name}.`
       )
     } catch {
       toast.error('Could not update that assignment. Try again.')
     } finally {
       setPendingSiteId(null)
     }
+  }
+
+  // Everyone assigned to the site for one role, each removable, plus a picker
+  // to add someone else. An empty site shows the warning instead.
+  function renderAssignees(role: 'reporter' | 'supervisor', site: AdminSite) {
+    const pool = role === 'reporter' ? reporters : supervisors
+    const assigned = pool.filter((person) => person.siteIds?.includes(site.id))
+    const available = pool.filter((person) => !person.siteIds?.includes(site.id))
+    const noun = role === 'reporter' ? 'field officer' : 'supervisor'
+    const pending = pendingSiteId === `${role}:${site.id}`
+
+    return (
+      <div className="flex min-w-48 flex-col gap-1">
+        {assigned.length === 0 ? (
+          <StatusBadge
+            label={role === 'reporter' ? 'Unassigned' : 'Needs supervisor'}
+            tone="warning"
+          />
+        ) : (
+          assigned.map((person) => (
+            <div key={person.id} className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate text-sm text-text">{person.name}</span>
+              <IconButton
+                icon={XMarkIcon}
+                label={`Remove ${person.name} from ${site.name}`}
+                disabled={pending}
+                onClick={() => void changeAssignment(role, site, person, 'remove')}
+              />
+            </div>
+          ))
+        )}
+        {available.length > 0 && (
+          <Select
+            value=""
+            disabled={pending}
+            onChange={(event) => {
+              const person = available.find((p) => p.id === event.target.value)
+              if (person) void changeAssignment(role, site, person, 'add')
+            }}
+            aria-label={`Add a ${noun} to ${site.name}`}
+            className="w-full"
+          >
+            <option value="">
+              {assigned.length === 0 ? `Add a ${noun}` : `Add another ${noun}`}
+            </option>
+            {available.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.name}
+              </option>
+            ))}
+          </Select>
+        )}
+      </div>
+    )
   }
 
   const columns: Column<AdminSite>[] = useMemo(
@@ -120,54 +164,20 @@ export function SiteAssignments() {
       },
       { header: 'State', accessor: (site) => site.state },
       {
-        header: 'Field officer',
-        accessor: (site) => fieldOfficerFor(site.id)?.name ?? 'Unassigned',
-        cell: (site) => {
-          const current = fieldOfficerFor(site.id)
-          return (
-            <Select
-              value={current?.id ?? ''}
-              disabled={pendingSiteId === `reporter:${site.id}`}
-              onChange={(event) =>
-                void handleAssignmentChange('reporter', site, event.target.value)
-              }
-              aria-label={`Field officer for ${site.name}`}
-              className="w-full min-w-40"
-            >
-              <option value="">Unassigned</option>
-              {reporters.map((reporter) => (
-                <option key={reporter.id} value={reporter.id}>
-                  {reporter.name}
-                </option>
-              ))}
-            </Select>
-          )
-        },
+        header: 'Field officers',
+        accessor: (site) =>
+          fieldOfficersFor(site.id)
+            .map((person) => person.name)
+            .join(', ') || 'Unassigned',
+        cell: (site) => renderAssignees('reporter', site),
       },
       {
-        header: 'Supervisor',
-        accessor: (site) => supervisorFor(site.id)?.name ?? 'Needs supervisor',
-        cell: (site) => {
-          const current = supervisorFor(site.id)
-          return (
-            <Select
-              value={current?.id ?? ''}
-              disabled={pendingSiteId === `supervisor:${site.id}`}
-              onChange={(event) =>
-                void handleAssignmentChange('supervisor', site, event.target.value)
-              }
-              aria-label={`Supervisor for ${site.name}`}
-              className="w-full min-w-40"
-            >
-              <option value="">Needs supervisor</option>
-              {supervisors.map((supervisor) => (
-                <option key={supervisor.id} value={supervisor.id}>
-                  {supervisor.name}
-                </option>
-              ))}
-            </Select>
-          )
-        },
+        header: 'Supervisors',
+        accessor: (site) =>
+          supervisorsFor(site.id)
+            .map((person) => person.name)
+            .join(', ') || 'Needs supervisor',
+        cell: (site) => renderAssignees('supervisor', site),
       },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cells close over reporters/supervisors/pendingSiteId, already deps
@@ -178,7 +188,7 @@ export function SiteAssignments() {
     <div className="flex flex-col gap-6">
       <DashboardPageHeader
         title="Site assignments"
-        subtitle="Decide who reports on each site and who supervises it. Reporters and supervisors only see sites assigned to them. Reviewers, viewers and auditors get their sites from the Users page."
+        subtitle="Decide who reports on each site and who supervises it. A site can have several of each. Reporters and supervisors only see sites assigned to them; reviewers, viewers and auditors get their sites from the Users page."
       />
 
       {sitesQuery.isLoading || usersQuery.isLoading ? (

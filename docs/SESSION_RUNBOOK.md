@@ -8,7 +8,7 @@ For the session on 4 November 2026. The test plan page is what the testers follo
 2. `curl -s https://api.remotems.com/healthcheck` answers `{"status":"ok"}`; the front end loads at https://www.remotems.com and you can sign in.
 3. Load the ten `TEST-` sites (the CSV is on the plan's Test data tab): the site import screen, or `POST /sites/import` with `{"csv": "...", "dry_run": true}` first.
 4. Invite the users (Users screen): two supervisors, two reporters, the customer reviewer (role `reviewer`), an optional `viewer`, a spare account for the lockout test, and **one more supervisor for yourself** (see below).
-5. Sites: choose them when you invite (the Sites list in the invite form), or later from Users, open the person, Edit sites (Select all and Clear help with long lists). Site assignments also has a field officer and a supervisor picker per site. Supervisors get the sites on the Test data tab; the reviewer gets the eight sites that are not Kano or Port Harcourt.
+5. Sites: choose them when you invite (the Sites list in the invite form), or later from Users, open the person, Edit sites (Select all and Clear help with long lists). Site assignments shows everyone covering each site, with Add and remove for field officers and supervisors (a site can have several of each). Supervisors get the sites on the Test data tab; the reviewer gets the eight sites that are not Kano or Port Harcourt.
 6. Send one test invitation to yourself first and confirm the link opens the set-password page on www.remotems.com.
 7. **Sample history (optional, once everyone is invited and assigned).** On the server, in `~/apps/coloplus`:
 
